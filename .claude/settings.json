@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/korchasa/.claude/skills/flow-init/assets/**)",
+      "Read(//Users/korchasa/www/tools/flow/framework/skills/flow-init/assets/**)",
+      "Read(//Users/korchasa/.claude/skills/flow-init/**)",
+      "Read(//Users/korchasa/www/tools/flow/framework/skills/flow-init/**)",
+      "Bash(deno task check)",
+      "Bash(deno fmt)",
+      "Bash(deno fmt scripts/check.ts)",
+      "Bash(ln -s AGENTS.md CLAUDE.md)",
+      "Read(//Users/korchasa/.claude/skills/flow-engineer-hook/**)",
+      "Read(//Users/korchasa/www/tools/flow/framework/skills/flow-engineer-hook/**)",
+      "Bash(chmod +x /Users/korchasa/www/tools/auto-sdlc/.claude/hooks/guard-deno-direct.sh)",
+      "Bash(.claude/hooks/guard-deno-direct.sh)",
+      "Bash(echo \"exit: $?\")",
+      "WebSearch",
+      "Read(//Users/korchasa/.claude/**)",
+      "Bash(grep -v '^agents$')",
+      "Bash(for f in ~/.claude/agents/*.md)",
+      "Bash(do cp -L \"$f\" /Users/korchasa/www/tools/auto-sdlc/.claude/agents/)",
+      "Bash(done)"
+    ],
+    "additionalDirectories": [
+      "/Users/korchasa/www/tools/auto-sdlc/.claude"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/guard-deno-direct.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

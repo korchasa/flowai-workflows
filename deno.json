@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "check": "deno run -A scripts/check.ts",
+    "test": "deno test -A",
+    "dev": "echo 'No dev server for pipeline project'",
+    "prod": "echo 'No prod mode for pipeline project'"
+  },
+  "fmt": {
+    "proseWrap": "preserve",
+    "exclude": ["**/*.md"]
+  }
+}
