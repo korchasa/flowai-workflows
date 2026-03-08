@@ -1,7 +1,7 @@
 {
   "imports": {
-    "jsr:@std/assert": "./vendor/assert.ts",
-    "jsr:@std/yaml": "./vendor/yaml.ts"
+    "@std/assert": "./vendor/assert.ts",
+    "@std/yaml": "./vendor/yaml.ts"
   },
   "tasks": {
     "check": "deno run -A scripts/check.ts",
