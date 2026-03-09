@@ -39,12 +39,17 @@
 
 ### 3.1 FR-1: Pipeline Trigger
 
-- **Description:** A GitHub Issue number triggers the agent pipeline via local CLI invocation.
-- **Use case scenario:** Maintainer runs `deno task run --issue <N>`. Engine fetches issue title+body via `gh` CLI, then executes the pipeline DAG.
+- **Description:** Pipeline triggered via local CLI. Two input modes: GitHub Issue number or free-form text.
+- **Use case scenarios:**
+  - **Issue mode:** `deno task run --issue <N>`. Engine fetches issue title+body via `gh` CLI.
+  - **Text mode:** `deno task run --text "description"` or `deno task run --file path/to/task.md`. Engine uses provided text directly as input to the first agent. No GitHub issue required; branch name derived from run-id.
 - **Acceptance criteria:**
-  - Pipeline starts via `deno task run --issue <N>`.
-  - Issue body and title are extracted (via `gh issue view`) and passed as input to the first agent.
-  - **Re-run guard:** Before starting Stage 1, the engine checks if a PR from branch `agent/<issue-number>` has already been merged. If yes, the engine logs a warning and exits without running any stages.
+  - [ ] Pipeline starts via `deno task run --issue <N>` (issue mode).
+  - [ ] Pipeline starts via `deno task run --text "..."` or `--file <path>` (text mode).
+  - [ ] In issue mode: issue body and title extracted via `gh issue view` and passed as input.
+  - [ ] In text mode: provided text passed directly as input. No `gh` dependency required.
+  - [ ] `--issue` and `--text`/`--file` are mutually exclusive. Engine errors if both or neither provided.
+  - [ ] **Re-run guard (issue mode only):** engine checks if a PR from branch `agent/<issue-number>` has already been merged. If yes, logs warning and exits.
 
 ### 3.2 FR-2: Stage 1 — Project Manager (Specification)
 
@@ -372,6 +377,34 @@
   - No secrets are hardcoded in scripts, prompts, or Dockerfile.
   - Diff-based safety checks (FR-8) detect and reject any secret-like patterns in agent-produced code.
 
+### 3.17 FR-17: Project Directory Structure
+
+- **Description:** Project directory layout must reflect application structure, not be buried under a single `.sdlc/` prefix. Engine code, agent prompts, pipeline config, and run artifacts should be organized at the top level as distinct concerns.
+- **Motivation:** Current `.sdlc/` prefix conflates engine source code, configuration, runtime data, and legacy scripts. This hinders navigation, IDE support, and standard tooling (test runners, linters).
+- **Acceptance criteria:**
+  - [ ] Engine source code lives under a standard `src/` or dedicated top-level directory (not `.sdlc/engine/`).
+  - [ ] Agent prompts in a top-level `agents/` directory (not `.sdlc/agents/`).
+  - [ ] Pipeline config (`pipeline.yaml`) at project root or in a config directory.
+  - [ ] Run artifacts in a gitignored data directory (e.g., `runs/` or `.runs/`).
+  - [ ] Legacy shell scripts in a `scripts/` directory (not `.sdlc/scripts/`).
+  - [ ] `deno.json` tasks, imports, and test paths updated accordingly.
+  - [ ] All existing tests pass after restructuring.
+  - [ ] SDS (`documents/design.md`) Appendix B updated to reflect new layout.
+
+### 3.18 FR-18: Verbose Output (`-v`)
+
+- **Description:** With `-v` flag, engine output must provide full transparency into what is happening at every step — not just node start/stop, but the reasoning context: what input is being passed, what prompt is constructed, what validation is run, what the result is.
+- **Motivation:** Current verbose mode shows only lifecycle events (started/completed/failed). Debugging pipeline issues or understanding agent behavior requires reading log files after the fact.
+- **Acceptance criteria:**
+  - [ ] `-v` shows the full task prompt text sent to each agent (after template interpolation).
+  - [ ] `-v` shows the list of input artifacts resolved for each node (file paths + sizes).
+  - [ ] `-v` shows validation rule execution: which rules ran, pass/fail per rule, failure details.
+  - [ ] `-v` shows continuation context: why continuation was triggered, what error text is appended.
+  - [ ] `-v` streams agent stdout in real-time (not buffered until completion).
+  - [ ] `-v` shows safety check results: which files were diffed, any violations found.
+  - [ ] `-v` shows commit details: files staged, commit message, branch.
+  - [ ] Default mode (no `-v`) remains concise: node start/complete/fail + summary.
+
 ## 4. Non-functional requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution for different issues is not supported.
@@ -383,7 +416,7 @@
 
 ## 5. Interfaces
 
-- **Trigger:** CLI command `deno task run --issue <N>`. Issue data fetched via `gh issue view <N> --json title,body`.
+- **Trigger:** CLI command with two modes: `deno task run --issue <N>` (fetches issue via `gh issue view`) or `deno task run --text "..."` / `--file <path>` (uses provided text directly). Mutually exclusive flags.
 - **Agent runtime:** `claude` CLI invoked by the Deno engine. Invocation: `claude -p "<task prompt>" --append-system-prompt-file .sdlc/agents/<role>.md --output-format json`. Key flags:
   - `--append-system-prompt-file` — adds role-specific instructions while preserving Claude Code's built-in capabilities (tool use, file access). Preferred over `--system-prompt-file` which replaces the default prompt entirely.
   - `--output-format json` — returns structured JSON with `result`, `session_id`, `total_cost_usd`, `duration_ms`, `num_turns`, `is_error`.
