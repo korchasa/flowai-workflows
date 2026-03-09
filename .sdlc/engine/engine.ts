@@ -77,7 +77,8 @@ export class Engine {
       this.state = await loadState(this.options.run_id);
       this.state.status = "running";
     } else {
-      const runId = this.options.run_id ?? generateRunId();
+      const runLabel = this.options.args.task_id ?? this.options.args.issue;
+      const runId = this.options.run_id ?? generateRunId(runLabel);
       const allNodeIds = Object.keys(this.config.nodes);
       this.state = createRunState(
         runId,
