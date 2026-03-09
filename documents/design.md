@@ -123,8 +123,10 @@ graph TD
   - `loop.ts` — loop node execution with condition extraction
   - `human.ts` — terminal user input, abort logic
   - `git.ts` — commit per node, diff safety checks
-  - `output.ts` — terminal output manager (quiet/normal/verbose)
-  - `engine.ts` — main executor: level iteration, parallel dispatch
+  - `output.ts` — terminal output manager (quiet/normal/verbose), verbose
+    methods for detailed agent-node diagnostics
+  - `engine.ts` — main executor: level iteration, parallel dispatch, verbose
+    input resolution
   - `cli.ts` — CLI entry point: argument parsing, .env loading
   - `mod.ts` — public API re-exports
 - **Interfaces:**
@@ -133,6 +135,33 @@ graph TD
   - Config: `.sdlc/pipeline.yaml` (YAML, version "1")
   - State: `.sdlc/runs/<run-id>/state.json` (JSON)
 - **Node types:** `agent`, `merge`, `loop`, `human`
+- **Verbose Output (Direct Injection pattern):**
+  - `output.ts` exposes 6 verbose-guarded methods on `OutputManager`:
+    `verbosePrompt(prompt)`, `verboseInputs(inputs: {path, sizeBytes}[])`,
+    `verboseValidation(results: ValidationResult[])`,
+    `verboseContinuation(attempt, max, failures)`,
+    `verboseSafety(files, violations)`, `verboseCommit(files, message, branch)`.
+    All no-op when `verbosity !== "verbose"`. Output: human-readable stderr with
+    section headers.
+  - `agent.ts`: `AgentRunOptions` gains optional `output?: OutputManager`.
+    `runAgent()` calls `verbosePrompt()` after prompt construction,
+    `verboseValidation()` after validation, `verboseContinuation()` at resume
+    trigger. Guarded by `if (output)`.
+  - `loop.ts`: `LoopRunOptions` gains optional `output?: OutputManager`.
+    Forwarded to `runAgent()`. Single parameter, no callback chains.
+  - `git.ts`: `commitNodeChanges()` gains optional `output?: OutputManager`.
+    Resolves staged files via `git diff --cached --name-only` before commit.
+    Returns enriched `CommitResult` with `filesStaged: string[]` and
+    `message: string`. Calls `verboseCommit()` after successful commit.
+    `safetyCheckDiff()` gains optional `output?: OutputManager`. Returns
+    enriched `SafetyCheckResult` with `checkedFiles: string[]`. Calls
+    `verboseSafety()` before returning.
+  - `engine.ts`: `executeAgentNode()` resolves input artifact paths+sizes by
+    walking `ctx.input` directories; calls `this.output.verboseInputs()` before
+    `runAgent()`. Passes `this.output` to `runAgent()`, `safetyCheckDiff()`,
+    `commitNodeChanges()`. Sequencing: inputs → agent (prompt/validation/
+    continuation verbose) → safety (verbose) → commit (verbose).
+  - All existing callers pass no `output` arg — zero behavioral change.
 - **Deps:** `claude` CLI, `deno`, `git`, `jsr:@std/yaml`.
 
 ### 3.6 Pipeline Trigger (Legacy)
@@ -149,6 +178,10 @@ graph TD
   - Agent Prompt: System prompt Markdown (`.sdlc/agents/<role>.md`)
   - Run State: JSON (`.sdlc/runs/<run-id>/state.json`)
   - Pipeline Config: YAML (`.sdlc/pipeline.yaml`)
+  - CommitResult: `{ commitHash, filesStaged: string[], message: string }`
+    (enriched for verbose output)
+  - SafetyCheckResult: `{ violations[], checkedFiles: string[] }` (enriched for
+    verbose output)
 - **ERD:** N/A (file-based, no database).
 - **Migration:** N/A.
 
@@ -183,6 +216,14 @@ graph TD
     Executor reads QA report, fixes -> repeat (max 3).
   - **Diff Safety Check**: After Executor exit, check `git diff` for
     out-of-scope modifications, unauthorized deletions, secret patterns.
+  - **Verbose Output Flow** (`-v` mode, agent nodes only): In
+    `executeAgentNode()`: (1) resolve input artifact file paths+sizes from
+    `ctx.input` dirs → `verboseInputs()`, (2) `runAgent()` emits
+    `verbosePrompt()` → Claude CLI executes → `verboseValidation()` → on
+    failure: `verboseContinuation()` → retry, (3) `safetyCheckDiff()` →
+    `verboseSafety()`, (4) `commitNodeChanges()` → `verboseCommit()`. All
+    verbose methods guarded by `verbosity !== "verbose"` — no-op in
+    default/quiet. Output: human-readable stderr lines with section headers.
   - **Meta-Agent Trigger**: Engine executes meta-agent as last DAG node
     (`run_always: true`). On failure: reads failed node ID from `state.json`.
     Runs meta-agent with failure context.
