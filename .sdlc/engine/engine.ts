@@ -93,30 +93,59 @@ export class Engine {
     await this.ensureRunDirs(levels);
     await saveState(this.state);
 
-    // Execute levels
+    // Identify run_always nodes (e.g., Meta-Agent) — execute after all levels
+    const runAlwaysNodeIds = collectRunAlwaysNodes(this.config.nodes);
+
+    // Filter run_always nodes out of regular DAG levels
+    const filteredLevels = levels
+      .map((level) => level.filter((id) => !runAlwaysNodeIds.includes(id)))
+      .filter((level) => level.length > 0);
+
+    // Ensure run_always node dirs exist
+    for (const nodeId of runAlwaysNodeIds) {
+      await Deno.mkdir(getNodeDir(this.state.run_id, nodeId), {
+        recursive: true,
+      });
+    }
+
+    // Execute regular levels
+    let pipelineSuccess = true;
     try {
-      for (const level of levels) {
+      for (const level of filteredLevels) {
         const success = await this.executeLevel(level);
         if (!success) {
-          markRunFailed(this.state);
-          await saveState(this.state);
-          this.printSummary();
-          return this.state;
+          pipelineSuccess = false;
+          break;
         }
       }
-
-      markRunCompleted(this.state);
-      await saveState(this.state);
-      this.printSummary();
-      return this.state;
     } catch (err) {
-      markRunFailed(this.state);
-      this.state.completed_at = new Date().toISOString();
-      await saveState(this.state);
+      pipelineSuccess = false;
       this.output.error((err as Error).message);
-      this.printSummary();
-      return this.state;
     }
+
+    // Execute run_always nodes (post-levels step, regardless of pipeline outcome)
+    if (runAlwaysNodeIds.length > 0) {
+      for (const nodeId of runAlwaysNodeIds) {
+        if (isNodeCompleted(this.state, nodeId)) continue;
+        try {
+          await this.executeNode(nodeId);
+        } catch (err) {
+          this.output.warn(
+            `run_always node ${nodeId} failed: ${(err as Error).message}`,
+          );
+        }
+      }
+    }
+
+    // Finalize run state
+    if (pipelineSuccess) {
+      markRunCompleted(this.state);
+    } else {
+      markRunFailed(this.state);
+    }
+    await saveState(this.state);
+    this.printSummary();
+    return this.state;
   }
 
   /** Execute a single level (set of independent nodes). */
@@ -570,6 +599,18 @@ export async function resolveInputArtifacts(
     }
   }
   return result;
+}
+
+/**
+ * Collect node IDs with `run_always: true` from pipeline config.
+ * These nodes execute in a final post-levels step, regardless of pipeline outcome.
+ */
+export function collectRunAlwaysNodes(
+  nodes: Record<string, NodeConfig>,
+): string[] {
+  return Object.entries(nodes)
+    .filter(([_, node]) => node.run_always === true)
+    .map(([id]) => id);
 }
 
 /** Recursively copy a directory. */

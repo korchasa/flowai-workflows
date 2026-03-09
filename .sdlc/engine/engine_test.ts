@@ -1,6 +1,10 @@
 import { assertEquals } from "@std/assert";
-import type { EngineOptions } from "./types.ts";
-import { Engine, resolveInputArtifacts } from "./engine.ts";
+import type { EngineOptions, NodeConfig } from "./types.ts";
+import {
+  collectRunAlwaysNodes,
+  Engine,
+  resolveInputArtifacts,
+} from "./engine.ts";
 import { OutputManager } from "./output.ts";
 
 /** Capture output lines from an OutputManager. */
@@ -295,4 +299,52 @@ Deno.test("resolveInputArtifacts — skips subdirectories", async () => {
   } finally {
     await Deno.remove(tmpDir, { recursive: true });
   }
+});
+
+// --- run_always node support tests ---
+
+Deno.test("collectRunAlwaysNodes — collects nodes with run_always: true", () => {
+  const nodes: Record<string, NodeConfig> = {
+    pm: { type: "agent", label: "PM" },
+    executor: { type: "agent", label: "Executor" },
+    "meta-agent": { type: "agent", label: "Meta-Agent", run_always: true },
+  };
+  const result = collectRunAlwaysNodes(nodes);
+  assertEquals(result, ["meta-agent"]);
+});
+
+Deno.test("collectRunAlwaysNodes — returns empty when no run_always nodes", () => {
+  const nodes: Record<string, NodeConfig> = {
+    pm: { type: "agent", label: "PM" },
+    executor: { type: "agent", label: "Executor" },
+  };
+  const result = collectRunAlwaysNodes(nodes);
+  assertEquals(result, []);
+});
+
+Deno.test("collectRunAlwaysNodes — multiple run_always nodes", () => {
+  const nodes: Record<string, NodeConfig> = {
+    pm: { type: "agent", label: "PM" },
+    "meta-agent": { type: "agent", label: "Meta-Agent", run_always: true },
+    cleanup: { type: "agent", label: "Cleanup", run_always: true },
+  };
+  const result = collectRunAlwaysNodes(nodes);
+  assertEquals(result.length, 2);
+  assertEquals(result.includes("meta-agent"), true);
+  assertEquals(result.includes("cleanup"), true);
+});
+
+Deno.test("run_always nodes excluded from regular DAG levels", () => {
+  // run_always nodes should not appear in regular DAG levels.
+  // They execute in a separate post-levels step.
+  const nodes: Record<string, NodeConfig> = {
+    pm: { type: "agent", label: "PM" },
+    "meta-agent": { type: "agent", label: "Meta-Agent", run_always: true },
+  };
+  const runAlways = collectRunAlwaysNodes(nodes);
+  const regularNodes = Object.keys(nodes).filter(
+    (id) => !runAlways.includes(id),
+  );
+  assertEquals(regularNodes, ["pm"]);
+  assertEquals(runAlways, ["meta-agent"]);
 });

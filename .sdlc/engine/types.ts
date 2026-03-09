@@ -51,6 +51,10 @@ export interface NodeConfig {
   question?: string;
   options?: string[];
   abort_on?: string[];
+
+  // post-pipeline execution
+  /** When true, node executes after all DAG levels complete (even on failure). */
+  run_always?: boolean;
 }
 
 /** Per-node settings (merged with defaults). */
