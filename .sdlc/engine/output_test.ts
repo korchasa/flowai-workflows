@@ -189,5 +189,9 @@ Deno.test("AC8 — default mode emits zero output from all 6 verbose methods", (
   out.verboseSafety("node1", ["src/main.ts"], ["Out-of-scope: .github/ci.yml"]);
   out.verboseCommit("node1", ["src/main.ts"], "commit msg", "agent/42");
 
-  assertEquals(cap.lines.length, 0, "Default mode must produce zero verbose output");
+  assertEquals(
+    cap.lines.length,
+    0,
+    "Default mode must produce zero verbose output",
+  );
 });

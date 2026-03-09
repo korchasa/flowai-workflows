@@ -105,10 +105,19 @@ Deno.test("verboseCommit — handles zero staged files (no-op commit)", () => {
   // Engine only calls verboseCommit when filesStaged.length > 0
   // (engine.ts:449), so zero files = no verboseCommit call.
   if (commitResult.filesStaged.length > 0) {
-    out.verboseCommit("node1", commitResult.filesStaged, commitResult.message, "agent/42");
+    out.verboseCommit(
+      "node1",
+      commitResult.filesStaged,
+      commitResult.message,
+      "agent/42",
+    );
   }
 
-  assertEquals(cap.lines.length, 0, "Zero staged files should produce no verbose commit output");
+  assertEquals(
+    cap.lines.length,
+    0,
+    "Zero staged files should produce no verbose commit output",
+  );
 });
 
 // Path matching logic test (mirrors safetyCheckDiff logic)

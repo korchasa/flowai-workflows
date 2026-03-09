@@ -136,7 +136,11 @@ Deno.test("AC6 positive — verboseSafety called when allowed_paths configured",
 
   // Engine calls verboseSafety only when allowed_paths.length > 0
   if (allowedPaths.length > 0) {
-    out.verboseSafety("executor", safetyResult.checkedFiles, safetyResult.violations);
+    out.verboseSafety(
+      "executor",
+      safetyResult.checkedFiles,
+      safetyResult.violations,
+    );
   }
 
   assertEquals(cap.lines.length > 0, true, "verboseSafety should emit output");
@@ -157,7 +161,11 @@ Deno.test("AC6 negative — verboseSafety skipped when allowed_paths empty", () 
     out.verboseSafety("executor", [], []);
   }
 
-  assertEquals(cap.lines.length, 0, "No verbose safety output when allowed_paths empty");
+  assertEquals(
+    cap.lines.length,
+    0,
+    "No verbose safety output when allowed_paths empty",
+  );
 });
 
 // --- Edge case: empty input directory ---
@@ -198,7 +206,11 @@ Deno.test("resolveInputArtifacts — missing file stat is skipped gracefully", a
     // Remove file — simulate stat failure on next call
     await Deno.remove(`${tmpDir}/exists.md`);
     const result2 = await resolveInputArtifacts({ node: tmpDir });
-    assertEquals(result2.length, 0, "Missing files should be skipped without error");
+    assertEquals(
+      result2.length,
+      0,
+      "Missing files should be skipped without error",
+    );
   } finally {
     await Deno.remove(tmpDir, { recursive: true });
   }
