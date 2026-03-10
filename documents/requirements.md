@@ -406,14 +406,16 @@
 ### 3.19 FR-19: Agents as Skills
 
 - **Description:** Each pipeline agent is a Claude Code project skill, stored in `./agents/<name>/SKILL.md`. Skills are linked into `.claude/skills/` via symlinks for IDE integration. Each agent can be invoked standalone via `/agent-<name>` or used by the pipeline engine.
+- **Agents (9):** pm, tech-lead, tech-lead-reviewer, architect, tech-lead-sds, executor, qa, presenter, meta-agent.
 - **Acceptance criteria:**
   - [ ] Each of 9 agents has a dedicated directory under `./agents/<name>/` with a `SKILL.md` file containing YAML frontmatter (name, description, disable-model-invocation) and role instructions.
   - [ ] Symlinks exist: `.claude/skills/agent-<name>` → `../../agents/<name>/` for all 9 agents.
-  - [ ] Pipeline engine `prompt:` fields in `pipeline.yaml` and `pipeline-task.yaml` reference the new SKILL.md paths.
+  - [ ] Pipeline engine `prompt:` fields in `pipeline.yaml` and `pipeline-task.yaml` reference the new SKILL.md paths (e.g., `agents/pm/SKILL.md`).
   - [ ] Current `.sdlc/agents/*.md` files are migrated (content preserved, format adapted to SKILL.md with frontmatter).
   - [ ] `.sdlc/agents/` directory removed after migration.
   - [ ] Each agent skill is invocable standalone via `/agent-<name>`.
   - [ ] `deno task check` passes after migration.
+  - [ ] References to `.sdlc/agents/` in SRS sections (FR-8, FR-11, FR-12, Interfaces, Appendix B) updated to reflect new `agents/<name>/SKILL.md` paths.
 
 ## 4. Non-functional requirements
 
