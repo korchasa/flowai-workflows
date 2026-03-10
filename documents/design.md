@@ -151,7 +151,7 @@ graph TD
   shell script orchestration with YAML-driven node graph.
 - **Modules:**
   - `types.ts` — type declarations (incl. `ValidationRule.type` union,
-    `NodeConfig.run_always`)
+    `NodeConfig.run_always`, `LoopResult.bodyResults`)
   - `template.ts` — `{{var}}` interpolation for prompts/paths
   - `config.ts` — YAML parsing, schema validation, defaults merge
   - `dag.ts` — topological sort, cycle detection, level grouping
@@ -159,14 +159,14 @@ graph TD
     contains_section, custom_script, frontmatter_field)
   - `state.ts` — RunState persistence to `state.json`, resume logic
   - `agent.ts` — Claude CLI invocation, continuation loop, retry
-  - `loop.ts` — loop node execution with condition extraction
+  - `loop.ts` — loop node execution with condition extraction, per-iteration
+    `AgentResult` accumulation into `LoopResult.bodyResults`
   - `human.ts` — terminal user input, abort logic
-  - `git.ts` — commit per node, diff safety checks (gitleaks CLI + regex
-    fallback), branch query
+  - `git.ts` — commit helper (used by committer agent nodes), branch query
   - `output.ts` — terminal output manager (quiet/normal/verbose), verbose
     methods for detailed agent-node diagnostics
   - `engine.ts` — main executor: level iteration, parallel dispatch, verbose
-    input resolution
+    input resolution, loop-node log saving via `onNodeComplete` callback
   - `cli.ts` — CLI entry point: argument parsing, .env loading
   - `mod.ts` — public API re-exports
 - **Interfaces:**
@@ -178,9 +178,8 @@ graph TD
 - **Node flags:** `run_always?: boolean` — when `true`, node executes in a
   post-levels step after all DAG levels complete (including on pipeline
   failure). Used for Meta-Agent.
-- **Config requirement:** Executor-role agent nodes MUST have `allowed_paths`
-  configured in `pipeline.yaml` for safety check verbose output (AC6) to fire.
-  Empty `allowed_paths` skips safety check entirely.
+- **Commit strategy:** Engine does not auto-commit. Dedicated committer agent
+  nodes handle commits at explicit pipeline points.
 - **Verbose Output (Direct Injection pattern):**
   - `output.ts` exposes 6 verbose-guarded methods on `OutputManager`:
     `verbosePrompt(nodeId, prompt)`,
@@ -237,10 +236,10 @@ graph TD
   - Pipeline Config: YAML (`.sdlc/pipeline.yaml`)
   - CommitResult: `{ commitHash, filesStaged: string[], message: string }`
     (enriched for verbose output)
-  - SafetyCheckResult: `{ violations[], checkedFiles: string[] }` (enriched for
-    verbose output)
   - ValidationRule: `{ type: "file_exists"|"file_not_empty"|"contains_section"|
     "custom_script"|"frontmatter_field", path?, field?, allowed?, ... }`
+  - LoopResult: `{ ..., bodyResults: AgentResult[] }` — accumulated per-iteration
+    agent results; consumed by `executeLoopNode()` callback for log saving
   - NodeConfig: `{ ..., run_always?: boolean }` — flag for post-levels execution
 - **ERD:** N/A (file-based, no database).
 - **Migration:** N/A.
@@ -262,13 +261,22 @@ graph TD
 - **Context management:** Claude CLI auto-compression handles large input sets.
 - **Template variables:** `{{node_dir}}`, `{{input.*}}`, `{{run_dir}}`,
   `{{run_id}}`, `{{args.*}}`, `{{env.*}}`, `{{loop.iteration}}`.
+- **After-hook conventions:** Commands run from repo root (no `cd {{run_dir}}`
+  prefix needed). Use `|| true` suffix to prevent hook failure from killing
+  the node. Example (sds-update diff capture):
+  `git diff HEAD -- documents/design.md > {{node_dir}}/04a-sds-diff.md;
+  [ -s {{node_dir}}/04a-sds-diff.md ] || echo "No changes" >
+  {{node_dir}}/04a-sds-diff.md || true`.
 
 ### 4.2 Commit Strategy
 
 - **Branch:** Feature branch, specified externally or current branch.
-- **Commit cadence:** Engine commits after each successful node.
-- **Commit format:** `sdlc(<node-id>): <run-id> — <node label>`.
-- **Commit scope:** All changes since last commit (node output + modified docs).
+- **Commit cadence:** Engine does NOT auto-commit. Commits at explicit
+  committer agent nodes (`agents/committer/SKILL.md`) placed at 3 points:
+  `commit-plan` (after SDS update), `commit-impl` (after executor+QA loop),
+  `commit-present` (after presenter).
+- **Commit format:** `sdlc(<phase>): <summary>` (phase from `SDLC_PHASE` env).
+- **Executor:** Instructed NOT to make git commits (pipeline-managed).
 - **Failure behavior:** Failed nodes produce no commits. On_error: "fail" stops
   pipeline; "continue" proceeds to next nodes.
 - **Resume:** `--resume <run-id>` skips completed nodes per state.json.
@@ -277,33 +285,31 @@ graph TD
 
 - **Algos:**
   - **Continuation Loop**: invoke agent -> validate -> if fail: resume with
-    error context -> repeat (max N). Additionally, `safetyCheckDiff()` violations
-    after `runAgent()` trigger resume with violation details via
-    `resumeSessionId`. Safety and validation continuations share single
-    `max_continuations` counter. If limit reached: fail node, trigger
+    error context -> repeat (max N). If limit reached: fail node, trigger
     Meta-Agent.
   - **Executor+QA Loop**: Executor implements -> QA verifies -> if FAIL:
     Executor reads QA report, fixes -> repeat (max 3).
-  - **Diff Safety Check**: After Executor exit, check `git diff` for
-    out-of-scope modifications, unauthorized deletions, secret patterns.
-    **Gitleaks integration:** Before regex fallback, spawn
-    `gitleaks detect --no-git --staged`; exit 0 = clean, non-zero = leak.
-    On binary not found (`ENOENT`): log warning, fall back to regex. No silent
-    suppression.
+  - **Secret Detection**: `gitleaks detect --no-git` runs as part of
+    `deno task check` (`scripts/check.ts`). `allowFailure=true` — skips if
+    gitleaks binary not found. Engine-level `safetyCheckDiff()` removed.
   - **Verbose Output Flow** (`-v` mode, agent nodes only): In
     `executeAgentNode()`: (1) resolve input artifact file paths+sizes from
     `ctx.input` dirs via `Deno.stat()` → `verboseInputs()`, (2) `runAgent()`
     (with `output` + `nodeId`) emits `verbosePrompt()` → Claude CLI executes →
-    `verboseValidation()` → on failure: `verboseContinuation()` → retry,
-    (3) `safetyCheckDiff()` returns enriched result → engine calls
-    `verboseSafety()` with `checkedFiles` + `violations`. Then in
-    `commitIfNeeded()` (called from `executeNode()` after agent returns):
-    (4) `commitNodeChanges()` returns enriched result → engine calls
-    `verboseCommit()` with `filesStaged`, `message`, branch. All verbose
-    methods guarded by `verbosity !== "verbose"` — no-op in default/quiet.
-    Output: human-readable stderr lines with section headers. Loop body nodes
-    get prompt/validation/continuation verbose only; safety/commit verbose
-    deferred (loop body bypasses `executeAgentNode()`).
+    `verboseValidation()` → on failure: `verboseContinuation()` → retry.
+    All verbose methods guarded by `verbosity !== "verbose"` — no-op in
+    default/quiet. Output: human-readable stderr lines with section headers.
+    Note: safety check and auto-commit verbose removed (engine no longer
+    performs these operations).
+  - **Loop Node Log Saving** (callback-based, no I/O in `loop.ts`):
+    `runLoop()` accumulates `AgentResult` per body-node iteration into
+    `LoopResult.bodyResults[]` (pure data, no filesystem ops). In
+    `executeLoopNode()` (`engine.ts`), the `onNodeComplete` callback iterates
+    `bodyResults`, calling `saveAgentLog()` with iteration-qualified nodeId
+    (`${id}-iter-${i}`). Guard: only on `result.success && result.output`.
+    `saveAgentLog()` errors caught and warned (non-fatal) — audit I/O must not
+    break loop execution. `runDir` resolved via `getRunDir(this.state.run_id)`
+    (already in engine scope).
   - **Verbose Edge Cases** (behavioral contracts verified by tests):
     - **Default mode (no `-v`):** All 6 verbose methods produce zero stderr
       output. `OutputManager` constructed with `verbose=false` suppresses all
@@ -314,10 +320,6 @@ graph TD
       graceful skip, verbose output includes error detail for affected path.
     - **Zero staged files at commit:** `commitNodeChanges()` detects no staged
       files → `verboseCommit()` reports no-op commit. No git commit created.
-    - **Safety check with `allowed_paths: []`:** `safetyCheckDiff()` skipped
-      entirely when node has empty `allowed_paths`. No `verboseSafety()` call.
-    - **Safety check with `allowed_paths` configured:** `safetyCheckDiff()`
-      executes, `verboseSafety()` emits `checkedFiles` + any `violations`.
   - **Meta-Agent Trigger**: Engine executes meta-agent via `run_always: true`
     mechanism. After all DAG levels complete (success or failure), engine
     collects nodes with `run_always: true` and executes them in a final
@@ -337,8 +339,8 @@ graph TD
 - **Scale:** Single pipeline per issue. Sequential stages (no parallel agents).
 - **Fault:** Stage failure stops pipeline, Meta-Agent analyzes, failure reported
   on issue.
-- **Sec:** Diff-based safety checks (gitleaks CLI primary, regex fallback).
-  Safety violations trigger continuation for self-correction. Agents run with
+- **Sec:** Secret detection via `gitleaks detect --no-git` in `deno task check`
+  (`scripts/check.ts`). Engine-level scope checks removed. Agents run with
   local user's permissions.
 - **Logs:** Full transcripts per stage in `.sdlc/runs/<run-id>/logs/`.
 

@@ -1,3 +1,9 @@
+---
+name: "agent-architect"
+description: "Architect — selects implementation variant, produces task breakdown for Executor"
+disable-model-invocation: true
+---
+
 # Role: Architect (Variant Selection & Task Breakdown)
 
 You are the Architect agent in an automated SDLC pipeline. Your job is to select
