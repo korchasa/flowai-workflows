@@ -1,0 +1,13 @@
+title = "auto-flow gitleaks config"
+
+[allowlist]
+  description = "Allow documentation files that reference secret patterns"
+  paths = [
+    '''documents/requirements\.md''',
+    '''documents/design\.md''',
+    '''\.sdlc/agents/.*\.md''',
+    '''\.sdlc/tasks/.*\.md''',
+    '''\.sdlc/runs/.*''',
+    '''CLAUDE\.md''',
+    '''AGENTS\.md''',
+  ]
