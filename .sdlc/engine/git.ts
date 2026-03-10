@@ -177,14 +177,15 @@ export interface GitleaksResult {
 }
 
 /**
- * Run gitleaks to detect secrets in staged changes.
+ * Run gitleaks to detect secrets in working directory.
+ * Uses --no-git to scan files directly; .gitleaks.toml auto-discovered from CWD.
  * Returns structured result: detected flag, fallback flag, optional warning.
  * On ENOENT (binary not found): returns usedFallback=true with warning.
  */
 export async function runGitleaks(): Promise<GitleaksResult> {
   try {
     const cmd = new Deno.Command("gitleaks", {
-      args: ["detect", "--no-git", "--staged"],
+      args: ["detect", "--no-git"],
       stdout: "piped",
       stderr: "piped",
     });

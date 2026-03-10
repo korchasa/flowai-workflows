@@ -43,7 +43,9 @@ Required sections:
   vague advice.
 - **Auto-apply:** Commit prompt improvements to `.sdlc/agents/*.md` on the
   feature branch. Changes are reviewed at PR merge.
-- **Post summary:** Use `gh issue comment` to post key findings on the issue.
+- **Post summary:** If the run is associated with a GitHub Issue (check
+  `state.json` for `args.issue`), use `gh issue comment` to post key findings.
+  Skip for task-mode runs (no associated issue).
 - **Previous reports:** Check `.sdlc/runs/*/meta-agent/07-meta-report.md` for patterns.
 
 ## Allowed File Modifications
