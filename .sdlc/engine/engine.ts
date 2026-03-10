@@ -335,11 +335,22 @@ export class Engine {
         this.buildContext(bodyNodeId, iteration),
       onNodeStart: (id, iteration) =>
         this.output.status(id, `STARTED (iteration ${iteration})`),
-      onNodeComplete: (id, _iteration, result) => {
+      onNodeComplete: (id, iteration, result) => {
         if (result.success) {
           this.output.status(id, "COMPLETED");
         } else {
           this.output.nodeFailed(id, result.error ?? "Failed");
+        }
+
+        // Save agent log for successful loop body nodes (iteration-qualified)
+        if (result.success && result.output) {
+          const runDir = getRunDir(this.state.run_id);
+          const iterNodeId = `${id}-iter-${iteration}`;
+          saveAgentLog(runDir, iterNodeId, result.output).catch((err) => {
+            this.output.warn(
+              `Failed to save log for ${iterNodeId}: ${(err as Error).message}`,
+            );
+          });
         }
       },
       onIteration: (iteration, maxIterations) =>

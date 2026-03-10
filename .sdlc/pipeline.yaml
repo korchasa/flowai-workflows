@@ -97,7 +97,7 @@ nodes:
       Read the decision at {{input.architect}}/04-decision.md.
       Update documents/design.md with the selected variant's design details.
       Output: updated documents/design.md
-    after: "cd {{run_dir}} && git diff documents/design.md > {{node_dir}}/04a-sds-diff.md || true"
+    after: "git diff HEAD -- documents/design.md > {{node_dir}}/04a-sds-diff.md; [ -s {{node_dir}}/04a-sds-diff.md ] || echo 'No changes to documents/design.md' > {{node_dir}}/04a-sds-diff.md || true"
 
   # Commit planning artifacts
   commit-plan:

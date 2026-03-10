@@ -18,6 +18,8 @@ export interface LoopResult {
   iterations: number;
   error?: string;
   lastConditionValue?: string;
+  /** Per-iteration AgentResult entries for log extraction by the engine. */
+  bodyResults: AgentResult[];
 }
 
 /** Options for running a loop node. */
@@ -59,6 +61,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
   const bodyOrder = buildLoopBodyOrder(config, loopNodeId);
 
   let lastConditionValue: string | undefined;
+  const bodyResults: AgentResult[] = [];
 
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
     opts.onIteration?.(iteration, maxIterations);
@@ -81,6 +84,8 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
         nodeId: bodyNodeId,
       });
 
+      bodyResults.push(result);
+
       if (result.success) {
         markNodeCompleted(state, bodyNodeId);
       } else {
@@ -97,6 +102,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
           error:
             `Body node '${bodyNodeId}' failed on iteration ${iteration}: ${result.error}`,
           lastConditionValue,
+          bodyResults,
         };
       }
     }
@@ -114,6 +120,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
         success: true,
         iterations: iteration,
         lastConditionValue,
+        bodyResults,
       };
     }
   }
@@ -124,6 +131,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
     error:
       `Loop '${loopNodeId}' reached max iterations (${maxIterations}) without exit condition. Last ${conditionField}=${lastConditionValue}, expected ${exitValue}`,
     lastConditionValue,
+    bodyResults,
   };
 }
 
