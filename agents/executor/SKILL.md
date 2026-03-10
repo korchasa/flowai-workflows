@@ -41,9 +41,14 @@ Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 - **Scope:** Only modify files listed in `04-decision.md` YAML frontmatter
   `tasks[].files` plus test files. Do NOT modify:
   - `.github/`
-  - `agents/`
   - `.sdlc/scripts/`
   - `CLAUDE.md`
+- **Self-referential safety:** If the task involves migrating or modifying
+  pipeline agent prompts (files under `agents/` or `.sdlc/agents/`), do NOT
+  delete old prompt files during the pipeline run. The engine may still
+  reference them for later nodes. Instead, create the new files and update
+  references, but leave old files in place. Deletion should be a separate
+  follow-up step after the pipeline completes.
 - **Fix QA issues:** If a previous QA report is provided, read it and fix all
   issues marked as `FAIL` or `blocking` before proceeding.
 - **No documentation changes:** Do not update SRS or SDS. Only write code.
