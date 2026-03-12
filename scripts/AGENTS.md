@@ -18,6 +18,7 @@
 
 - `deno task check` - Full project verification (format, lint, test)
 - `deno task test` - Run all tests
+- `deno task start-in-claude` - Launch claude CLI to run the application
 - `deno fmt` - Format code
 - `deno lint` - Lint code
 - `deno test` - Run tests
@@ -26,6 +27,7 @@
 
 - `scripts/check.ts` - Comprehensive check: fmt --check, lint, test,
   comment-scan
+- `scripts/start.ts` - Launch claude CLI with prompt to run the app
 - `scripts/test.ts` - Run single test file or all tests
 - `scripts/dev.ts` - Start dev mode (watch)
 - `scripts/prod.ts` - Start production mode
