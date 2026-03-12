@@ -7,7 +7,7 @@ const prompt = Deno.args.join(" ") ||
 console.log(`> claude -p "${prompt}"`);
 
 const cmd = new Deno.Command("claude", {
-  args: ["-p", prompt],
+  args: ["--dangerously-skip-permissions", "-p", prompt],
   stdin: "null",
   stdout: "inherit",
   stderr: "inherit",
