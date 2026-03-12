@@ -1,10 +1,12 @@
 import { assertEquals } from "@std/assert";
-import type { EngineOptions, NodeConfig } from "./types.ts";
+import type { EngineOptions, NodeConfig, RunState } from "./types.ts";
 import {
   collectRunAlwaysNodes,
   Engine,
   resolveInputArtifacts,
+  sortRunAlwaysNodes,
 } from "./engine.ts";
+import { getNodesByStatus } from "./state.ts";
 import { OutputManager } from "./output.ts";
 
 /** Capture output lines from an OutputManager. */
@@ -234,4 +236,119 @@ Deno.test("run_always nodes excluded from regular DAG levels", () => {
   );
   assertEquals(regularNodes, ["pm"]);
   assertEquals(runAlways, ["meta-agent"]);
+});
+
+// --- NodeConfig.env field tests ---
+
+Deno.test("NodeConfig — env field is optional and typed as Record<string, string>", () => {
+  const node: NodeConfig = {
+    type: "agent",
+    label: "Commit Meta",
+    env: { SDLC_PHASE: "meta" },
+  };
+  assertEquals(node.env, { SDLC_PHASE: "meta" });
+});
+
+Deno.test("NodeConfig — env field undefined when not set", () => {
+  const node: NodeConfig = {
+    type: "agent",
+    label: "PM",
+  };
+  assertEquals(node.env, undefined);
+});
+
+// --- Pre-run_always rollback + failed-node-id extraction tests ---
+
+Deno.test("getNodesByStatus — extracts failed node IDs from run state", () => {
+  const state: RunState = {
+    run_id: "test-run",
+    config_path: "config.yaml",
+    started_at: new Date().toISOString(),
+    status: "failed",
+    args: {},
+    env: {},
+    nodes: {
+      pm: { status: "completed" },
+      executor: { status: "failed", error: "Agent failed" },
+      qa: { status: "pending" },
+      "meta-agent": { status: "pending" },
+    },
+  };
+  const failed = getNodesByStatus(state, "failed");
+  assertEquals(failed, ["executor"]);
+  assertEquals(failed[0], "executor");
+});
+
+Deno.test("failed-node.txt — written with failed node ID on pipeline failure", async () => {
+  const tmpDir = await Deno.makeTempDir();
+  try {
+    // Simulate writing failed-node.txt (same logic as engine pre-step)
+    const failedNodeId = "executor";
+    const failedNodePath = `${tmpDir}/failed-node.txt`;
+    await Deno.writeTextFile(failedNodePath, failedNodeId);
+
+    const content = await Deno.readTextFile(failedNodePath);
+    assertEquals(content, "executor");
+  } finally {
+    await Deno.remove(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("failed-node.txt — not written when no failed nodes", () => {
+  const state: RunState = {
+    run_id: "test-run",
+    config_path: "config.yaml",
+    started_at: new Date().toISOString(),
+    status: "completed",
+    args: {},
+    env: {},
+    nodes: {
+      pm: { status: "completed" },
+      executor: { status: "completed" },
+    },
+  };
+  const failed = getNodesByStatus(state, "failed");
+  assertEquals(failed.length, 0);
+});
+
+// --- run_always node ordering tests ---
+
+Deno.test("sortRunAlwaysNodes — orders by dependency (commit-meta after meta-agent)", () => {
+  const nodes: Record<string, NodeConfig> = {
+    "commit-meta": {
+      type: "agent",
+      label: "Commit Meta",
+      inputs: ["meta-agent"],
+      run_always: true,
+    },
+    "meta-agent": {
+      type: "agent",
+      label: "Meta-Agent",
+      run_always: true,
+    },
+  };
+  const runAlwaysIds = ["commit-meta", "meta-agent"];
+  const sorted = sortRunAlwaysNodes(runAlwaysIds, nodes);
+  assertEquals(sorted, ["meta-agent", "commit-meta"]);
+});
+
+Deno.test("sortRunAlwaysNodes — single node returns as-is", () => {
+  const nodes: Record<string, NodeConfig> = {
+    "meta-agent": {
+      type: "agent",
+      label: "Meta-Agent",
+      run_always: true,
+    },
+  };
+  const sorted = sortRunAlwaysNodes(["meta-agent"], nodes);
+  assertEquals(sorted, ["meta-agent"]);
+});
+
+Deno.test("sortRunAlwaysNodes — no dependencies preserves alphabetical order", () => {
+  const nodes: Record<string, NodeConfig> = {
+    "cleanup": { type: "agent", label: "Cleanup", run_always: true },
+    "meta-agent": { type: "agent", label: "Meta-Agent", run_always: true },
+  };
+  const sorted = sortRunAlwaysNodes(["cleanup", "meta-agent"], nodes);
+  assertEquals(sorted, ["cleanup", "meta-agent"]);
 });

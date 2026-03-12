@@ -92,6 +92,16 @@ export async function pushToOrigin(
   throw new Error(`Git push failed after ${maxRetries} attempts: ${lastError}`);
 }
 
+/**
+ * Rollback all uncommitted changes (staged + unstaged modifications).
+ * Does NOT run `git clean` — preserves untracked files.
+ * Used by engine pre-step before `run_always` nodes on pipeline failure.
+ */
+export async function rollbackUncommitted(): Promise<void> {
+  await runGit(["reset", "HEAD"]);
+  await runGit(["checkout", "--", "."]);
+}
+
 // --- Internal helpers ---
 
 /** Run a git command and return stdout. */

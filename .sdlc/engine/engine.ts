@@ -7,11 +7,12 @@ import type {
   TemplateContext,
 } from "./types.ts";
 import { loadConfig } from "./config.ts";
-import { buildLevels } from "./dag.ts";
+import { buildLevels, topoSort } from "./dag.ts";
 import {
   createRunState,
   generateRunId,
   getNodeDir,
+  getNodesByStatus,
   getRunDir,
   isNodeCompleted,
   loadState,
@@ -25,6 +26,7 @@ import {
   markRunFailed,
   saveState,
 } from "./state.ts";
+import { rollbackUncommitted } from "./git.ts";
 import { runAgent } from "./agent.ts";
 import { saveAgentLog } from "./log.ts";
 import { detectHitlRequest, runHitlLoop } from "./hitl.ts";
@@ -94,7 +96,12 @@ export class Engine {
     await saveState(this.state);
 
     // Identify run_always nodes (e.g., Meta-Agent) — execute after all levels
-    const runAlwaysNodeIds = collectRunAlwaysNodes(this.config.nodes);
+    // Sort topologically so dependencies within run_always subset are respected
+    const rawRunAlwaysIds = collectRunAlwaysNodes(this.config.nodes);
+    const runAlwaysNodeIds = sortRunAlwaysNodes(
+      rawRunAlwaysIds,
+      this.config.nodes,
+    );
 
     // Filter run_always nodes out of regular DAG levels
     const filteredLevels = levels
@@ -125,6 +132,26 @@ export class Engine {
 
     // Execute run_always nodes (post-levels step, regardless of pipeline outcome)
     if (runAlwaysNodeIds.length > 0) {
+      // Pre-step: on failure, rollback uncommitted changes and write failed-node-id
+      if (!pipelineSuccess) {
+        try {
+          await rollbackUncommitted();
+          this.output.status("engine", "Rolled back uncommitted changes");
+        } catch (err) {
+          this.output.warn(
+            `Rollback failed: ${(err as Error).message}`,
+          );
+        }
+
+        // Write failed node ID to failed-node.txt for meta-agent consumption
+        const failedNodes = getNodesByStatus(this.state, "failed");
+        if (failedNodes.length > 0) {
+          const runDir = getRunDir(this.state.run_id);
+          const failedNodePath = `${runDir}/failed-node.txt`;
+          await Deno.writeTextFile(failedNodePath, failedNodes[0]);
+        }
+      }
+
       for (const nodeId of runAlwaysNodeIds) {
         if (isNodeCompleted(this.state, nodeId)) continue;
         try {
@@ -519,12 +546,15 @@ export class Engine {
       input[inputId] = getNodeDir(this.state.run_id, inputId);
     }
 
+    // Merge node-level env with global env (node overrides global)
+    const env = node.env ? { ...this.state.env, ...node.env } : this.state.env;
+
     return {
       node_dir: getNodeDir(this.state.run_id, nodeId),
       run_dir: getRunDir(this.state.run_id),
       run_id: this.state.run_id,
       args: this.state.args,
-      env: this.state.env,
+      env,
       input,
       loop: loopIteration !== undefined
         ? { iteration: loopIteration }
@@ -623,6 +653,26 @@ export function collectRunAlwaysNodes(
   return Object.entries(nodes)
     .filter(([_, node]) => node.run_always === true)
     .map(([id]) => id);
+}
+
+/**
+ * Sort run_always nodes topologically using their `inputs` field.
+ * Only considers dependencies within the run_always subset.
+ * Guarantees e.g. commit-meta (inputs: [meta-agent]) runs after meta-agent.
+ */
+export function sortRunAlwaysNodes(
+  runAlwaysIds: string[],
+  nodes: Record<string, NodeConfig>,
+): string[] {
+  const subset = new Set(runAlwaysIds);
+  const deps = new Map<string, Set<string>>();
+  for (const id of runAlwaysIds) {
+    const node = nodes[id];
+    const internalInputs = (node.inputs ?? []).filter((inp) => subset.has(inp));
+    deps.set(id, new Set(internalInputs));
+  }
+  const levels = topoSort(deps);
+  return levels.flat();
 }
 
 /** Recursively copy a directory. */

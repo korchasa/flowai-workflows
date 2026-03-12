@@ -55,6 +55,11 @@ export interface NodeConfig {
   // post-pipeline execution
   /** When true, node executes after all DAG levels complete (even on failure). */
   run_always?: boolean;
+
+  /** Optional node-level environment variables.
+   * Merged with global env (node-level overrides global defaults).
+   * Accessible in template context via `{{env.<key>}}`. */
+  env?: Record<string, string>;
 }
 
 /** Per-node settings (merged with defaults). */

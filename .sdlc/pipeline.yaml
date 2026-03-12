@@ -218,3 +218,20 @@ nodes:
     validate:
       - type: file_exists
         path: "{{node_dir}}/07-meta-report.md"
+      - type: contains_section
+        path: "{{node_dir}}/07-meta-report.md"
+        value: "Fixes Applied"
+
+  # Commit meta-agent artifacts
+  commit-meta:
+    type: agent
+    label: "Commit meta-agent artifacts"
+    prompt: agents/committer/SKILL.md
+    inputs: [meta-agent]
+    run_always: true
+    task_template: |
+      Stage and commit all changes for the meta phase.
+    env:
+      SDLC_PHASE: meta
+    settings:
+      on_error: continue

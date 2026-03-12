@@ -91,7 +91,7 @@ function detectCycles(deps: Map<string, Set<string>>): void {
  * Level 0: nodes with no dependencies.
  * Level N: nodes whose dependencies are all in levels < N.
  */
-function topoSort(deps: Map<string, Set<string>>): ExecutionLevels {
+export function topoSort(deps: Map<string, Set<string>>): ExecutionLevels {
   const levels: ExecutionLevels = [];
   const remaining = new Map<string, Set<string>>();
 
