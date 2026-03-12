@@ -152,7 +152,8 @@ graph TD
   shell script orchestration with YAML-driven node graph.
 - **Modules:**
   - `types.ts` — type declarations (incl. `ValidationRule.type` union,
-    `NodeConfig.run_always`, `NodeConfig.phase`, `LoopResult.bodyResults`)
+    `NodeConfig.run_always`, `NodeConfig.phase`, `NodeConfig.env`,
+    `LoopResult.bodyResults`)
   - `template.ts` — `{{var}}` interpolation for prompts/paths
   - `config.ts` — YAML parsing, schema validation, defaults merge
   - `dag.ts` — topological sort, cycle detection, level grouping
@@ -167,13 +168,15 @@ graph TD
   - `hitl.ts` — HITL detection (`detectHitlRequest`) and poll loop
     (`runHitlLoop`); injectable `scriptRunner`/`claudeRunner` for testing
   - `human.ts` — terminal user input, abort logic
-  - `git.ts` — commit helper (used by committer agent nodes), branch query
+  - `git.ts` — commit helper (used by committer agent nodes), branch query,
+    `rollbackUncommitted()` for pre-run_always cleanup
   - `output.ts` — terminal output manager (quiet/normal/verbose), verbose
     methods for detailed agent-node diagnostics
   - `engine.ts` — main executor: level iteration, parallel dispatch, verbose
     input resolution, loop-node log saving via `onNodeComplete` callback,
     phase registry init (`setPhaseRegistry()` before `ensureRunDirs()` in both
-    fresh and resume paths), phase subdir creation in `ensureRunDirs()`
+    fresh and resume paths), phase subdir creation in `ensureRunDirs()`,
+    pre-run_always rollback + failed-node-id extraction
   - `cli.ts` — CLI entry point: argument parsing, .env loading
   - `mod.ts` — public API re-exports
 - **Interfaces:**
@@ -185,12 +188,16 @@ graph TD
 - **Node flags:**
   - `run_always?: boolean` — when `true`, node executes in a post-levels step
     after all DAG levels complete (including on pipeline failure). Used for
-    Meta-Agent.
+    Meta-Agent and `commit-meta`.
   - `phase?: string` — optional phase grouping label (e.g., `plan`, `impl`,
     `report`). When set, node artifacts are stored under
     `<run-dir>/<phase>/<node-id>/` instead of `<run-dir>/<node-id>/`. User-
     defined (no enum constraint). Validated: must be non-empty string if present.
     Backward-compatible: omitting `phase` preserves flat layout.
+  - `env?: Record<string, string>` — optional node-level environment variables.
+    Merged with global env (node-level overrides global defaults). Accessible
+    in template context via `{{env.<key>}}`. Used by `commit-meta` node
+    (`SDLC_PHASE: meta`).
 - **Commit strategy:** Engine does not auto-commit. Dedicated committer agent
   nodes handle commits at explicit pipeline points.
 - **Verbose Output (Direct Injection pattern):**
@@ -218,8 +225,11 @@ graph TD
     `filesStaged: string[]` and `message: string`. `safetyCheckDiff()` returns
     enriched `SafetyCheckResult` with `checkedFiles: string[]` (from
     already-computed `changedFiles`). `branch()` helper: returns current branch
-    name via `git branch --show-current`. Verbose calls for safety/commit stay
-    in engine.
+    name via `git branch --show-current`. `rollbackUncommitted()`: executes
+    `git checkout -- .` + `git reset HEAD`. No `git clean` — preserves
+    untracked files (safe rollback). Used by engine pre-step before
+    `run_always` nodes on pipeline failure. Verbose calls for safety/commit
+    stay in engine.
   - `engine.ts`: `executeAgentNode()` resolves input artifact paths+sizes by
     walking `ctx.input` directories via `Deno.stat()`; calls
     `this.output.verboseInputs()` before `runAgent()`. Passes `this.output`
@@ -302,8 +312,9 @@ graph TD
     "custom_script"|"frontmatter_field", path?, field?, allowed?, ... }`
   - LoopResult: `{ ..., bodyResults: AgentResult[] }` — accumulated per-iteration
     agent results; consumed by `executeLoopNode()` callback for log saving
-  - NodeConfig: `{ ..., run_always?: boolean, phase?: string }` — `run_always`
-    for post-levels execution; `phase` for artifact directory grouping
+  - NodeConfig: `{ ..., run_always?: boolean, phase?: string,
+    env?: Record<string, string> }` — `run_always` for post-levels execution;
+    `phase` for artifact directory grouping; `env` for node-level env vars
 - **ERD:** N/A (file-based, no database).
 - **Migration:** N/A.
 
@@ -322,6 +333,9 @@ graph TD
   - `frontmatter_field`: Reads artifact file, extracts YAML frontmatter via
     `^---\n([\s\S]*?)\n---` regex, parses target field, checks value against
     allowed set. Config: `{ type: "frontmatter_field", path, field, allowed }`.
+  - `contains_section`: Checks artifact file for presence of a markdown section.
+    Supports `on_error: continue` (non-fatal). Used by meta-agent for
+    "Fixes Applied" section validation.
   - Executor node uses `custom_script` validation rule (not `after` hook) for
     `deno task check`, enabling continuation-on-failure for check errors.
 - **Context management:** Claude CLI auto-compression handles large input sets.
@@ -338,9 +352,10 @@ graph TD
 
 - **Branch:** Feature branch, specified externally or current branch.
 - **Commit cadence:** Engine does NOT auto-commit. Commits at explicit
-  committer agent nodes (`agents/committer/SKILL.md`) placed at 3 points:
+  committer agent nodes (`agents/committer/SKILL.md`) placed at 4 points:
   `commit-plan` (after SDS update), `commit-impl` (after executor+QA loop),
-  `commit-present` (after presenter).
+  `commit-present` (after presenter), `commit-meta` (after meta-agent,
+  `run_always: true`).
 - **Commit format:** `sdlc(<phase>): <summary>` (phase from `SDLC_PHASE` env).
 - **Executor:** Instructed NOT to make git commits (pipeline-managed).
 - **Failure behavior:** Failed nodes produce no commits. On_error: "fail" stops
@@ -394,14 +409,30 @@ graph TD
     Phase assignment (default pipeline):
     - `plan`: pm, tech-lead, reviewer, architect, sds-update, commit-plan
     - `impl`: executor, qa, impl-loop, commit-impl
-    - `report`: presenter, commit-present, meta-agent
+    - `report`: presenter, commit-present, meta-agent, commit-meta
+  - **Rollback Before run_always**: When `pipelineSuccess === false`, engine
+    calls `rollbackUncommitted()` before executing `run_always` nodes. Reverts
+    staged/unstaged modifications (`git checkout -- .` + `git reset HEAD`).
+    Does NOT `git clean` — preserves untracked files. Extracts failed node ID
+    via `getNodesByStatus(state, "failed")[0]`, writes to
+    `{{run_dir}}/failed-node.txt` for meta-agent consumption.
+  - **run_always Node Ordering**: After collecting `run_always` nodes, engine
+    sorts them topologically using their `inputs` field (reuses `toposort()`
+    from `dag.ts`). Guarantees `commit-meta` (which declares
+    `inputs: [meta-agent]`) executes after meta-agent.
   - **Meta-Agent Trigger**: Engine executes meta-agent via `run_always: true`
     mechanism. After all DAG levels complete (success or failure), engine
-    collects nodes with `run_always: true` and executes them in a final
-    post-levels step — outside normal DAG level iteration. Meta-agent node
-    has no strict dependency on `presenter`, enabling execution even when
-    upstream nodes fail. On failure: reads failed node ID from `state.json`,
-    runs with failure context.
+    collects nodes with `run_always: true`, sorts them topologically (see
+    above), and executes in order. Meta-agent reads `failed-node.txt` for
+    failure context. Produces `07-meta-report.md` with "Fixes Applied" section
+    (structured: what broke, what changed, why). Posts run report *summary* to
+    GitHub issue (not full report). Does NOT self-commit — `commit-meta` node
+    handles commit.
+  - **commit-meta Node**: Dedicated committer agent node for meta-agent output.
+    Config: `type: agent`, `prompt: agents/committer/SKILL.md`,
+    `inputs: [meta-agent]`, `run_always: true`, `env: { SDLC_PHASE: meta }`.
+    Ensures FR-14 "engine never commits" invariant: commit responsibility stays
+    with committer agent nodes.
   - **HITL via AskUserQuestion Interception** (FR-21):
     Engine detects agent HITL requests by inspecting `permission_denials` in
     Claude CLI JSON output. Flow:
@@ -441,8 +472,8 @@ graph TD
   - Artifacts overwritten on re-run (git history preserves previous).
   - QA iteration numbering restarts on re-run.
   - Meta-Agent runs on both success and failure.
-  - Meta-Agent auto-applies prompt improvements to `agents/*/SKILL.md` and
-    commits changes. Human review at PR merge.
+  - Meta-Agent auto-applies prompt improvements to `agents/*/SKILL.md`.
+    `commit-meta` node commits changes. Human review at PR merge.
 
 ## 6. Non-Functional
 
