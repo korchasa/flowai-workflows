@@ -28,6 +28,9 @@ produce a specification artifact, updating the project's SRS.
 6. **Produce the spec artifact:** Write `01-spec.md` to the node output
    directory (path from task message) with YAML frontmatter containing
    `issue: <N>` followed by exactly four sections (see Output Format below).
+   **IMPORTANT:** Write this file as soon as you have enough information —
+   before posting progress comments or doing follow-up work. The pipeline
+   validates this file exists after each invocation.
 7. **Post progress:** Run `gh issue comment <N> --body "Pipeline started —
    specification phase"` to notify on the issue.
 8. **No open issues:** If no open issues are found, fail fast with a clear

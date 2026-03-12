@@ -58,6 +58,16 @@ After creating `06-summary.md`:
 2. **Post issue comment:** Run `gh issue comment <N> --body "<summary>"` where
    `<N>` is the issue number from PM spec frontmatter.
 
+## Efficiency
+
+- **Combine git commands:** Gather diff stats, file list, and log in a single
+  Bash call (e.g., `git diff main...HEAD --stat; echo '---'; git log main...HEAD --oneline`).
+  Avoid running separate commands for `--name-only`, `--stat`, and `git log`
+  when they can be combined.
+- **Minimize branch operations:** The feature branch should already exist
+  (created by the engine or earlier nodes). Only push if the remote branch
+  doesn't exist yet.
+
 ## Rules
 
 - **All diff files mentioned:** PR description must mention every file from
