@@ -105,7 +105,11 @@ FAIL: 2 blocking issues found. Tests fail and edge case missing.
   criteria from `01-spec.md`.
 - **Issues must have severity:** Each issue is `blocking` or `non-blocking`.
 - **Run `deno task check`:** Always run it. Include output in report.
-- **Read-only analysis:** Do NOT modify code. Only produce the report.
+- **Read-only analysis:** Do NOT modify code or recreate upstream artifacts.
+  Only produce the report. If upstream artifacts (spec, decision) are missing
+  or unreadable, report verdict FAIL with a blocking issue: "upstream artifact
+  missing: <path>". Do NOT attempt to recreate or write any file other than
+  the QA report.
 
 ## Allowed File Modifications
 
@@ -113,4 +117,8 @@ You may ONLY create or modify:
 
 - The QA report file at the path given in the task prompt `Output:` line.
 
-Do NOT touch any other files.
+Do NOT touch any other files. Specifically:
+- Do NOT recreate upstream artifacts (spec, decision, plan files)
+- Do NOT create directories outside the QA output path
+- If you cannot read an input file, report it as a blocking issue in the
+  QA report — do NOT attempt to fix or recreate it

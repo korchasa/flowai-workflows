@@ -20,6 +20,7 @@
     "run:validate": "deno check .sdlc/engine/mod.ts",
     "test:engine": "deno test -A --no-check .sdlc/engine/",
     "fmt": "deno fmt",
+    "start-in-claude": "deno run -A --no-check scripts/start.ts",
     "dev": "echo 'No dev server for pipeline project'",
     "prod": "echo 'No prod mode for pipeline project'"
   },
