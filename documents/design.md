@@ -15,7 +15,7 @@
 
 ```mermaid
 graph LR
-    Issue["GitHub Issue"] --> CLI["deno task run<br/>--issue N"]
+    Issue["GitHub Issue"] --> CLI["deno task run"]
     CLI --> S1["Stage 1: PM"]
     S1 --> S2["Stage 2: Tech Lead"]
     S2 --> S3["Stage 3: Reviewer"]
@@ -110,9 +110,9 @@ graph TD
   Each agent lives in `agents/<name>/SKILL.md` with YAML frontmatter enabling
   dual-use: pipeline-driven (via engine `prompt:` config) and interactive
   (via Claude Code `/agent-<name>` slash commands).
-- **Directory structure:** `agents/<name>/SKILL.md` — 9 agents: `pm`,
+- **Directory structure:** `agents/<name>/SKILL.md` — 10 agents: `pm`,
   `tech-lead`, `tech-lead-reviewer`, `architect`, `tech-lead-sds`, `executor`,
-  `qa`, `presenter`, `meta-agent`.
+  `qa`, `presenter`, `meta-agent`, `committer`.
 - **SKILL.md frontmatter template:**
   ```yaml
   ---
@@ -134,11 +134,11 @@ graph TD
 
 - **Purpose:** Bridge pipeline agents into Claude Code's skill discovery system,
   enabling `/agent-<name>` slash command invocability (FR-19 AC #2, AC #6).
-- **Structure:** 9 symlinks: `.claude/skills/agent-<name>` → `../../agents/<name>/`
+- **Structure:** 10 symlinks: `.claude/skills/agent-<name>` → `../../agents/<name>/`
   (relative paths for portability within repo).
 - **Agents exposed:** `agent-pm`, `agent-tech-lead`, `agent-tech-lead-reviewer`,
   `agent-architect`, `agent-tech-lead-sds`, `agent-executor`, `agent-qa`,
-  `agent-presenter`, `agent-meta-agent`.
+  `agent-presenter`, `agent-meta-agent`, `agent-committer`.
 - **Interfaces:** Claude Code skill loader reads symlink target directory,
   discovers `SKILL.md` frontmatter, registers slash command.
 - **Deps:** `agents/<name>/SKILL.md` (symlink targets must exist).
@@ -161,6 +161,8 @@ graph TD
   - `agent.ts` — Claude CLI invocation, continuation loop, retry
   - `loop.ts` — loop node execution with condition extraction, per-iteration
     `AgentResult` accumulation into `LoopResult.bodyResults`
+  - `hitl.ts` — HITL detection (`detectHitlRequest`) and poll loop
+    (`runHitlLoop`); injectable `scriptRunner`/`claudeRunner` for testing
   - `human.ts` — terminal user input, abort logic
   - `git.ts` — commit helper (used by committer agent nodes), branch query
   - `output.ts` — terminal output manager (quiet/normal/verbose), verbose
@@ -170,7 +172,7 @@ graph TD
   - `cli.ts` — CLI entry point: argument parsing, .env loading
   - `mod.ts` — public API re-exports
 - **Interfaces:**
-  - CLI: `deno task run:{issue|text|file} <arg> [--config <path>] [--resume <run-id>]
+  - CLI: `deno task run [--prompt <text>] [--config <path>] [--resume <run-id>]
     [--dry-run] [-v|-q] [--env KEY=VAL] [--skip nodes] [--only nodes]`
   - Config: `.sdlc/pipeline.yaml` (YAML, version "1")
   - State: `.sdlc/runs/<run-id>/state.json` (JSON)
@@ -220,10 +222,38 @@ graph TD
   - All existing callers pass no `output` arg — zero behavioral change.
 - **Deps:** `claude` CLI, `deno`, `git`, `jsr:@std/yaml`.
 
-### 3.7 Pipeline Trigger (Legacy)
+### 3.7 HITL Pipeline Scripts (`.sdlc/scripts/hitl-*.sh`)
 
-- **Purpose:** Trigger pipeline on issue number, run stages sequentially.
-- **Interfaces:** CLI: `deno task run:issue <N>`. Fetches issue via `gh`.
+- **Purpose:** Deliver agent questions to humans and poll for replies. Pipeline-
+  specific (GitHub), not engine code. Engine invokes via configurable paths.
+- **Scripts:**
+  - `hitl-ask.sh` — render question JSON → markdown, post to GitHub issue.
+    - Input: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`,
+      `--question-json`.
+    - Extracts issue: `yq '.issue' "$RUN_DIR/$ISSUE_SOURCE"`.
+    - Auto-detects repo: `gh repo view --json nameWithOwner`.
+    - Renders: header, blockquoted question, numbered options, HTML marker
+      `<!-- hitl:<run-id>:<node-id> -->`.
+    - Posts via `gh issue comment <N> --body "$md"`.
+    - Deps: `jq`, `yq`, `gh`.
+  - `hitl-check.sh` — poll GitHub issue for human reply after marker.
+    - Input: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`,
+      `--bot-login`.
+    - Extracts issue: `yq '.issue' "$RUN_DIR/$ISSUE_SOURCE"`.
+    - Auto-detects repo: `gh repo view --json nameWithOwner`.
+    - Fetches comments: `gh api repos/{owner}/{repo}/issues/<N>/comments`.
+    - jq filter: find comment with marker, then first subsequent non-bot comment.
+    - Exit 0 + body on stdout = reply found. Exit 1 = no reply yet.
+    - Deps: `jq`, `yq`, `gh`.
+- **Interfaces:** Called by engine via `defaults.hitl.ask_script` /
+  `defaults.hitl.check_script` paths in `pipeline.yaml`.
+
+### 3.8 Pipeline Trigger
+
+- **Purpose:** Single entry point for pipeline. PM agent autonomously triages
+  open GitHub issues.
+- **Interfaces:** CLI: `deno task run [--prompt "..."]`. PM selects
+  highest-priority open issue via `gh`.
 - **Deps:** Devcontainer, Claude CLI auth (OAuth or API key), `GITHUB_TOKEN`.
 
 ## 4. Data
@@ -327,6 +357,41 @@ graph TD
     has no strict dependency on `presenter`, enabling execution even when
     upstream nodes fail. On failure: reads failed node ID from `state.json`,
     runs with failure context.
+  - **HITL via AskUserQuestion Interception** (FR-21):
+    Engine detects agent HITL requests by inspecting `permission_denials` in
+    Claude CLI JSON output. Flow:
+    1. Agent node completes → engine parses JSON `result` event.
+    2. If `permission_denials[]` contains entry with
+       `tool_name == "AskUserQuestion"`: extract `tool_input.questions` (structured
+       question with `question`, `header`, `options[]`, `multiSelect`) and
+       `session_id` from result.
+    3. Engine calls `defaults.hitl.ask_script` (external pipeline script) with
+       question JSON + context args (repo, issue, run-id, node-id).
+    4. Engine sets node state to `waiting` in `state.json`, saves `session_id`.
+    5. Engine enters poll loop: `sleep(poll_interval)` → call
+       `defaults.hitl.check_script` → if exit 0, read reply from stdout.
+    6. Engine resumes agent: `claude --resume <session_id> -p "<reply>"
+       --output-format json`. Agent sees full previous context + reply as new
+       user message.
+    7. On `timeout` exceeded: node marked `failed`, Meta-Agent triggered.
+    Experimentally verified (see `documents/rnd/human-in-the-loop.md`):
+    - `AskUserQuestion` denied in `-p` mode regardless of `--dangerously-skip-
+      permissions` (cause: no terminal, not permissions).
+    - Question JSON in `permission_denials[0].tool_input`: `{questions: [{
+      question, header, options: [{label, description}], multiSelect}]}`.
+    - `--resume <session_id> -p "<answer>"` preserves full session context;
+      agent correctly interprets answer in context of its original question.
+    - Cost per HITL roundtrip: ~$0.08 (question turn + resume turn).
+    Pipeline config:
+    ```yaml
+    defaults:
+      hitl:
+        ask_script: .sdlc/scripts/hitl-ask.sh
+        check_script: .sdlc/scripts/hitl-check.sh
+        issue_source: pm/01-spec.md
+        poll_interval: 60
+        timeout: 7200
+    ```
 - **Rules:**
   - Artifacts overwritten on re-run (git history preserves previous).
   - QA iteration numbering restarts on re-run.

@@ -1,199 +1,193 @@
-# Deferred Commit Strategy
+# Consolidate to Single Autonomous Pipeline
 
 ## Goal
 
-Eliminate per-node git commits during pipeline execution. Reduce overhead,
-fix chicken-and-egg config mutation bug, simplify git history.
+Eliminate dual-pipeline (`pipeline.yaml` + `pipeline-task.yaml`), remove
+`--issue <N>` and `--task` from CLI. PM agent autonomously triages GitHub Issues.
+Agents write comments to issues via `gh` themselves — engine has zero GitHub
+knowledge. Business value: zero-friction launch (`deno task run`), single config,
+PM owns triage.
 
 ## Overview
 
 ### Context
 
-Pipeline engine commits after every successful node (`commitIfNeeded()` in
-`engine.ts:251`). This causes:
-
-1. **Performance overhead:** ~15s per node × 8 nodes = ~2 min wasted on
-   `git add -A` + `git commit` + safety check per commit.
-2. **Chicken-and-egg bug:** Executor modifies `pipeline.yaml` on disk, but
-   engine has config loaded in memory. QA/meta-agent use stale in-memory
-   config referencing deleted paths (FR-19 run: QA failed with
-   `file not found: .sdlc/agents/qa.md`).
-3. **Noisy git history:** FR-19 run produced 10 commits instead of 1-2
-   meaningful ones. Executor alone made 7 micro-commits.
-4. **No practical value:** Inter-agent communication is filesystem-based
-   (`{{input.<node>}}` templates read files from disk). `--resume` skip
-   logic uses `state.json`, not git history.
+- Two near-identical pipeline configs: 200 lines duplicated, 3 lines differ
+- CLI requires `--issue <N>` or `--task <file>` — user pre-selects work
+- `{{args.issue}}` used in: pipeline templates, HITL (`hitl.ts:129,165`),
+  engine runLabel (`engine.ts:80`), 10+ test files
+- Agents currently don't write to issues — engine/scripts handle all GitHub I/O
+- HITL scripts (`hitl-ask.sh`, `hitl-check.sh`) receive `--issue` from engine
 
 ### Current State
 
-**Commit flow** (`engine.ts:527-551`, `git.ts:27-67`):
-- `commitNodeChanges()` runs after every successful node
-- `git add -A` → `git diff --cached --name-only` → `git commit -m "sdlc(...)"`
-- Includes ALL changes (artifacts + project files + logs)
-
-**Safety check flow** (`engine.ts:307-396`, `git.ts:74-133`):
-- `safetyCheckDiff()` runs before commit for nodes with `allowed_paths`
-- Uses `git diff --name-only HEAD` — compares against last commit
-- If engine stops committing, HEAD stays at branch point → all accumulated
-  changes visible in diff → scope check breaks for later nodes
-
-**Resume flow** (`engine.ts:153-155`):
-- `isNodeCompleted(state)` — pure state.json check
-- Does NOT depend on git commits
-
-**Executor behavior:**
-- Claude Code agent commits independently (7 commits in FR-19 run)
-- Engine then tries `commitNodeChanges()` on top — usually no-op or duplicate
-- Engine cannot control agent's commit granularity
+- **CLI**: `--issue` and `--task` flags, mutually exclusive; no `--prompt`
+- **Pipeline**: PM reads `issue #{{args.issue}}`; presenter posts on `{{args.issue}}`
+- **Engine**: `hitl.ts` passes `args.issue` to HITL scripts; `engine.ts:80`
+  uses `args.issue` for run label
+- **Agents**: no `gh issue comment` in any agent prompt — zero GitHub writes
 
 ### Constraints
 
-- Gitleaks secret detection must run (via `deno task check`)
-- `--resume` must still skip completed nodes
-- Presenter needs `git diff main...HEAD` for PR description
-- Meta-agent needs to see what changed
-- Executor must NOT commit — only explicit commit nodes do
-- Must not break `deno task check`
+- Engine = project-agnostic (zero GitHub/issue logic in engine core)
+- HITL scripts = GitHub-specific boundary (acceptable)
+- PM must output issue number in `01-spec.md` for downstream agents to read
+- HITL scripts extract issue number from PM artifact via `issue_source` config
+- `deno task check` must pass
+- `yq` required in runtime environment (Docker image)
 
 ## Definition of Done
 
-- [x] Committer agent created (`agents/committer/SKILL.md`)
-- [x] Commit nodes in pipeline = `type: agent` using committer prompt
-- [x] Engine does NOT auto-commit after any node
-- [x] Executor agent prompt: "DO NOT commit" (remove "commit per task" rule)
-- [x] `safetyCheckDiff()` + `allowed_paths` fully removed (engine, git, types, config, YAML)
-- [x] Gitleaks added to `scripts/check.ts` (replaces engine-level secret check)
-- [x] `runGitleaks()` removed from `git.ts` (moved to check.ts)
-- [x] `--resume` still works (state.json based — no change expected)
-- [x] Chicken-and-egg bug eliminated (config not committed mid-run)
+- [x] `pipeline-task.yaml` deleted
+- [x] `deno task run:task` removed from `deno.json`
+- [x] `--task` and `--issue` flags removed from CLI
+- [x] `--prompt <text>` flag added to CLI (optional, sets `args.prompt`)
+- [x] PM prompt: autonomously triages issues via `gh`; selects highest-priority
+      open issue; sets `in-progress` label; writes `issue: N` in `01-spec.md`
+      frontmatter; appends `args.prompt` if present
+- [x] All agent prompts: read issue number from `{{input.pm}}/01-spec.md`,
+      post progress to issue via `gh issue comment`
+- [x] Presenter reads issue from PM artifact, creates PR + posts summary
+- [x] Meta-agent reads issue from PM artifact, posts findings
+- [x] Engine: zero `args.issue` references; runLabel from `args.prompt` or "auto"
+- [x] HITL config: new `issue_source` field (relative to run_dir); scripts
+      receive `--run-dir` + `--issue-source`, extract issue via `yq`
+- [x] All `{{args.task}}`, `{{args.task_id}}`, `{{args.issue}}` removed from
+      pipeline templates and engine code
+- [x] CLI tests, engine tests, HITL tests updated
+- [x] SRS updated: single entry point `deno task run [--prompt "..."]`
+- [x] AGENTS.md updated
 - [x] `deno task check` passes
-- [x] FR-8 updated: scope check removed, gitleaks in `check`, future safety req
-- [x] FR-14 updated: commits at explicit committer agent nodes
 
-## Solution (Variant D+: Committer Agent + Safety Cleanup)
+## Solution
 
-### Step 1: Create committer agent
+### Step 1 — Delete `pipeline-task.yaml` + clean `deno.json`
 
-**`agents/committer/SKILL.md`:**
-```markdown
-# Role: Committer
-Stage all changes and commit with a concise, meaningful message.
-## Rules
-- Run `git add -A`
-- If no staged changes: output "Nothing to commit" and exit
-- Write commit message: `sdlc(<phase>): <summary of changes>`
-- `<phase>` = value of SDLC_PHASE env var (e.g., "plan", "impl", "present")
-- `<summary>` = brief description based on `git diff --cached --stat`
-- Run `git commit -m "<message>"`
-- Output the commit hash
-```
+- Delete `.sdlc/pipeline-task.yaml`
+- Remove `"run:task"` task from `deno.json`
 
-### Step 2: Remove auto-commit from engine
+### Step 2 — CLI: remove `--task`, `--issue`, add `--prompt`
 
-**`engine.ts`:**
-- Delete `await this.commitIfNeeded(nodeId, node)` (line 251)
-- Delete `commitIfNeeded()` method (lines 527-551)
+**`cli.ts`**:
+- Remove `case "--task"` block
+- Remove `case "--issue"` block
+- Remove mutual-exclusion check
+- Add `case "--prompt"`: `cliArgs.prompt = args[++i]`
+- Update `printUsage()`
+- `engine.ts:80` runLabel: `args.prompt?.slice(0,20) ?? "auto"`
 
-### Step 3: Remove safety check entirely
+**`cli_test.ts`**:
+- Remove all `--task` and `--issue` tests
+- Add `--prompt` test
 
-**`engine.ts`:**
-- Remove safety check continuation loop (lines 307-396)
-- Remove all `allowed_paths` / `safetyCheckDiff` references
+### Step 3 — Pipeline: remove `{{args.issue}}` from templates
 
-**`git.ts`:**
-- Delete `safetyCheckDiff()` (lines 74-133)
-- Delete `SafetyCheckResult` interface (lines 19-24)
-- Delete `runGitleaks()` + `GitleaksResult` (lines 169-217)
-- Keep: `commitNodeChanges()`, `getCurrentBranch()`, `branch()`, `pushToOrigin()`
-
-**`types.ts`:**
-- Remove `allowed_paths?: string[]` from `NodeConfig`
-
-**`config.ts`:**
-- Remove `allowed_paths` validation if any
-
-**Pipeline YAML:**
-- Remove `allowed_paths` from all nodes
-
-### Step 4: Add gitleaks to `scripts/check.ts`
-
-**`scripts/check.ts`:**
-- Add gitleaks step after lint, before tests:
-  `await run("gitleaks", ["detect", "--no-git"], "Secret Scan", true)`
-- `allowFailure=true` — skip if gitleaks binary not found (CI may not have it)
-
-### Step 5: Update executor prompt
-
-**`agents/executor/SKILL.md`:**
-- Remove: "Commit per task: Each task from 04-decision.md gets its own commit"
-- Remove: "Commit incrementally" from responsibilities
-- Add rule: "DO NOT make git commits. All commits are managed by the pipeline."
-
-### Step 6: Update pipeline YAML
-
-**`pipeline.yaml` + `pipeline-task.yaml`:** add 3 committer agent nodes:
-
+**`pipeline.yaml`** PM `task_template`:
 ```yaml
-  commit-plan:
-    type: agent
-    label: "Commit planning artifacts"
-    prompt: agents/committer/SKILL.md
-    inputs: [sds-update]
-    env:
-      SDLC_PHASE: plan
-  impl-loop:
-    inputs: [commit-plan]    # was: [sds-update]
-  commit-impl:
-    type: agent
-    label: "Commit implementation"
-    prompt: agents/committer/SKILL.md
-    inputs: [impl-loop]
-    env:
-      SDLC_PHASE: impl
-  presenter:
-    inputs: [commit-impl]    # was: [impl-loop]
-  commit-present:
-    type: agent
-    label: "Commit presentation artifacts"
-    prompt: agents/committer/SKILL.md
-    inputs: [presenter]
-    env:
-      SDLC_PHASE: present
-  meta-agent:
-    run_always: true         # unchanged
+Triage open GitHub issues and select the highest-priority one to implement.
+Additional context: {{args.prompt}}
+Output:
+  - {{node_dir}}/01-spec.md (YAML frontmatter with `issue: <N>`,
+    then problem, affected requirements, SRS changes, scope)
+  - Update documents/requirements.md with new/modified requirements
 ```
 
-### Step 7: Tests (TDD)
+Presenter `task_template`:
+```yaml
+Read issue number from {{input.pm}}/01-spec.md frontmatter.
+Create a PR targeting main and post a summary comment on that issue.
+Output: {{node_dir}}/06-summary.md
+```
 
-**RED:**
-- DAG: topological sort with new commit nodes in graph
-- Safety: no tests (removed)
+### Step 4 — Agent prompts: add `gh issue comment` responsibility
 
-**GREEN:** implement steps 2-6
+Each agent SKILL.md gets instruction to post progress to the issue.
+Pattern:
+```
+Read the issue number from the PM spec at `{{input.pm}}/01-spec.md`
+(YAML frontmatter `issue:` field). Post progress to that issue via
+`gh issue comment <N> --body "..."`.
+```
 
-**REMOVE:**
-- Tests asserting commit after agent node
-- Tests for `safetyCheckDiff()` scope logic
-- Tests for `commitIfNeeded()`
+PM is special — determines issue number, posts after selection.
 
-### Step 8: SRS update
+### Step 5 — PM agent prompt (`agents/pm/SKILL.md`)
 
-- FR-14: "Commits via dedicated committer agent nodes, not per-stage"
-- FR-8: remove scope check, note gitleaks in `deno task check`, add future req
-  `[ ]` "simplified safety checks via git diff + file hash"
-- Section 5: update commit strategy description
+Major rewrite:
+1. Run `gh issue list --state open --json number,title,labels`
+   → select highest-priority unassigned issue
+2. Set label: `gh issue edit <N> --add-label "in-progress"`
+3. Read issue: `gh issue view <N> --json body,title,comments`
+4. Write `01-spec.md` with YAML frontmatter: `issue: <N>`
+5. Post comment: "Pipeline started — specification phase"
+6. If no open issues → fail fast with clear error
+
+### Step 6 — HITL: `issue_source` config + `--run-dir`
+
+**`pipeline.yaml`** HITL config:
+```yaml
+hitl:
+  ask_script: .sdlc/scripts/hitl-ask.sh
+  check_script: .sdlc/scripts/hitl-check.sh
+  issue_source: pm/01-spec.md    # relative to run_dir
+  poll_interval: 60
+  timeout: 7200
+  bot_login: "github-actions[bot]"
+```
+
+**`types.ts`** — `HitlConfig`: add `issue_source: string`
+
+**`hitl.ts`** — `buildScriptArgs()`:
+- Remove `--issue` / `--repo` args
+- Add `--run-dir ${runDir}` and `--issue-source ${config.issue_source}`
+
+**`hitl-ask.sh` / `hitl-check.sh`**:
+- Parse `--run-dir` and `--issue-source`
+- Extract: `ISSUE=$(yq '.issue' "$RUN_DIR/$ISSUE_SOURCE")`
+- Extract repo: `REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)`
+
+### Step 7 — Engine: remove all `args.issue` references
+
+- `engine.ts:80`: `args.prompt?.slice(0,20) ?? "auto"`
+- `hitl.ts:129,165`: pass `run_dir` + `issue_source` (Step 6)
+- Remove `args.issue` from all engine code
+
+### Step 8 — Update tests
+
+- `cli_test.ts`: remove task/issue tests, add prompt test
+- `template_test.ts`: keep as generic template tests (args.foo, etc.)
+- `engine_test.ts`: update default args (no issue)
+- `hitl_test.ts`: update to `run_dir` + `issue_source`
+- `human_test.ts`: update template fixtures
+- `agent_test.ts`, `config_test.ts`, `state_test.ts`: minor updates
+
+### Step 9 — Update docs
+
+**SRS** (`documents/requirements.md`):
+- Remove `run:task`, `run:text`, `run:file` entry points
+- Single entry: `deno task run [--prompt "..."]`
+- Update PM: autonomous triage, highest-priority selection
+- Update agents: self-posting to issues via `gh`
+
+**AGENTS.md**: `run:task` → `run`
+
+**SDS** (`documents/design.md`):
+- CLI interface: `--prompt` only
+- HITL: `issue_source` config, `--run-dir` args
+- Agent model: agents write to issues
+
+### Step 10 — GREEN + CHECK
+
+`deno task check` → all tests pass, zero warnings/errors.
 
 ### Execution order
 
-1. agents/committer/SKILL.md (new agent prompt)
-2. Tests RED
-3. engine.ts (remove auto-commit + safety loop)
-4. git.ts (delete safety/gitleaks functions)
-5. types.ts (remove `allowed_paths`)
-6. config.ts (remove `allowed_paths` validation)
-7. scripts/check.ts (add gitleaks step)
-8. Tests GREEN
-9. agents/executor/SKILL.md (no-commit rule)
-10. pipeline.yaml + pipeline-task.yaml (committer nodes, remove allowed_paths)
-11. `deno task check`
-12. SRS (FR-8, FR-14)
+1. Step 1 (delete files)
+2. Step 2 (CLI)
+3. Step 3 (pipeline.yaml)
+4. Step 5 (PM prompt)
+5. Step 4 (other agent prompts)
+6. Step 6 + 7 (HITL + engine)
+7. Step 8 (tests)
+8. Step 9 (docs)
+9. Step 10 (check)

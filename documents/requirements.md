@@ -16,7 +16,7 @@
 ## 1. Introduction
 
 - **Document purpose:** Define the specification for the automated multi-agent development pipeline orchestrated via Claude Code agents and Deno engine.
-- **Scope:** A locally-run system where a task description triggers a chain of specialized AI agents (via `deno task run:task <path>`, `run:text`, or `run:file`), each performing a distinct role in the software development lifecycle — from specification writing to QA verification.
+- **Scope:** A locally-run system where a GitHub Issue triggers a chain of specialized AI agents (via `deno task run [--prompt "..."]`), each performing a distinct role in the software development lifecycle — from issue triage to QA verification. PM agent autonomously selects and triages open GitHub issues.
 - **Audience:** Project maintainer (korchasa), contributors.
 - **Definitions and abbreviations:**
   - **Agent:** An isolated Claude Code CLI invocation with a dedicated system prompt (role).
@@ -28,7 +28,7 @@
 
 ## 2. General description
 
-- **System context:** Operates as a local Deno engine process triggered by CLI command (`deno task run:task <path>`, `run:text "..."`, or `run:file <path>`). The engine reads pipeline DAG config (`.sdlc/pipeline.yaml`), executes nodes sequentially/in parallel via `claude` CLI, validates outputs, and commits artifacts. Agents communicate through files in the repository.
+- **System context:** Operates as a local Deno engine process triggered by CLI command (`deno task run [--prompt "..."]`). The engine reads pipeline DAG config (`.sdlc/pipeline.yaml`), executes nodes sequentially/in parallel via `claude` CLI, validates outputs, and commits artifacts. PM agent autonomously triages open GitHub issues; `--prompt` passes optional additional context. Agents communicate through files in the repository.
 - **Assumptions and constraints:**
   - A devcontainer provides the runtime environment with all required tools (see FR-12).
   - Each agent is stateless between runs — all context comes from input artifacts and its system prompt.
@@ -39,17 +39,12 @@
 
 ### 3.1 FR-1: Pipeline Trigger
 
-- **Description:** Pipeline triggered via separate `deno task` subcommands, one per input source type. Each subcommand determines how the initial task description is obtained.
-- **Subcommands:**
-  - `deno task run:task <path>` — reads task description from a task file (YAML/Markdown). Branch: `agent/<run-id>`.
-  - `deno task run:text "description"` — uses inline text as task input. Branch: `agent/<run-id>`.
-  - `deno task run:file <path>` — reads task description from a local file. Branch: `agent/<run-id>`.
+- **Description:** Single entry point `deno task run [--prompt "..."]`. PM agent autonomously triages open GitHub issues — selects highest-priority open issue, fetches its title and body, and writes `issue: <N>` in `01-spec.md` YAML frontmatter. `--prompt` provides optional additional context passed to the PM agent.
 - **Acceptance criteria:**
-  - [ ] `deno task run:task <path>` starts pipeline with task file contents.
-  - [ ] `deno task run:text "..."` starts pipeline with provided inline text.
-  - [ ] `deno task run:file <path>` starts pipeline with file contents as task input.
-  - [ ] Each subcommand maps to a separate `deno.json` task entry.
-  - [ ] Common engine flags (`--resume`, `--dry-run`, `-v`, `-q`, `--config`) work with all subcommands.
+  - [ ] `deno task run` starts pipeline; PM selects highest-priority open issue autonomously.
+  - [ ] `deno task run --prompt "..."` passes additional context string to PM agent.
+  - [ ] PM writes `issue: <N>` in `01-spec.md` YAML frontmatter after issue selection.
+  - [ ] Common engine flags (`--resume`, `--dry-run`, `-v`, `-q`, `--config`) work with the single entry point.
 
 ### 3.2 FR-2: Stage 1 — Project Manager (Specification)
 
@@ -311,7 +306,7 @@
   - Scripts share common functions via `.sdlc/scripts/lib.sh` (logging, git operations, continuation loop, artifact validation).
 - **Acceptance criteria:**
   - Devcontainer builds successfully and contains all listed tools.
-  - Primary launch: `deno task run:task <path>` (engine path).
+  - Primary launch: `deno task run [--prompt "..."]` (engine path).
   - Legacy: each stage can be run independently via `.sdlc/scripts/stage-1-pm.sh`.
   - Stage scripts are executable and pass `shellcheck` without errors.
   - **Retry logic:** `lib.sh` implements a generic retry wrapper (`retry_with_backoff`) used for all external API calls (`claude` CLI, `gh` CLI). Parameters: max attempts = 3, initial delay = 5s, backoff multiplier = 2x. Retryable conditions: non-zero exit code from CLI tools (network errors, rate limits). Non-retryable: validation failures, agent logic errors.
@@ -426,6 +421,43 @@
   - [ ] Check runs as part of `deno task check` (integrated into `scripts/check.ts`).
   - [ ] Failures produce actionable error messages with config file path and line context.
 
+### 3.21 FR-21: Human-in-the-Loop (Agent-Initiated)
+
+- **Description:** Any pipeline agent can request human input mid-task by calling the built-in `AskUserQuestion` tool. The engine detects this call (denied in `-p` mode but visible in JSON output as `permission_denials`), delegates question delivery and reply polling to external pipeline scripts, and resumes the agent session with the human's answer via `--resume`.
+- **Mechanism:**
+  1. Agent calls `AskUserQuestion` → Claude CLI denies it in `-p` mode (no terminal) → structured question visible in `permission_denials` field of JSON `result` event.
+  2. Engine extracts question (`{question, header, options[], multiSelect}`) and `session_id`.
+  3. Engine invokes configurable `ask_script` (pipeline script, not engine code) to deliver question (e.g., `gh issue comment`).
+  4. Engine enters poll loop: `sleep poll_interval` → invoke `check_script` → if exit 0 (reply found), read reply from stdout.
+  5. Engine resumes agent: `claude --resume <session_id> -p "<reply>"`. Agent continues with full session context.
+- **Key constraint:** Engine contains zero GitHub/Slack/email-specific code. All delivery/polling logic lives in pipeline scripts (`.sdlc/scripts/`).
+- **Acceptance criteria:**
+  - [x] Engine detects `AskUserQuestion` in `permission_denials` of Claude CLI JSON output after agent node completes. Evidence: `.sdlc/engine/hitl.ts:61-93` (`detectHitlRequest()`), `.sdlc/engine/engine.ts:316-319` (call in `executeAgentNode`)
+  - [x] Engine saves `session_id`, question JSON, and node status `waiting` to `state.json`. Evidence: `.sdlc/engine/state.ts:93-103` (`markNodeWaiting()`), `.sdlc/engine/engine.ts:324-325` (call + saveState), `.sdlc/engine/types.ts:104` (`question_json` field)
+  - [x] Engine invokes `ask_script` (path from `pipeline.yaml` `defaults.hitl`) with args: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`, `--question-json`. Evidence: `.sdlc/engine/hitl.ts:111-125` (`buildScriptArgs("ask")`), `.sdlc/engine/hitl.ts:127-134` (ask invocation)
+  - [x] Engine enters poll loop calling `check_script` with args: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`, `--bot-login`. Exit 0 = reply in stdout; exit 1 = no reply yet. Evidence: `.sdlc/engine/hitl.ts:137-175` (poll loop), `.sdlc/engine/hitl_test.ts:184-214` (poll test)
+  - [x] On reply: engine resumes agent via `claude --resume <session_id> -p "<reply>"`. Evidence: `.sdlc/engine/hitl.ts:158-172` (claudeRun with resumeSessionId)
+  - [x] Configurable `poll_interval` (default 60s) and `timeout` (default 7200s) per pipeline. Evidence: `.sdlc/engine/types.ts:170-175` (`HitlConfig`), `.sdlc/pipeline.yaml:16-20` (defaults.hitl)
+  - [x] On timeout: node fails, Meta-Agent triggered. Evidence: `.sdlc/engine/hitl.ts:183-188` (timeout return), `.sdlc/engine/engine.ts:342-347` (markNodeFailed on HITL failure), `.sdlc/engine/hitl_test.ts:216-230` (timeout test)
+  - [x] `deno task run` on a pipeline with `waiting` nodes auto-resumes polling (no manual `--resume` needed). Evidence: `.sdlc/engine/engine.ts:278-310` (wasWaiting resume path in executeAgentNode)
+  - [x] Pipeline scripts `hitl-ask.sh` and `hitl-check.sh` exist in `.sdlc/scripts/`. Evidence: `.sdlc/scripts/hitl-ask.sh`, `.sdlc/scripts/hitl-check.sh`
+  - [x] `hitl-ask.sh` renders question JSON → markdown with HTML marker `<!-- hitl:<run-id>:<node-id> -->`, posts via `gh issue comment`. Evidence: `.sdlc/scripts/hitl-ask.sh:52-76` (markdown render + marker + gh post)
+  - [x] `hitl-check.sh` finds first non-bot comment after marker, outputs body to stdout (exit 0) or exits 1 if no reply. Evidence: `.sdlc/scripts/hitl-check.sh:39-54` (jq filter + exit codes)
+
+### 3.22 FR-22: Project Documentation (README)
+
+- **Description:** README.md must accurately reflect current project state: vision, architecture (DAG-based engine), usage (`deno task run` with flags), prerequisites (Deno, Docker/devcontainer, Claude CLI, `gh`), available `deno task` commands, configuration mechanism (YAML `pipeline.yaml`), project directory structure, and agents-as-skills.
+- **Scenario:** A new contributor reads README.md and gets correct, up-to-date information about how to set up, configure, and run the pipeline.
+- **Acceptance criteria:**
+  - [ ] README.md reflects DAG-based engine architecture (not shell script orchestration).
+  - [ ] Usage section documents `deno task run` with current flags (`--prompt`, `--resume`, `--dry-run`, `-v`, `-q`, `--config`, `--skip`, `--only`, `--env`).
+  - [ ] Prerequisites list: Deno, Docker/devcontainer, Claude Code CLI, `gh` CLI, Git.
+  - [ ] Available `deno task` commands documented (run, check, test).
+  - [ ] Configuration section references `pipeline.yaml` (not env vars).
+  - [ ] Project directory structure matches actual layout (`agents/`, `.sdlc/engine/`, `.sdlc/runs/`, `.claude/skills/`).
+  - [ ] Agents-as-skills mentioned with `/agent-<name>` slash command examples.
+  - [ ] Installation/setup instructions are accurate for devcontainer workflow.
+
 ## 4. Non-functional requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -437,7 +469,7 @@
 
 ## 5. Interfaces
 
-- **Trigger:** Separate `deno task` subcommands per input source: `run:task <path>` (task file), `run:text "..."` (inline text), `run:file <path>` (local file). All share common engine flags.
+- **Trigger:** Single entry point `deno task run [--prompt "..."]`. PM agent autonomously selects and triages open GitHub issues. `--prompt` passes optional additional context to PM. Common engine flags: `--resume`, `--dry-run`, `-v`, `-q`, `--config`.
 - **Agent runtime:** `claude` CLI invoked by the Deno engine. Invocation: `claude -p "<task prompt>" --append-system-prompt-file agents/<role>/SKILL.md --output-format json`. Key flags:
   - `--append-system-prompt-file` — adds role-specific instructions while preserving Claude Code's built-in capabilities (tool use, file access). Preferred over `--system-prompt-file` which replaces the default prompt entirely.
   - `--output-format json` — returns structured JSON with `result`, `session_id`, `total_cost_usd`, `duration_ms`, `num_turns`, `is_error`.
@@ -452,7 +484,7 @@
 
 The system is considered accepted if:
 
-1. Running `deno task run:task <path>` triggers the full pipeline for the given task.
+1. Running `deno task run` triggers the full pipeline; PM autonomously selects the highest-priority open GitHub issue.
 2. Each stage produces its expected artifact with all required sections.
 3. The Continuation mechanism catches and fixes `deno task check` failures without human intervention.
 4. The Executor+QA loop iterates until quality checks pass.

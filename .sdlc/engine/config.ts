@@ -211,6 +211,7 @@ function validateValidationRule(
     "file_not_empty",
     "contains_section",
     "custom_script",
+    "frontmatter_field",
   ];
   if (!validTypes.includes(rule.type as string)) {
     throw new Error(
@@ -252,6 +253,7 @@ function mergeDefaults(config: PipelineConfig): PipelineConfig {
 
 /** Extract NodeSettings fields from PipelineDefaults (exclude pipeline-only fields). */
 function extractNodeSettings(defaults: PipelineDefaults): NodeSettings {
-  const { max_parallel: _, claude_args: _ca, ...settings } = defaults;
+  const { max_parallel: _, claude_args: _ca, hitl: _hitl, ...settings } =
+    defaults;
   return settings;
 }
