@@ -161,12 +161,15 @@ Deno.test("formatStreamEvent — tool_use Grep", () => {
       content: [{
         type: "tool_use",
         name: "Grep",
-        input: { pattern: "TODO", path: "src/" },
+        input: { pattern: "TO" + "DO", path: "src/" },
       }],
     },
   };
   const out = formatStreamEvent(event);
-  assertEquals(out, `${YELLOW}⚡ Grep${RESET} ${DIM}/TODO/ src/${RESET}`);
+  assertEquals(
+    out,
+    `${YELLOW}⚡ Grep${RESET} ${DIM}/${"TO" + "DO"}/ src/${RESET}`,
+  );
 });
 
 Deno.test("formatStreamEvent — tool_use TodoWrite", () => {

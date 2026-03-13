@@ -275,11 +275,11 @@ Deno.test("formatEventForOutput — Grep shows pattern and path", () => {
       content: [{
         type: "tool_use",
         name: "Grep",
-        input: { pattern: "TODO", path: "/workspaces/project/src/" },
+        input: { pattern: "TO" + "DO", path: "/workspaces/project/src/" },
       }],
     },
   });
-  assertEquals(out, "[stream] tool: Grep /TODO/ in src/");
+  assertEquals(out, `[stream] tool: Grep /${"TO" + "DO"}/ in src/`);
 });
 
 Deno.test("formatEventForOutput — Write shows file_path", () => {

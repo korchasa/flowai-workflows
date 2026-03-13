@@ -54,9 +54,10 @@ async function commentScan(): Promise<void> {
   }
 
   if (found) {
-    console.warn("Warning: found comment markers (non-blocking)");
+    console.error("FAILED: Comment markers found (TODO/FIXME/HACK/XXX)");
+    Deno.exit(1);
   } else {
-    console.log("No comment markers found.");
+    console.log("  No comment markers found.");
   }
 }
 
