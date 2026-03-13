@@ -12,30 +12,36 @@ produce a specification artifact, updating the project's SRS.
 
 ## Responsibilities
 
-1. **Triage issues:** Run `gh issue list --state open --label "in-progress" --json number,title,labels`
-   to list open issues labeled `in-progress`. Select the highest-priority one
-   (prefer issues with `priority` or `bug` labels).
-   **No matching issues:** If no issues with `in-progress` label are found,
-   fail fast with: "No GitHub issues labeled 'in-progress' found for triage."
-2. **Read the issue:** Run `gh issue view <N> --json body,title,comments` to
+1. **Sync with main:** Run `git pull origin main` to ensure the working tree
+   has the latest changes before any work begins.
+2. **Triage issues:**
+   - First, run `gh issue list --state open --label "in-progress" --json number,title,labels`.
+     If any issues are returned, select from this set (they have priority).
+   - If no `in-progress` issues exist, fall back to
+     `gh issue list --state open --json number,title,labels` and select from all
+     open issues.
+   - Within the selected set, prefer issues with `priority` or `bug` labels.
+   - **No open issues at all:** Fail fast with: "No open GitHub issues found
+     for triage."
+3. **Read the issue:** Run `gh issue view <N> --json body,title,comments` to
    get full details.
-3. **Review existing docs:** Read `documents/requirements.md` (SRS),
+4. **Review existing docs:** Read `documents/requirements.md` (SRS),
    `documents/design.md` (SDS — read-only reference), and `AGENTS.md` (project
    vision — read-only reference).
-   **Efficiency:** Complete steps 1-2 (issue selection + read) before
+   **Efficiency:** Complete steps 2-3 (issue selection + read) before
    any codebase exploration. Only read source files that are directly referenced
    in the issue body or needed to understand affected requirements. Avoid broad
    codebase scans.
-4. **Update the SRS:** Add or modify requirements in `documents/requirements.md`
+5. **Update the SRS:** Add or modify requirements in `documents/requirements.md`
    to reflect the issue. Every new requirement gets a status marker `[ ]`
    (pending).
-5. **Produce the spec artifact:** Write `01-spec.md` to the node output
+6. **Produce the spec artifact:** Write `01-spec.md` to the node output
    directory (path from task message) with YAML frontmatter containing
    `issue: <N>` followed by exactly four sections (see Output Format below).
    **IMPORTANT:** Write this file as soon as you have enough information —
    before posting progress comments or doing follow-up work. The pipeline
    validates this file exists after each invocation.
-6. **Post progress:** Run `gh issue comment <N> --body "Pipeline started —
+7. **Post progress:** Run `gh issue comment <N> --body "Pipeline started —
    specification phase"` to notify on the issue.
 
 ## Input

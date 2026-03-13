@@ -36,7 +36,7 @@ nodes:
     label: "Project Manager — Specification"
     prompt: "agents/pm/SKILL.md"
     task_template: |
-      Select the highest-priority GitHub issue labeled "in-progress" to implement.
+      Select a GitHub issue to implement. Prefer issues labeled "in-progress"; fall back to any open issue.
       Output:
         - {{node_dir}}/01-spec.md (YAML frontmatter with `issue: <N>`,
           then problem, affected requirements, SRS changes, scope)
