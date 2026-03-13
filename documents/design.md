@@ -199,7 +199,8 @@ graph LR
     `NodeConfig.env`, `NodeConfig.model` (per-node Claude model override),
     `PipelineDefaults.model` (default model for all nodes),
     `LoopNodeConfig.nodes` (inline body node definitions),
-    `LoopResult.bodyResults`)
+    `LoopResult.bodyResults`, `ErrorCategory` (structured failure enum),
+    `NodeState.error_category`)
   - `template.ts` — `{{var}}` interpolation for prompts/paths
   - `config.ts` — YAML parsing, schema validation, defaults merge,
     `run_on` normalization. `validateNode()`: if `run_on` present, must be
@@ -487,7 +488,11 @@ graph LR
 - **Engine invariant:** Engine does NOT auto-commit (FR-14 preserved). All git
   operations happen inside agent prompts.
 - **Failure behavior:** Failed nodes produce no commits. On_error: "fail" stops
-  pipeline; "continue" proceeds to next nodes.
+  pipeline; "continue" proceeds to next nodes. Each failed `NodeState` gets
+  `error_category?: ErrorCategory` — domain-agnostic enum:
+  `continuations_exhausted | timeout | cli_crash | hook_failure | hitl_timeout |
+  aborted | unknown`. Set by engine at failure point; downstream agents map
+  categories to domain actions.
 - **Resume:** `--resume <run-id>` skips completed nodes per state.json.
 
 ## 5. Logic

@@ -103,6 +103,36 @@ Deno.test("markNodeFailed — sets error message", () => {
 
   assertEquals(state.nodes.a.status, "failed");
   assertEquals(state.nodes.a.error, "validation failed");
+  assertEquals(state.nodes.a.error_category, undefined);
+});
+
+Deno.test("markNodeFailed — sets error_category when provided", () => {
+  const state = createRunState("test", "cfg.yaml", ["a"], {}, {});
+  markNodeStarted(state, "a");
+  markNodeFailed(state, "a", "limit reached", "continuations_exhausted");
+
+  assertEquals(state.nodes.a.status, "failed");
+  assertEquals(state.nodes.a.error, "limit reached");
+  assertEquals(state.nodes.a.error_category, "continuations_exhausted");
+});
+
+Deno.test("markNodeFailed — all error categories are valid", () => {
+  const categories = [
+    "continuations_exhausted",
+    "timeout",
+    "cli_crash",
+    "hook_failure",
+    "hitl_timeout",
+    "aborted",
+    "unknown",
+  ] as const;
+
+  for (const cat of categories) {
+    const state = createRunState("test", "cfg.yaml", ["a"], {}, {});
+    markNodeStarted(state, "a");
+    markNodeFailed(state, "a", `error: ${cat}`, cat);
+    assertEquals(state.nodes.a.error_category, cat);
+  }
 });
 
 Deno.test("markNodeSkipped — sets status to skipped", () => {

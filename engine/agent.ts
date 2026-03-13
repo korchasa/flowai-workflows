@@ -1,5 +1,6 @@
 import type {
   ClaudeCliOutput,
+  ErrorCategory,
   NodeConfig,
   NodeSettings,
   PermissionDenial,
@@ -21,6 +22,7 @@ export interface AgentResult {
   output?: ClaudeCliOutput;
   continuations: number;
   error?: string;
+  error_category?: ErrorCategory;
   permission_denials?: PermissionDenial[];
 }
 
@@ -105,6 +107,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
       success: false,
       continuations,
       error: result.error,
+      error_category: "cli_crash",
     };
   }
 
@@ -133,6 +136,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
         continuations,
         error:
           `Continuation limit (${settings.max_continuations}) reached. Failures:\n${failures}`,
+        error_category: "continuations_exhausted",
       };
     }
 
@@ -160,6 +164,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
         output: result.output,
         continuations,
         error: "No session_id available for --resume continuation",
+        error_category: "unknown",
       };
     }
 
@@ -183,6 +188,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
       output: result.output,
       continuations,
       error: result.error,
+      error_category: "cli_crash",
     };
   }
 
@@ -198,6 +204,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
         output: result.output,
         continuations,
         error: `After hook failed: ${(err as Error).message}`,
+        error_category: "hook_failure",
       };
     }
   }

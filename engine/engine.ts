@@ -341,7 +341,7 @@ export class Engine {
       await saveState(this.state);
       return success;
     } catch (err) {
-      markNodeFailed(this.state, nodeId, (err as Error).message);
+      markNodeFailed(this.state, nodeId, (err as Error).message, "unknown");
       await saveState(this.state);
       this.output.nodeFailed(nodeId, (err as Error).message);
       return false;
@@ -366,6 +366,7 @@ export class Engine {
           this.state,
           nodeId,
           "Waiting node missing session_id or question_json",
+          "unknown",
         );
         return null;
       }
@@ -374,6 +375,7 @@ export class Engine {
           this.state,
           nodeId,
           "HITL detected but defaults.hitl not configured in pipeline.yaml",
+          "unknown",
         );
         return null;
       }
@@ -400,6 +402,7 @@ export class Engine {
           this.state,
           nodeId,
           hitlResult.error ?? "HITL resume failed",
+          hitlResult.error_category ?? "unknown",
         );
         return null;
       }
@@ -433,7 +436,12 @@ export class Engine {
     });
 
     if (!result.success) {
-      markNodeFailed(this.state, nodeId, result.error ?? "Agent failed");
+      markNodeFailed(
+        this.state,
+        nodeId,
+        result.error ?? "Agent failed",
+        result.error_category ?? "unknown",
+      );
       return result;
     }
 
@@ -447,6 +455,7 @@ export class Engine {
             this.state,
             nodeId,
             "Agent requested HITL (AskUserQuestion) but defaults.hitl not configured in pipeline.yaml",
+            "unknown",
           );
           return null;
         }
@@ -480,6 +489,7 @@ export class Engine {
             this.state,
             nodeId,
             hitlResult.error ?? "HITL failed",
+            hitlResult.error_category ?? "unknown",
           );
           return null;
         }
@@ -570,7 +580,12 @@ export class Engine {
     });
 
     if (!result.success) {
-      markNodeFailed(this.state, nodeId, result.error ?? "Loop failed");
+      markNodeFailed(
+        this.state,
+        nodeId,
+        result.error ?? "Loop failed",
+        result.error_category ?? "unknown",
+      );
     }
     this.state.nodes[nodeId].iteration = result.iterations;
 
@@ -590,6 +605,7 @@ export class Engine {
         this.state,
         nodeId,
         `Aborted by user (response: ${result.response})`,
+        "aborted",
       );
       return false;
     }

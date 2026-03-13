@@ -1,4 +1,9 @@
-import type { NodeState, NodeStatus, RunState } from "./types.ts";
+import type {
+  ErrorCategory,
+  NodeState,
+  NodeStatus,
+  RunState,
+} from "./types.ts";
 
 /** Generate a run ID from the current timestamp with optional label.
  * Format: YYYYMMDDTHHMMSS or YYYYMMDDTHHMMSS-<label> when label provided.
@@ -115,6 +120,7 @@ export function markNodeFailed(
   state: RunState,
   nodeId: string,
   error: string,
+  error_category?: ErrorCategory,
 ): void {
   const node = state.nodes[nodeId];
   const startedAt = node.started_at
@@ -125,6 +131,7 @@ export function markNodeFailed(
     completed_at: new Date().toISOString(),
     duration_ms: Date.now() - startedAt,
     error,
+    error_category,
   });
 }
 

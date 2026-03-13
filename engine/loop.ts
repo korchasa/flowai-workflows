@@ -1,5 +1,6 @@
 import { parse as parseYaml } from "@std/yaml";
 import type {
+  ErrorCategory,
   NodeConfig,
   NodeSettings,
   PipelineConfig,
@@ -17,6 +18,7 @@ export interface LoopResult {
   success: boolean;
   iterations: number;
   error?: string;
+  error_category?: ErrorCategory;
   lastConditionValue?: string;
   /** Per-iteration AgentResult entries for log extraction by the engine. */
   bodyResults: AgentResult[];
@@ -94,7 +96,12 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
       if (result.success) {
         markNodeCompleted(state, bodyNodeId);
       } else {
-        markNodeFailed(state, bodyNodeId, result.error ?? "Unknown error");
+        markNodeFailed(
+          state,
+          bodyNodeId,
+          result.error ?? "Unknown error",
+          result.error_category ?? "unknown",
+        );
       }
 
       opts.onNodeComplete?.(bodyNodeId, iteration, result);
@@ -106,6 +113,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
           iterations: iteration,
           error:
             `Body node '${bodyNodeId}' failed on iteration ${iteration}: ${result.error}`,
+          error_category: result.error_category ?? "unknown",
           lastConditionValue,
           bodyResults,
         };
@@ -135,6 +143,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
     iterations: maxIterations,
     error:
       `Loop '${loopNodeId}' reached max iterations (${maxIterations}) without exit condition. Last ${conditionField}=${lastConditionValue}, expected ${exitValue}`,
+    error_category: "continuations_exhausted",
     lastConditionValue,
     bodyResults,
   };

@@ -140,6 +140,7 @@ export async function runHitlLoop(
         success: false,
         continuations: 0,
         error: `ask_script failed with exit code ${askResult.exitCode}`,
+        error_category: "unknown",
       };
     }
   }
@@ -192,6 +193,7 @@ export async function runHitlLoop(
           output: result.output,
           continuations: 0,
           error: result.error,
+          error_category: "cli_crash",
         };
       }
 
@@ -219,6 +221,7 @@ export async function runHitlLoop(
     success: false,
     continuations: 0,
     error: `HITL timeout after ${config.timeout}s waiting for human reply`,
+    error_category: "hitl_timeout",
   };
 }
 

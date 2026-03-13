@@ -97,6 +97,17 @@ export interface ValidationRule {
 
 // --- Runtime State ---
 
+/** Structured error category set by engine when a node fails.
+ * Domain-agnostic — downstream agents map these to domain actions. */
+export type ErrorCategory =
+  | "continuations_exhausted"
+  | "timeout"
+  | "cli_crash"
+  | "hook_failure"
+  | "hitl_timeout"
+  | "aborted"
+  | "unknown";
+
 /** Status of a single node during execution. */
 export type NodeStatus =
   | "pending"
@@ -113,6 +124,7 @@ export interface NodeState {
   completed_at?: string; // ISO 8601
   duration_ms?: number;
   error?: string;
+  error_category?: ErrorCategory;
   iteration?: number; // for loop nodes
   continuations?: number;
   session_id?: string; // claude CLI session ID
