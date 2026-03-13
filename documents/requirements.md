@@ -265,10 +265,10 @@
 - **Input:**
   - `documents/meta.md` — persistent memory (read first).
   - Run logs from `<run-dir>/logs/` and `state.json`.
-  - Current agent prompts from `agents/`.
+  - Current agent prompts from `.claude/skills/agent-*/`.
   - `<run-dir>/failed-node.txt` (on pipeline failure).
 - **Output:**
-  - Primary: edited `agents/*/SKILL.md` (prompt fixes).
+  - Primary: edited `.claude/skills/agent-*/SKILL.md` (prompt fixes).
   - Secondary: `<run-dir>/meta-agent/07-changelog.md` (minimal fix log).
   - Persistent: updated `documents/meta.md` (cross-run memory).
 - **Acceptance criteria:**
@@ -293,7 +293,7 @@
   - Located in `.sdlc/scripts/stage-<N>-<role>.sh`.
   - Each script is responsible for:
     1. Preparing input: collecting handoff artifacts, setting environment variables.
-    2. Invoking `claude` CLI with the agent prompt from `agents/<role>/SKILL.md`.
+    2. Invoking `claude` CLI with the agent prompt from `.claude/skills/agent-<role>/SKILL.md`.
     3. Running stage-specific validation (artifact checks, `deno task check` for Executor).
     4. Implementing the Continuation mechanism (FR-8): re-invoking via `--resume` on validation failure.
     5. Committing output artifacts and logs to the feature branch.
@@ -502,12 +502,12 @@
     nodes:
       executor:
         type: agent
-        prompt: "agents/executor/SKILL.md"
+        prompt: ".claude/skills/agent-executor/SKILL.md"
         inputs: [architect, sds-update]
         ...
       qa:
         type: agent
-        prompt: "agents/qa/SKILL.md"
+        prompt: ".claude/skills/agent-qa/SKILL.md"
         inputs: [pm, architect, executor]
         ...
   ```
@@ -586,7 +586,7 @@
   executor, qa — plus tech-lead-review and meta-agent as post-pipeline.
 - **Role changes:**
   - `tech-lead` node (current) → renamed to **`architect`** (designs solution
-    with variants). Prompt: `agents/architect/SKILL.md`.
+    with variants). Prompt: `.claude/skills/agent-architect/SKILL.md`.
   - `reviewer` node → **removed**. Design review absorbed into new tech-lead.
   - `architect` node (current) → renamed to **`tech-lead`** (reviews design,
     selects variant, task breakdown, updates SDS, creates branch
