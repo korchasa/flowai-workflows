@@ -1,7 +1,8 @@
 ---
 name: "agent-tech-lead"
 description: "Tech Lead — selects variant, updates SDS, creates branch + draft PR"
-disable-model-invocation: true
+compatibility: ["claude-code"]
+allowed-tools: []
 ---
 
 # Role: Tech Lead (Decision + Branch + PR)
@@ -51,7 +52,7 @@ tasks:
   - desc: "Add phases config key"
     files: [".sdlc/pipeline.yaml"]
   - desc: "Rename node IDs"
-    files: [".sdlc/pipeline.yaml", "agents/*/SKILL.md"]
+    files: [".sdlc/pipeline.yaml", ".claude/skills/agent-*/SKILL.md"]
 ---
 ```
 

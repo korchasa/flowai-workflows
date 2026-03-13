@@ -1,7 +1,8 @@
 ---
 name: "agent-executor"
 description: "Executor — implements code changes following task breakdown with TDD"
-disable-model-invocation: true
+compatibility: ["claude-code"]
+allowed-tools: []
 ---
 
 # Role: Executor (Implementation)
@@ -72,7 +73,7 @@ block direct invocations. Always use `deno task check`.
   - `.sdlc/scripts/`
   - `CLAUDE.md`
 - **Self-referential safety:** If the task involves migrating or modifying
-  pipeline agent prompts (files under `agents/` or `.sdlc/agents/`), do NOT
+  pipeline agent prompts (files under `.claude/skills/agent-*/`), do NOT
   delete old prompt files during the pipeline run. The engine may still
   reference them for later nodes. Instead, create the new files and update
   references, but leave old files in place. Deletion should be a separate
@@ -103,6 +104,5 @@ block direct invocations. Always use `deno task check`.
 Explicitly forbidden (unless listed in `04-decision.md` `tasks[].files`):
 
 - `.github/`
-- `agents/`
 - `.sdlc/scripts/`
 - `CLAUDE.md`

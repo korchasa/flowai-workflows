@@ -1,7 +1,8 @@
 ---
 name: "agent-pm"
 description: "Project Manager — triages GitHub issues, selects highest-priority, produces specification artifact"
-disable-model-invocation: true
+compatibility: ["claude-code"]
+allowed-tools: []
 ---
 
 # Role: Project Manager (PM)

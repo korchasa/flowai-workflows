@@ -1,7 +1,8 @@
 ---
 name: "agent-qa"
 description: "QA — verifies implementation against specification, produces verdict report"
-disable-model-invocation: true
+compatibility: ["claude-code"]
+allowed-tools: []
 ---
 
 # Role: QA (Quality Assurance Verification)
