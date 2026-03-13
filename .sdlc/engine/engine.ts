@@ -95,21 +95,21 @@ export class Engine {
     await this.ensureRunDirs(levels);
     await saveState(this.state);
 
-    // Identify run_always nodes (e.g., Meta-Agent) — execute after all levels
-    // Sort topologically so dependencies within run_always subset are respected
-    const rawRunAlwaysIds = collectRunAlwaysNodes(this.config.nodes);
-    const runAlwaysNodeIds = sortRunAlwaysNodes(
-      rawRunAlwaysIds,
+    // Identify post-pipeline nodes (run_on set) — execute after all DAG levels
+    // Sort topologically so dependencies within post-pipeline subset are respected
+    const rawPostPipelineIds = collectPostPipelineNodes(this.config.nodes);
+    const postPipelineNodeIds = sortPostPipelineNodes(
+      rawPostPipelineIds,
       this.config.nodes,
     );
 
-    // Filter run_always nodes out of regular DAG levels
+    // Filter post-pipeline nodes out of regular DAG levels
     const filteredLevels = levels
-      .map((level) => level.filter((id) => !runAlwaysNodeIds.includes(id)))
+      .map((level) => level.filter((id) => !postPipelineNodeIds.includes(id)))
       .filter((level) => level.length > 0);
 
-    // Ensure run_always node dirs exist
-    for (const nodeId of runAlwaysNodeIds) {
+    // Ensure post-pipeline node dirs exist
+    for (const nodeId of postPipelineNodeIds) {
       await Deno.mkdir(getNodeDir(this.state.run_id, nodeId), {
         recursive: true,
       });
@@ -130,8 +130,8 @@ export class Engine {
       this.output.error((err as Error).message);
     }
 
-    // Execute run_always nodes (post-levels step, regardless of pipeline outcome)
-    if (runAlwaysNodeIds.length > 0) {
+    // Execute post-pipeline nodes (filtered by run_on condition)
+    if (postPipelineNodeIds.length > 0) {
       // Pre-step: on failure, rollback uncommitted changes and write failed-node-id
       if (!pipelineSuccess) {
         try {
@@ -152,13 +152,35 @@ export class Engine {
         }
       }
 
-      for (const nodeId of runAlwaysNodeIds) {
+      for (const nodeId of postPipelineNodeIds) {
         if (isNodeCompleted(this.state, nodeId)) continue;
+
+        // Filter by run_on condition
+        const nodeRunOn = this.config.nodes[nodeId].run_on;
+        if (nodeRunOn === "success" && !pipelineSuccess) {
+          markNodeSkipped(this.state, nodeId);
+          this.output.nodeSkipped(
+            nodeId,
+            "skipped: run_on=success but pipeline failed",
+          );
+          await saveState(this.state);
+          continue;
+        }
+        if (nodeRunOn === "failure" && pipelineSuccess) {
+          markNodeSkipped(this.state, nodeId);
+          this.output.nodeSkipped(
+            nodeId,
+            "skipped: run_on=failure but pipeline succeeded",
+          );
+          await saveState(this.state);
+          continue;
+        }
+
         try {
           await this.executeNode(nodeId);
         } catch (err) {
           this.output.warn(
-            `run_always node ${nodeId} failed: ${(err as Error).message}`,
+            `Post-pipeline node ${nodeId} failed: ${(err as Error).message}`,
           );
         }
       }
@@ -650,29 +672,29 @@ export async function resolveInputArtifacts(
 }
 
 /**
- * Collect node IDs with `run_always: true` from pipeline config.
- * These nodes execute in a final post-levels step, regardless of pipeline outcome.
+ * Collect node IDs with `run_on` set from pipeline config.
+ * These nodes execute in a final post-pipeline step after all DAG levels complete.
  */
-export function collectRunAlwaysNodes(
+export function collectPostPipelineNodes(
   nodes: Record<string, NodeConfig>,
 ): string[] {
   return Object.entries(nodes)
-    .filter(([_, node]) => node.run_always === true)
+    .filter(([_, node]) => node.run_on !== undefined)
     .map(([id]) => id);
 }
 
 /**
- * Sort run_always nodes topologically using their `inputs` field.
- * Only considers dependencies within the run_always subset.
+ * Sort post-pipeline nodes topologically using their `inputs` field.
+ * Only considers dependencies within the post-pipeline subset.
  * Guarantees e.g. commit-meta (inputs: [meta-agent]) runs after meta-agent.
  */
-export function sortRunAlwaysNodes(
-  runAlwaysIds: string[],
+export function sortPostPipelineNodes(
+  postPipelineIds: string[],
   nodes: Record<string, NodeConfig>,
 ): string[] {
-  const subset = new Set(runAlwaysIds);
+  const subset = new Set(postPipelineIds);
   const deps = new Map<string, Set<string>>();
-  for (const id of runAlwaysIds) {
+  for (const id of postPipelineIds) {
     const node = nodes[id];
     const internalInputs = (node.inputs ?? []).filter((inp) => subset.has(inp));
     deps.set(id, new Set(internalInputs));
