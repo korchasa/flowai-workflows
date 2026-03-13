@@ -66,19 +66,19 @@ graph LR
     Spec["specification"] --> Design["design<br/>(solution plan)"]
     Design --> Decision["decision<br/>(critique+branch+PR)"]
     Decision --> Loop["implementation<br/>(build→verify)"]
-    Loop -.-> Review["review<br/>(run_on:always)"]
+    Loop -.-> Review["tech-lead-review<br/>(run_on:always)"]
     Loop -.-> Optimize["optimize<br/>(run_on:always)"]
 ```
 
 - **Node ID convention (FR-33):** Activity-based IDs reflect what work is done,
   not who does it. Mapping: `pm`→`specification`, `architect`→`design`,
   `tech-lead`→`decision`, `impl-loop`→`implementation`, `executor`→`build`,
-  `qa`→`verify`, `tech-lead-review`→`review`, `meta-agent`→`optimize`.
+  `qa`→`verify`, `tech-lead-review`→`tech-lead-review`, `meta-agent`→`optimize`.
 - **Phases (FR-33):** Top-level `phases:` key in `pipeline.yaml` declares named
   phase groups. Each phase lists member stage IDs:
   - `plan`: [specification, design, decision]
   - `impl`: [implementation]
-  - `report`: [review, optimize]
+  - `report`: [tech-lead-review, optimize]
   Phase grouping is declarative config; engine treats it as opaque data. Enables
   future phase-level `run_on` semantics and cleaner artifact reporting.
 
@@ -153,7 +153,7 @@ graph LR
   - `meta-agent` — prompt optimization, failure analysis.
 - **Removed agents (FR-26):** `tech-lead-reviewer` (absorbed into tech-lead),
   `tech-lead-sds` (absorbed into tech-lead), `committer` (executor owns
-  commits).
+  commits), `code-reviewer` (replaced by tech-lead-review).
 - **SKILL.md frontmatter template:**
   ```yaml
   ---
@@ -165,8 +165,10 @@ graph LR
   - `disable-model-invocation: true` — prevents automatic invocation; agents
     are only triggered explicitly (pipeline or slash command).
 - **Interfaces:**
-  - Pipeline: engine reads `prompt:` path from `pipeline.yaml` → file content
-    passed to `claude --system-prompt`.
+  - Pipeline: engine reads `prompt:` path from `pipeline.yaml`, caches file
+    content at config load time (`prompt_content`), passes inline via
+    `claude --append-system-prompt`. Fallback to `--append-system-prompt-file`
+    for template paths.
   - Interactive: Claude Code discovers skills via `.claude/skills/agent-<name>`
     symlinks → user invokes `/agent-<name>`.
 - **Deps:** None (static content, versioned in git).
@@ -180,8 +182,8 @@ graph LR
 - **Agents exposed:** `agent-pm`, `agent-architect`, `agent-tech-lead`,
   `agent-executor`, `agent-qa`, `agent-tech-lead-review`, `agent-meta-agent`.
 - **Removed (FR-26):** `agent-tech-lead-reviewer`, `agent-tech-lead-sds`,
-  `agent-committer` (agents deleted), `agent-presenter` dangling symlink
-  cleaned.
+  `agent-committer`, `agent-code-reviewer` (agents deleted),
+  `agent-presenter` dangling symlink cleaned.
 - **Added (FR-26):** `agent-tech-lead-review`.
 - **Interfaces:** Claude Code skill loader reads symlink target directory,
   discovers `SKILL.md` frontmatter, registers slash command.
@@ -200,7 +202,8 @@ graph LR
     `PipelineDefaults.model` (default model for all nodes),
     `LoopNodeConfig.nodes` (inline body node definitions),
     `LoopResult.bodyResults`, `ErrorCategory` (structured failure enum),
-    `NodeState.error_category`)
+    `NodeState.error_category`, `NodeState.cost_usd` (FR-32 per-node cost),
+    `RunState.total_cost_usd` (FR-32 aggregated run cost))
   - `template.ts` — `{{var}}` interpolation for prompts/paths
   - `config.ts` — YAML parsing, schema validation, defaults merge,
     `run_on` normalization. `validateNode()`: if `run_on` present, must be
@@ -221,7 +224,9 @@ graph LR
     contains_section, custom_script, frontmatter_field)
   - `state.ts` — RunState persistence to `state.json`, resume logic,
     phase registry (`setPhaseRegistry()`, `clearPhaseRegistry()`,
-    `getPhaseForNode()`)
+    `getPhaseForNode()`), cost aggregation (`updateRunCost()` sums
+    `nodes[*].cost_usd` → `total_cost_usd`; called from
+    `markNodeCompleted()` when optional `costUsd` param provided, FR-32)
   - `agent.ts` — Claude CLI invocation, continuation loop, retry.
     `AgentRunOptions.model` and `InvokeOptions.model`: optional string for
     per-node model selection. `buildClaudeArgs()` emits `--model <value>` when
@@ -231,7 +236,7 @@ graph LR
     `executeClaudeProcess()` uses `--output-format stream-json` and reads
     stdout line-by-line. Each JSON line appended to `streamLogPath` file
     (crash-resilient incremental write via `Deno.writeFile({ append: true })`).
-    **Stream log timestamps (FR-32):** `tsPrefix()` returns `[HH:MM:SS]`
+    **Stream log timestamps (FR-33):** `tsPrefix()` returns `[HH:MM:SS]`
     wall-clock prefix; `stampLines()` prepends it to each non-empty line (empty
     lines pass through). Applied to log file writes only — terminal output via
     `onOutput` callback receives raw text without timestamps.
@@ -417,6 +422,27 @@ graph LR
   highest-priority open issue via `gh`.
 - **Deps:** Devcontainer, Claude CLI auth (OAuth or API key), `GITHUB_TOKEN`.
 
+### 3.10 Dashboard Generator (`scripts/generate-dashboard.ts`) (FR-33)
+
+- **Purpose:** Generate self-contained HTML dashboard summarizing pipeline run
+  results. Reads `state.json` + per-node `logs/*.json`. Produces `index.html`
+  in run directory with all CSS inlined (no CDN deps).
+- **Functions:**
+  - `readRunState(runDir)` — parse `state.json` → `RunState`
+  - `readNodeLog(runDir, nodeId)` — parse `logs/<nodeId>.json` →
+    `ClaudeCliOutput`
+  - `renderCard(nodeId, state, log)` — HTML card: status badge, timing, cost,
+    result summary via `<details><summary>` (first 3 lines preview, full text
+    in details body). Single-line results render without `<details>` wrapper.
+  - `renderHtml(runDir, state, logs)` — full page: run metadata header,
+    phase-grouped card grid, inlined CSS
+  - `escHtml(str)` — escape `<>&"'` for XSS-safe HTML embedding
+- **Interfaces:**
+  - CLI: `deno task dashboard --run-dir <path>`
+  - Hook: `after:` on `optimize` node (`|| true` suffix for non-fatal)
+- **Deps:** `engine/types.ts` (imports `RunState`, `ClaudeCliOutput` types
+  for parsing). No runtime engine dependency — reads JSON files directly.
+
 ## 4. Data
 
 - **Entities:**
@@ -429,7 +455,7 @@ graph LR
     named phase groups with member stage IDs (e.g., `plan: [specification,
     design, decision]`). Engine treats `phases` as opaque config data.
     Node IDs use activity-based naming (FR-33): `specification`, `design`,
-    `decision`, `implementation`, `build`, `verify`, `review`, `optimize`
+    `decision`, `implementation`, `build`, `verify`, `tech-lead-review`, `optimize`
   - CommitResult: `{ commitHash, filesStaged: string[], message: string }`
     (enriched for verbose output)
   - ValidationRule: `{ type: "file_exists"|"file_not_empty"|"contains_section"|
@@ -442,6 +468,12 @@ graph LR
     a key in `nodes`. Body node ordering derived from `inputs` declarations
     via topo-sort (>1 entry requires at least one `inputs` reference to
     prevent disconnected graph with arbitrary order).
+  - NodeState: `{ ..., cost_usd?: number }` — per-node cost from
+    `ClaudeCliOutput.total_cost_usd`, set at completion via
+    `markNodeCompleted()` optional param (FR-32)
+  - RunState: `{ ..., total_cost_usd?: number }` — sum of all
+    `nodes[*].cost_usd`, recomputed by `updateRunCost()` on each node
+    completion (FR-32)
   - NodeConfig: `{ ..., run_on?: "always"|"success"|"failure", phase?: string,
     env?: Record<string, string>, model?: string }` — `run_on` for conditional
     post-pipeline execution; `phase` for artifact directory grouping; `env` for
@@ -557,7 +589,7 @@ graph LR
     - `plan`: specification, design, decision
     - `impl`: implementation (body nodes `build`, `verify` defined inline via
       `nodes` sub-object)
-    - `report`: optimize, review
+    - `report`: optimize, tech-lead-review
   - **Rollback Before Post-Pipeline Nodes**: When `pipelineSuccess === false`,
     engine calls `rollbackUncommitted()` before executing post-pipeline nodes.
     Reverts staged/unstaged modifications (`git checkout -- .` +
@@ -643,4 +675,5 @@ graph LR
 
 - **Simplified:** Pipeline runs sequentially (no parallel stages in v1).
 - **Deferred:** Multi-repo support. Parallel pipelines for multiple issues.
-  Issue size/complexity limits. Cost tracking and budget limits.
+  Issue size/complexity limits. Cost budget limits and alerts (per-node cost
+  aggregation implemented in FR-32; budget enforcement deferred).

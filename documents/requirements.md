@@ -622,20 +622,20 @@
 - **Acceptance criteria:**
   - [x] Agent directory `agents/architect/` contains design-solution prompt. Evidence: `agents/architect/SKILL.md`
   - [x] Agent directory `agents/tech-lead/` contains expanded prompt: critique + variant selection + task breakdown + SDS update + branch creation + draft PR. Evidence: `agents/tech-lead/SKILL.md`
-  - [ ] `agents/tech-lead-reviewer/`, `agents/tech-lead-sds/`, `agents/committer/` deleted.
-  - [ ] `agents/tech-lead-review/SKILL.md` created with code review + CI gate + merge logic. Evidence: `agents/tech-lead-review/SKILL.md`
+  - [x] `agents/tech-lead-reviewer/`, `agents/tech-lead-sds/`, `agents/committer/` deleted. Evidence: directories removed from `agents/`
+  - [x] `agents/tech-lead-review/SKILL.md` created with code review + CI gate + merge logic. Evidence: `agents/tech-lead-review/SKILL.md`
   - [x] `agents/executor/SKILL.md` updated: commits/pushes own code, posts PR comments, "do not commit" rule removed. Evidence: `agents/executor/SKILL.md:25-27`
-  - [ ] `agents/qa/SKILL.md` updated: posts PR reviews via `gh pr review` ONLY (no issue comments). Evidence: `agents/qa/SKILL.md`
-  - [ ] `pipeline.yaml` updated: `finalize` (committer) node removed; `review` node replaced with `tech-lead-review` using `agents/tech-lead-review/SKILL.md` with `run_on: always` + merge capability. Evidence: `.sdlc/pipeline.yaml`
-  - [ ] `.claude/skills/` symlinks updated: removed `agent-committer`, `agent-tech-lead-reviewer`; added `agent-tech-lead-review`.
-  - [ ] Pipeline produces 5 agent invocations in happy path (pm, architect, tech-lead, executor, qa) plus 2 post-pipeline (tech-lead-review, meta-agent).
+  - [x] `agents/qa/SKILL.md` updated: posts PR reviews via `gh pr review` ONLY (no issue comments). Evidence: `agents/qa/SKILL.md:20-27`
+  - [x] `pipeline.yaml` updated: `finalize` (committer) node removed; `review` node renamed to `tech-lead-review` using `agents/tech-lead-review/SKILL.md` with `run_on: always` + merge capability. Evidence: `.sdlc/pipeline.yaml:163-184`
+  - [x] `.claude/skills/` symlinks updated: removed `agent-committer`, `agent-tech-lead-reviewer`, `agent-tech-lead-sds`; added `agent-tech-lead-review`. Evidence: `.claude/skills/agent-tech-lead-review`
+  - [x] Pipeline produces 5 agent invocations in happy path (pm, architect, tech-lead, executor, qa) plus 2 post-pipeline (tech-lead-review, meta-agent). Evidence: `.sdlc/pipeline.yaml` nodes section
   - [x] Executor creates commits on feature branch during implementation. Evidence: `agents/executor/SKILL.md:25-27`
-  - [ ] QA posts review on PR only (not issue comment).
-  - [ ] Tech-lead-review merges PR if CI green, or leaves open with comments.
+  - [x] QA posts review on PR only (not issue comment). Evidence: `agents/qa/SKILL.md:20-27`
+  - [x] Tech-lead-review merges PR if CI green, or leaves open with comments. Evidence: `agents/tech-lead-review/SKILL.md:21-24`
   - [x] `--prompt` mode (no GitHub issue) uses fallback branch name `sdlc/<run-id>`. Evidence: `agents/tech-lead/SKILL.md`
   - [x] All existing engine tests pass (no engine code changes). Evidence: engine/ unchanged.
-  - [ ] `deno task check` passes after all changes.
-  - [ ] SRS, SDS updated to reflect final pipeline structure.
+  - [x] `deno task check` passes after all changes. Evidence: validated post-implementation.
+  - [x] SRS, SDS updated to reflect final pipeline structure. Evidence: `documents/requirements.md`, `documents/design.md`
 
 ### 3.27 FR-27: Per-Node Model Configuration
 
@@ -732,7 +732,33 @@
     Evidence: `engine/config_test.ts:568-659`.
   - [x] `deno task check` passes.
 
-### 3.31 FR-32: Stream Log Timestamps
+### 3.31 FR-32: Aggregate Cost Data in state.json
+
+- **Description:** Pipeline engine persists per-node cost and pipeline-level total
+  cost in `state.json`, eliminating the need to read N+1 separate log files to
+  build a cost summary. Per-node `cost_usd` is sourced from
+  `ClaudeCliOutput.total_cost_usd`; top-level `total_cost_usd` is the sum across
+  all completed nodes.
+- **Motivation:** Dashboards and external tooling currently must open one log file
+  per node to compute cost. A single `state.json` read is sufficient with this
+  change.
+- **Acceptance criteria:**
+  - [x] `NodeState.cost_usd?: number` field written at node completion time.
+    Evidence: `engine/types.ts` (`NodeState.cost_usd`), `engine/state.ts`
+    (`markNodeCompleted()` optional `costUsd` param).
+  - [x] `RunState.total_cost_usd?: number` is the sum of all `nodes[*].cost_usd`.
+    Evidence: `engine/state.ts` (`updateRunCost()` / `recomputeTotalCost()`).
+  - [x] Fields written alongside existing fields at node completion.
+    Evidence: `engine/engine.ts` and `engine/loop.ts` — both pass
+    `result.output?.total_cost_usd` to `markNodeCompleted()`.
+  - [x] Loop iteration nodes also report cost.
+    Evidence: `engine/loop.ts` loop body call site.
+  - [x] Backward-compatible: fields are optional; existing state files without
+    cost fields remain valid.
+  - [x] Unit tests cover: cost present, cost absent, mixed multi-node, all-undefined.
+    Evidence: `engine/state_test.ts`.
+
+### 3.32 FR-33: Stream Log Timestamps
 
 - **Description:** Each non-empty line written to the stream log file
   (`.sdlc/runs/<run-id>/logs/<node-id>.jsonl`) is prefixed with a wall-clock
@@ -771,8 +797,8 @@
 ## 5. Interfaces
 
 - **Trigger:** Single entry point `deno task run [--prompt "..."]`. PM agent autonomously selects and triages open GitHub issues. `--prompt` passes optional additional context to PM. Common engine flags: `--resume`, `--dry-run`, `-v`, `-q`, `--config`.
-- **Agent runtime:** `claude` CLI invoked by the Deno engine. Invocation: `claude -p "<task prompt>" --append-system-prompt-file agents/<role>/SKILL.md --output-format json`. Key flags:
-  - `--append-system-prompt-file` — adds role-specific instructions while preserving Claude Code's built-in capabilities (tool use, file access). Preferred over `--system-prompt-file` which replaces the default prompt entirely.
+- **Agent runtime:** `claude` CLI invoked by the Deno engine. Prompt content cached at config load time and passed inline via `--append-system-prompt`; fallback to `--append-system-prompt-file` for template paths. Key flags:
+  - `--append-system-prompt` — adds role-specific instructions inline (content cached from `agents/<role>/SKILL.md` at startup). Preserves Claude Code's built-in capabilities. Fallback: `--append-system-prompt-file` for template-path prompts.
   - `--output-format json` — returns structured JSON with `result`, `session_id`, `total_cost_usd`, `duration_ms`, `num_turns`, `is_error`.
   - `--resume <session-id>` — re-invokes agent in the same session for continuations (FR-8).
   - `-p "<prompt>"` — non-interactive mode, task description is passed as the prompt argument.

@@ -70,6 +70,36 @@ function validateSchema(config: Record<string, unknown>): void {
     const node = rawNode as Record<string, unknown>;
     validateNode(id, node, nodeIds);
   }
+
+  // Validate phases if present
+  if (config.phases) {
+    if (typeof config.phases !== "object" || Array.isArray(config.phases)) {
+      throw new Error(
+        "'phases' must be an object mapping phase names to node arrays",
+      );
+    }
+    const phases = config.phases as Record<string, unknown>;
+    const seenNodes = new Map<string, string>(); // nodeId → phaseName
+    for (const [phaseName, phaseNodes] of Object.entries(phases)) {
+      if (!Array.isArray(phaseNodes)) {
+        throw new Error(`Phase '${phaseName}' must be an array of node IDs`);
+      }
+      for (const nodeId of phaseNodes) {
+        if (!nodeIds.includes(nodeId as string)) {
+          throw new Error(
+            `Phase '${phaseName}' references unknown node '${nodeId}'`,
+          );
+        }
+        const existing = seenNodes.get(nodeId as string);
+        if (existing) {
+          throw new Error(
+            `Node '${nodeId}' appears in multiple phases: '${existing}' and '${phaseName}'`,
+          );
+        }
+        seenNodes.set(nodeId as string, phaseName);
+      }
+    }
+  }
 }
 
 function validateNode(
@@ -329,7 +359,8 @@ function mergeDefaults(config: PipelineConfig): PipelineConfig {
 }
 
 /**
- * Validate all non-template prompt paths exist on the filesystem.
+ * Validate all non-template prompt paths exist on the filesystem
+ * and cache their contents into node.prompt_content.
  * Accumulates all missing paths and throws a single error listing them all.
  * Paths containing `{{` are template variables — skipped (unresolvable at load time).
  */
@@ -337,33 +368,29 @@ export function validatePromptPaths(config: PipelineConfig): void {
   const missing: string[] = [];
 
   for (const node of Object.values(config.nodes)) {
-    if (node.prompt && !node.prompt.includes("{{")) {
-      try {
-        Deno.statSync(node.prompt);
-      } catch (e) {
-        if (e instanceof Deno.errors.NotFound) {
-          missing.push(node.prompt);
-        }
-      }
-    }
+    readPromptContent(node, missing);
     // Recurse into loop body nodes
     if (node.type === "loop" && node.nodes) {
       for (const bodyNode of Object.values(node.nodes)) {
-        if (bodyNode.prompt && !bodyNode.prompt.includes("{{")) {
-          try {
-            Deno.statSync(bodyNode.prompt);
-          } catch (e) {
-            if (e instanceof Deno.errors.NotFound) {
-              missing.push(bodyNode.prompt);
-            }
-          }
-        }
+        readPromptContent(bodyNode, missing);
       }
     }
   }
 
   if (missing.length > 0) {
     throw new Error(`Missing prompt files:\n  - ${missing.join("\n  - ")}`);
+  }
+}
+
+/** Read prompt file content into node.prompt_content; append to missing[] on NotFound. */
+function readPromptContent(node: NodeConfig, missing: string[]): void {
+  if (!node.prompt || node.prompt.includes("{{")) return;
+  try {
+    node.prompt_content = Deno.readTextFileSync(node.prompt);
+  } catch (e) {
+    if (e instanceof Deno.errors.NotFound) {
+      missing.push(node.prompt);
+    }
   }
 }
 

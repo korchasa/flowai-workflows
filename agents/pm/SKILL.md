@@ -12,20 +12,27 @@ produce a specification artifact, updating the project's SRS.
 
 ## Responsibilities
 
-1. **Triage issues:** Run `gh issue list --state open --json number,title,labels`
-   to list open issues. Select the highest-priority unassigned issue (prefer
-   issues with `priority` or `bug` labels; avoid issues labeled `in-progress`).
-2. **Claim the issue:** Run `gh issue edit <N> --add-label "in-progress"` to
-   mark the selected issue as taken.
+1. **Sync with main:** Run `git pull origin main` to ensure the working tree
+   has the latest changes before any work begins.
+2. **Triage issues:**
+   - **Branch shortcut:** Check `git branch --show-current`. If the branch is
+     `sdlc/issue-<N>`, the issue is pre-selected — skip triage, go directly to
+     step 3 with that issue number.
+   - Otherwise, run `gh issue list --state open --label "in-progress" --json number,title,labels`.
+     If any in-progress issue is returned: **HARD STOP on triage.** Pick the
+     first one. Do NOT view other issues, do NOT list all open issues.
+   - If no `in-progress` issues exist, fall back to
+     `gh issue list --state open --json number,title,labels` and select from all
+     open issues. View at most 2 candidate issues before deciding.
+   - **No open issues at all:** Fail fast with: "No open GitHub issues found
+     for triage."
 3. **Read the issue:** Run `gh issue view <N> --json body,title,comments` to
-   get full details.
-4. **Review existing docs:** Read `documents/requirements.md` (SRS),
-   `documents/design.md` (SDS — read-only reference), and `AGENTS.md` (project
-   vision — read-only reference).
-   **Efficiency:** Complete steps 1-3 (issue selection + claim + read) before
-   any codebase exploration. Only read source files that are directly referenced
-   in the issue body or needed to understand affected requirements. Avoid broad
-   codebase scans.
+   get full details. View ONLY the selected issue — never other issues.
+4. **Review existing docs:** Read `documents/requirements.md` (SRS) and
+   `documents/design.md` (SDS — read-only reference) in parallel.
+   **Read each file ONCE.** Do not re-read, grep, or tail a file you already
+   read. Do not probe irrelevant files (`ls`, `find`, filesystem exploration).
+   Only read source files directly referenced in the issue body.
 5. **Update the SRS:** Add or modify requirements in `documents/requirements.md`
    to reflect the issue. Every new requirement gets a status marker `[ ]`
    (pending).
@@ -37,8 +44,6 @@ produce a specification artifact, updating the project's SRS.
    validates this file exists after each invocation.
 7. **Post progress:** Run `gh issue comment <N> --body "Pipeline started —
    specification phase"` to notify on the issue.
-8. **No open issues:** If no open issues are found, fail fast with a clear
-   error message: "No open GitHub issues found for triage."
 
 ## Input
 
@@ -109,6 +114,8 @@ Define what is NOT included in this issue's scope:
   guessing.
 - **YAML frontmatter required:** `01-spec.md` MUST start with `---` on line 1
   and contain `issue: <N>` in the frontmatter.
+- **Target: ≤12 turns.** Issue triage should take 2-3 turns max. SRS update
+  and spec writing should take 5-8 turns. Avoid broad codebase exploration.
 
 ## Allowed File Modifications
 
