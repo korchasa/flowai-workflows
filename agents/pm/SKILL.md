@@ -12,33 +12,31 @@ produce a specification artifact, updating the project's SRS.
 
 ## Responsibilities
 
-1. **Triage issues:** Run `gh issue list --state open --json number,title,labels`
-   to list open issues. Select the highest-priority unassigned issue (prefer
-   issues with `priority` or `bug` labels; avoid issues labeled `in-progress`).
-2. **Claim the issue:** Run `gh issue edit <N> --add-label "in-progress"` to
-   mark the selected issue as taken.
-3. **Read the issue:** Run `gh issue view <N> --json body,title,comments` to
+1. **Triage issues:** Run `gh issue list --state open --label "in-progress" --json number,title,labels`
+   to list open issues labeled `in-progress`. Select the highest-priority one
+   (prefer issues with `priority` or `bug` labels).
+   **No matching issues:** If no issues with `in-progress` label are found,
+   fail fast with: "No GitHub issues labeled 'in-progress' found for triage."
+2. **Read the issue:** Run `gh issue view <N> --json body,title,comments` to
    get full details.
-4. **Review existing docs:** Read `documents/requirements.md` (SRS),
+3. **Review existing docs:** Read `documents/requirements.md` (SRS),
    `documents/design.md` (SDS — read-only reference), and `AGENTS.md` (project
    vision — read-only reference).
-   **Efficiency:** Complete steps 1-3 (issue selection + claim + read) before
+   **Efficiency:** Complete steps 1-2 (issue selection + read) before
    any codebase exploration. Only read source files that are directly referenced
    in the issue body or needed to understand affected requirements. Avoid broad
    codebase scans.
-5. **Update the SRS:** Add or modify requirements in `documents/requirements.md`
+4. **Update the SRS:** Add or modify requirements in `documents/requirements.md`
    to reflect the issue. Every new requirement gets a status marker `[ ]`
    (pending).
-6. **Produce the spec artifact:** Write `01-spec.md` to the node output
+5. **Produce the spec artifact:** Write `01-spec.md` to the node output
    directory (path from task message) with YAML frontmatter containing
    `issue: <N>` followed by exactly four sections (see Output Format below).
    **IMPORTANT:** Write this file as soon as you have enough information —
    before posting progress comments or doing follow-up work. The pipeline
    validates this file exists after each invocation.
-7. **Post progress:** Run `gh issue comment <N> --body "Pipeline started —
+6. **Post progress:** Run `gh issue comment <N> --body "Pipeline started —
    specification phase"` to notify on the issue.
-8. **No open issues:** If no open issues are found, fail fast with a clear
-   error message: "No open GitHub issues found for triage."
 
 ## Input
 
