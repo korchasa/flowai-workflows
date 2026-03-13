@@ -132,6 +132,8 @@ export interface NodeState {
   continuations?: number;
   session_id?: string; // claude CLI session ID
   question_json?: string; // serialized HitlQuestion; set when status=waiting
+  /** Per-node cost from ClaudeCliOutput.total_cost_usd (FR-32). */
+  cost_usd?: number;
 }
 
 /** Persisted run state (state.json). */
@@ -144,6 +146,8 @@ export interface RunState {
   args: Record<string, string>;
   env: Record<string, string>;
   nodes: Record<string, NodeState>;
+  /** Sum of all nodes[*].cost_usd, recomputed on each node completion (FR-32). */
+  total_cost_usd?: number;
 }
 
 // --- Template Context ---
