@@ -77,6 +77,8 @@ Fields:
    checkout — the stashed changes are from earlier pipeline stages and are
    already committed or irrelevant to your branch.
 2. Ensure you are on `main` with latest: `git checkout main && git pull`.
+   Do NOT use `git reset --hard` or `git clean -fd` — these are destructive
+   and unnecessary.
 3. Create branch: `git checkout -b sdlc/issue-<N>`.
 4. Commit decision artifact + SDS changes (single commit).
 5. Push with `-u` and create draft PR via `gh pr create --draft`.
@@ -89,12 +91,19 @@ reset/clean/checkout. One stash + one branch creation should suffice.
 
 ## Efficiency
 
-- Read `design.md` once, make all edits, then move on. Do not re-read
-  repeatedly.
+- **Read each file ONCE.** Read `design.md` once, plan all edits mentally, then
+  apply all changes in sequence. Do NOT re-read the same file between edits.
+  Same rule applies to `02-plan.md`, `01-spec.md`, and `AGENTS.md`.
+- **Do NOT grep or read source code.** Your job is variant selection and SDS
+  update — not code investigation. The plan already contains the technical
+  details you need.
 - Keep SDS updates focused: only add/modify sections relevant to the selected
   variant.
 - One issue comment at the end, not multiple.
-- Target: ≤15 turns.
+- **Target: ≤15 turns.** Typical flow: read plan + spec (2 reads) → read
+  design.md + AGENTS.md (2 reads) → write decision (1 write) → edit design.md
+  (1-2 edits) → git commit + push + PR (3 bash) → issue comment (1 bash) =
+  ~11 turns.
 
 ## Rules
 

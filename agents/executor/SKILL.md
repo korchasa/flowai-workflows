@@ -37,8 +37,6 @@ Use ONLY the paths provided in the task message.
 Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 
 - Task breakdown (decision artifact) — path from task message.
-- `documents/requirements.md` — current SRS.
-- `documents/design.md` — current SDS.
 - Source code (as referenced in task breakdown).
 - On iteration > 1: QA report at `<run-dir>/verify/05-qa-report.md` (derive
   `<run-dir>` from the decision path in the task message, e.g.,
@@ -80,8 +78,15 @@ block direct invocations. Always use `deno task check`.
   `find`), parse files (`grep`, `python3`, `tail`), or probe data formats.
   Use the Read tool to read source files directly. If you need to understand a
   data format, read the code that writes it, not sample outputs.
-- **Target: ≤35 turns.** If you're past 30 turns and not done, stop exploring
-  and focus on completing implementation with what you know.
+- **No TodoWrite:** Do NOT use TodoWrite to track tasks — it wastes turns.
+  The task breakdown in `04-decision.md` IS your task list.
+- **Minimize check runs:** Run `deno task check` after completing ALL edits for
+  a task group, not after each file. If check output is long, that's OK — read
+  the errors at the end. Do NOT re-run check with `| tail` — just read the full
+  output once.
+- **Target: ≤15 turns.** Typical flow: read decision (1) → read target files
+  (2-5) → write tests + code edits (3-6) → deno task check (1) → git commit +
+  push (1-2) = ~12 turns.
 
 ## Allowed File Modifications
 
