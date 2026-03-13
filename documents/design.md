@@ -153,7 +153,7 @@ graph LR
   - `meta-agent` — prompt optimization, failure analysis.
 - **Removed agents (FR-26):** `tech-lead-reviewer` (absorbed into tech-lead),
   `tech-lead-sds` (absorbed into tech-lead), `committer` (executor owns
-  commits).
+  commits), `code-reviewer` (replaced by tech-lead-review).
 - **SKILL.md frontmatter template:**
   ```yaml
   ---
@@ -180,8 +180,8 @@ graph LR
 - **Agents exposed:** `agent-pm`, `agent-architect`, `agent-tech-lead`,
   `agent-executor`, `agent-qa`, `agent-tech-lead-review`, `agent-meta-agent`.
 - **Removed (FR-26):** `agent-tech-lead-reviewer`, `agent-tech-lead-sds`,
-  `agent-committer` (agents deleted), `agent-presenter` dangling symlink
-  cleaned.
+  `agent-committer`, `agent-code-reviewer` (agents deleted),
+  `agent-presenter` dangling symlink cleaned.
 - **Added (FR-26):** `agent-tech-lead-review`.
 - **Interfaces:** Claude Code skill loader reads symlink target directory,
   discovers `SKILL.md` frontmatter, registers slash command.
