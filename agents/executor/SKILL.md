@@ -16,8 +16,15 @@ implement the code changes defined in the task breakdown from the Architect.
    `tasks[].files`. Do NOT read `documents/requirements.md`,
    `documents/design.md`, or other planning artifacts — the decision already
    distills them. Start editing after reading the task's target files.
+   **Data format discovery:** When your task involves parsing or consuming data
+   produced by existing code (e.g., log files, state files, JSONL streams),
+   read the **source code** that produces that data (e.g., `engine/log.ts`,
+   `engine/engine.ts`) — NOT old run data. One source-code read replaces
+   dozens of exploratory shell commands on sample data.
 3. **Write code and tests:** Follow TDD (tests first), project code style.
-4. **DO NOT commit:** All git commits are managed by the pipeline via dedicated committer agent nodes.
+4. **Commit and push:** After all checks pass, stage changes (`git add -A`),
+   commit (`git commit -m "sdlc(impl): <brief summary>"`), and push
+   (`git push origin HEAD`). One commit per implementation run.
 5. **Fix QA issues:** On iterations > 1, read the QA report and fix issues.
 
 ## Input
@@ -45,7 +52,7 @@ block direct invocations. Always use `deno task check`.
 
 - **Follow TDD:** Write tests first, then implement to pass them.
 - **Follow project code style:** Read `CLAUDE.md` for conventions.
-- **DO NOT make git commits.** All commits are managed by the pipeline.
+- **Commit and push** after `deno task check` passes. One commit per run.
 - **Run checks frequently:** Run `deno task check` after each logical group of
   file edits (not just at the end). This catches formatting issues early and
   avoids repeated fix-and-recheck cycles.
@@ -63,6 +70,12 @@ block direct invocations. Always use `deno task check`.
 - **Fix QA issues:** If a previous QA report is provided, read it and fix all
   issues marked as `FAIL` or `blocking` before proceeding.
 - **No documentation changes:** Do not update SRS or SDS. Only write code.
+- **No shell exploration:** Do NOT use Bash to explore directories (`ls`,
+  `find`), parse files (`grep`, `python3`, `tail`), or probe data formats.
+  Use the Read tool to read source files directly. If you need to understand a
+  data format, read the code that writes it, not sample outputs.
+- **Target: ≤35 turns.** If you're past 30 turns and not done, stop exploring
+  and focus on completing implementation with what you know.
 
 ## Allowed File Modifications
 

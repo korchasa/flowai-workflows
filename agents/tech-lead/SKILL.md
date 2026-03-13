@@ -75,6 +75,8 @@ Fields:
 2. Create branch: `sdlc/issue-<N>`.
 3. Commit decision artifact + SDS changes (single commit).
 4. Push with `-u` and create draft PR via `gh pr create --draft`.
+   PR body MUST include `Closes #<N>` (issue number from spec) on its own line
+   so GitHub auto-closes the issue when the PR is merged.
 
 ## Efficiency
 

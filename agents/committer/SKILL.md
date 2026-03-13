@@ -44,8 +44,10 @@ All diff files must be mentioned. No hallucinated files. Compressed style.
 - Read issue number from `{{input.pm}}/01-spec.md` YAML frontmatter (`issue:`
   field).
 - Push branch: `git push -u origin HEAD`
-- Create PR: `gh pr create --title "<title>" --body "<06-summary.md content>"`
-  targeting `main`. Title: concise, under 70 chars.
+- Create PR: `gh pr create --title "<title>" --body "<body>"` targeting `main`.
+  Title: concise, under 70 chars.
+  Body MUST end with `Closes #<N>` (issue number from Step 3) on its own line
+  so GitHub auto-closes the issue on merge. Body content = 06-summary.md.
 - If PR already exists, skip creation.
 
 ## Step 4: Post Issue Comment
