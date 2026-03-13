@@ -367,7 +367,7 @@
 - **Description:** Project directory layout must reflect application structure, not be buried under a single `.sdlc/` prefix. Engine code, agent prompts, pipeline config, and run artifacts should be organized at the top level as distinct concerns.
 - **Motivation:** Current `.sdlc/` prefix conflates engine source code, configuration, runtime data, and legacy scripts. This hinders navigation, IDE support, and standard tooling (test runners, linters).
 - **Acceptance criteria:**
-  - [ ] Engine source code lives under a standard `src/` or dedicated top-level directory (not `engine/`).
+  - [x] Engine source code lives under a standard `src/` or dedicated top-level directory (not `.sdlc/engine/`). Evidence: `engine/` (top-level directory, 30 files moved via `git mv .sdlc/engine/ engine/`)
   - [ ] Agent prompts in a top-level `agents/` directory (not `.sdlc/agents/`).
   - [ ] Pipeline config (`pipeline.yaml`) at project root or in a config directory.
   - [ ] Run artifacts in a gitignored data directory (e.g., `runs/` or `.sdlc/runs/`); `.gitignore` updated.
