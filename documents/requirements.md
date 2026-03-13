@@ -386,8 +386,8 @@
   - [x] `-v` shows validation rule execution: which rules ran, pass/fail per rule, failure details. Evidence: `engine/output.ts:126-137` (`verboseValidation()`), `engine/agent.ts:98-104`
   - [x] `-v` shows continuation context: why continuation was triggered, what error text is appended. Evidence: `engine/output.ts:140-151` (`verboseContinuation()`), `engine/agent.ts:126-135`
   - [x] `-v` streams agent stdout in real-time (not buffered until completion). Evidence: `engine/output.ts` (`nodeOutput()` method — pre-existing)
-  - [x] `-v` shows safety check results: which files were diffed, any violations found. Evidence: `engine/output.ts:154-172` (`verboseSafety()`), `engine/engine.ts:326-330`
-  - [x] `-v` shows commit details: files staged, commit message, branch. Evidence: `engine/output.ts:175-188` (`verboseCommit()`), `engine/engine.ts:544-549`
+  - ~~`-v` shows safety check results~~ — `verboseSafety()` removed (FR-56: engine domain-agnostic refactor; safety output now via agent stdout).
+  - ~~`-v` shows commit details~~ — `verboseCommit()` removed (FR-56: engine no longer commits; git operations delegated to agent nodes).
   - [x] Default mode (no `-v`) remains concise: node start/complete/fail + summary. Evidence: `engine/output_test.ts:175-197` (all 6 verbose methods produce zero output in default mode)
 
 ### 3.19 FR-19: Agents as Skills
@@ -428,8 +428,8 @@
 - **Acceptance criteria:**
   - [x] Engine detects `AskUserQuestion` in `permission_denials` of Claude CLI JSON output after agent node completes. Evidence: `engine/hitl.ts:61-93` (`detectHitlRequest()`), `engine/engine.ts:316-319` (call in `executeAgentNode`)
   - [x] Engine saves `session_id`, question JSON, and node status `waiting` to `state.json`. Evidence: `engine/state.ts:93-103` (`markNodeWaiting()`), `engine/engine.ts:324-325` (call + saveState), `engine/types.ts:104` (`question_json` field)
-  - [x] Engine invokes `ask_script` (path from `pipeline.yaml` `defaults.hitl`) with args: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`, `--question-json`. Evidence: `engine/hitl.ts:111-125` (`buildScriptArgs("ask")`), `engine/hitl.ts:127-134` (ask invocation)
-  - [x] Engine enters poll loop calling `check_script` with args: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`, `--bot-login`. Exit 0 = reply in stdout; exit 1 = no reply yet. Evidence: `engine/hitl.ts:137-175` (poll loop), `engine/hitl_test.ts:184-214` (poll test)
+  - [x] Engine invokes `ask_script` (path from `pipeline.yaml` `defaults.hitl`) with args: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`, `--question-json`. Evidence: `engine/hitl.ts:111-125` (`buildScriptArgs("ask")`), `engine/hitl.ts:127-134` (ask invocation)
+  - [x] Engine enters poll loop calling `check_script` with args: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`, `--exclude-login`. Exit 0 = reply in stdout; exit 1 = no reply yet. Evidence: `engine/hitl.ts:137-175` (poll loop), `engine/hitl_test.ts:184-214` (poll test)
   - [x] On reply: engine resumes agent via `claude --resume <session_id> -p "<reply>"`. Evidence: `engine/hitl.ts:158-172` (claudeRun with resumeSessionId)
   - [x] Configurable `poll_interval` (default 60s) and `timeout` (default 7200s) per pipeline. Evidence: `engine/types.ts:170-175` (`HitlConfig`), `.sdlc/pipeline.yaml:16-20` (defaults.hitl)
   - [x] On timeout: node fails, Meta-Agent triggered. Evidence: `engine/hitl.ts:183-188` (timeout return), `engine/engine.ts:342-347` (markNodeFailed on HITL failure), `engine/hitl_test.ts:216-230` (timeout test)
@@ -561,7 +561,7 @@
   - [ ] Committer nodes (`commit-present`, `commit-meta`) do NOT run when pipeline fails (configured as `run_on: success`).
   - [ ] Meta-agent runs on every outcome (`run_on: always`).
   - [ ] `pipeline.yaml` migrated from `run_always: true` to appropriate `run_on` values.
-  - [ ] Engine remains domain-agnostic — no git/PR/GitHub logic in engine code.
+  - [x] Engine remains domain-agnostic — no git/PR/GitHub logic in engine code. Evidence: `engine/git.ts` deleted; `engine/engine.ts` uses generic `on_failure_script` hook; `engine/mod.ts` git re-exports removed.
   - [ ] All existing engine tests pass; new tests cover `run_on` filtering logic.
   - [ ] `deno task check` passes.
 
@@ -683,7 +683,7 @@
   - Pipeline config (`pipeline.yaml`), agent prompts (`agents/`), and run artifacts (`runs/`) are domain-specific — must not be nested under the engine directory.
   - `deno.json` tasks and imports reference the new layout consistently.
 - **Acceptance criteria:**
-  - [ ] Engine source directory contains only domain-agnostic DAG executor code.
+  - [x] Engine source directory contains only domain-agnostic DAG executor code. Evidence: `engine/git.ts` and `engine/git_test.ts` deleted; `engine/mod.ts` git exports removed; `engine/types.ts` `HitlConfig` fields renamed to domain-neutral names (`artifact_source`, `exclude_login`).
   - [ ] No `pipeline.yaml`, agent skill files, or run artifacts reside inside the engine directory.
   - [ ] `deno task run` and `deno task test:engine` reference the new engine path.
   - [ ] `deno task check` passes after restructure.
@@ -784,6 +784,19 @@
     Evidence: `engine/agent.ts:609` (identity branch in `stampLines` map),
     `engine/agent_test.ts:426-442` (empty-line test).
   - [x] `deno task check` passes.
+
+### 3.33 FR-34: Generic Pipeline Failure Hook (`on_failure_script`)
+
+- **Description:** Engine supports a configurable `on_failure_script` field in `PipelineDefaults` (YAML: `defaults.on_failure_script`). When the pipeline fails, the engine executes the specified script via `Deno.Command`. Replaces the former hard-wired `rollbackUncommitted()` git call, which violated the domain-agnostic invariant (FR-29).
+- **Rationale:** Domain-specific failure recovery (e.g., git rollback) belongs in pipeline scripts, not engine code. The engine provides a generic hook; the pipeline wires it to the appropriate script.
+- **Acceptance criteria:**
+  - [ ] `PipelineDefaults` in `engine/types.ts` includes `on_failure_script?: string`.
+  - [ ] Engine executes `on_failure_script` via `Deno.Command` on pipeline failure (if configured).
+  - [ ] Engine does NOT import or call any git functions on failure.
+  - [ ] `.sdlc/pipeline.yaml` sets `on_failure_script: .sdlc/scripts/rollback.sh`.
+  - [ ] If script path not found: engine logs warning and continues (no hard failure).
+  - [ ] Unit test covers `on_failure_script` execution path.
+  - [ ] `deno task check` passes.
 
 ## 4. Non-functional requirements
 
