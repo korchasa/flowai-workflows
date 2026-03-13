@@ -203,7 +203,10 @@ graph LR
     `LoopNodeConfig.nodes` (inline body node definitions),
     `LoopResult.bodyResults`, `ErrorCategory` (structured failure enum),
     `NodeState.error_category`, `NodeState.cost_usd` (FR-32 per-node cost),
-    `RunState.total_cost_usd` (FR-32 aggregated run cost))
+    `RunState.total_cost_usd` (FR-32 aggregated run cost),
+    `PipelineDefaults.on_failure_script` (FR-34 configurable failure hook),
+    `HitlConfig.artifact_source` (renamed from `issue_source`),
+    `HitlConfig.exclude_login` (renamed from `bot_login`))
   - `template.ts` — `{{var}}` interpolation for prompts/paths
   - `config.ts` — YAML parsing, schema validation, defaults merge,
     `run_on` normalization. `validateNode()`: if `run_on` present, must be
@@ -259,8 +262,9 @@ graph LR
   - `hitl.ts` — HITL detection (`detectHitlRequest`) and poll loop
     (`runHitlLoop`); injectable `scriptRunner`/`claudeRunner` for testing
   - `human.ts` — terminal user input, abort logic
-  - `git.ts` — commit helper, branch query,
-    `rollbackUncommitted()` for pre-post-pipeline cleanup
+  - ~~`git.ts`~~ — **deleted** (FR-29: domain-specific git code removed from
+    engine). Functions relocated to `.sdlc/scripts/rollback-uncommitted.sh`.
+    Failure handling replaced by configurable `on_failure_script` hook
   - `output.ts` — terminal output manager (quiet/normal/verbose), verbose
     methods for detailed agent-node diagnostics.
     `dryRunPlan(levels, labels, postPipelineNodeIds?, runOnMap?)`: renders
@@ -275,7 +279,7 @@ graph LR
     loop-node log saving via `onNodeComplete` callback,
     phase registry init (`setPhaseRegistry()` before `ensureRunDirs()` in both
     fresh and resume paths), phase subdir creation in `ensureRunDirs()`,
-    pre-post-pipeline rollback + failed-node-id extraction.
+    pre-post-pipeline `on_failure_script` execution + failed-node-id extraction.
     Dry-run path (FR-28): applies `collectPostPipelineNodes()` +
     `sortPostPipelineNodes()` + level filtering before calling
     `dryRunPlan()`, passing filtered levels and post-pipeline node IDs with
@@ -325,13 +329,13 @@ graph LR
 - **Commit strategy:** Engine does not auto-commit. Executor agent owns commits
   (`git add`, `git commit`, `git push` per task). No dedicated committer nodes.
 - **Verbose Output (Direct Injection pattern):**
-  - `output.ts` exposes 6 verbose-guarded methods on `OutputManager`:
+  - `output.ts` exposes 4 verbose-guarded methods on `OutputManager`:
     `verbosePrompt(nodeId, prompt)`,
     `verboseInputs(nodeId, inputs: {path, sizeBytes}[])`,
     `verboseValidation(nodeId, results: {rule, passed, detail?}[])`,
-    `verboseContinuation(nodeId, attempt, max, failures)`,
-    `verboseSafety(nodeId, files, violations)`,
-    `verboseCommit(nodeId, files, message, branch)`.
+    `verboseContinuation(nodeId, attempt, max, failures)`.
+    `verboseSafety()` and `verboseCommit()` removed (engine no longer performs
+    safety checks or commits — FR-29 domain-agnostic cleanup).
     All no-op when `verbosity !== "verbose"`. Output: human-readable stderr with
     section headers. Note: AC #5 (agent stdout streaming) already implemented
     via existing `nodeOutput()` method — no new work needed.
@@ -343,27 +347,18 @@ graph LR
     Forwarded to `runAgent()` calls. Enables prompt/validation/continuation
     verbose for loop body nodes. Safety/commit verbose for loop body nodes:
     deferred (loop body bypasses `executeAgentNode()`).
-  - `git.ts`: No `OutputManager` dependency. Pure data enrichment only.
-    `commitNodeChanges()` runs `git diff --cached --name-only` after
-    `git add -A` to capture staged files. Returns enriched `CommitResult` with
-    `filesStaged: string[]` and `message: string`. `safetyCheckDiff()` returns
-    enriched `SafetyCheckResult` with `checkedFiles: string[]` (from
-    already-computed `changedFiles`). `branch()` helper: returns current branch
-    name via `git branch --show-current`. `rollbackUncommitted()`: executes
-    `git checkout -- .` + `git reset HEAD`. No `git clean` — preserves
-    untracked files (safe rollback). Used by engine pre-step before
-    post-pipeline nodes on pipeline failure. Verbose calls for safety/commit
-    stay in engine.
+  - `git.ts`: **Deleted** (FR-29). All git functions removed from engine.
+    Failure rollback replaced by `on_failure_script` hook (FR-34).
+    `CommitResult` type removed. Safety check and commit verbose methods
+    removed from `output.ts`.
   - `engine.ts`: `executeAgentNode()` resolves input artifact paths+sizes by
     walking `ctx.input` directories via `Deno.stat()`; calls
     `this.output.verboseInputs()` before `runAgent()`. Passes `this.output`
-    and `nodeId` to `runAgent()`. After `safetyCheckDiff()`, calls
-    `this.output.verboseSafety()` with `checkedFiles` and `violations`.
-    `commitIfNeeded()` (called from `executeNode()` after agent returns): after
-    `commitNodeChanges()` returns, calls `this.output.verboseCommit()` with
-    `filesStaged`, `message`, branch. Sequencing: inputs → agent
-    (prompt/validation/continuation verbose) → safety (verbose) → commit
-    (verbose via `commitIfNeeded()`).
+    and `nodeId` to `runAgent()`. Safety check and commit verbose removed
+    (engine no longer performs these — FR-29). `runFailureHook(script?)`:
+    private method (~10 lines), executes `on_failure_script` via
+    `Deno.Command()` on pipeline failure. Swallows errors (failure hook must
+    not crash engine). Replaces hard-wired `rollbackUncommitted()`.
   - All existing callers pass no `output` arg — zero behavioral change.
 - **Deps:** `claude` CLI, `deno`, `git`, `jsr:@std/yaml`.
 
@@ -394,7 +389,7 @@ graph LR
   specific (GitHub), not engine code. Engine invokes via configurable paths.
 - **Scripts:**
   - `hitl-ask.sh` — render question JSON → markdown, post to GitHub issue.
-    - Input: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`,
+    - Input: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`,
       `--question-json`.
     - Extracts issue: `yq '.issue' "$RUN_DIR/$ISSUE_SOURCE"`.
     - Auto-detects repo: `gh repo view --json nameWithOwner`.
@@ -403,8 +398,8 @@ graph LR
     - Posts via `gh issue comment <N> --body "$md"`.
     - Deps: `jq`, `yq`, `gh`.
   - `hitl-check.sh` — poll GitHub issue for human reply after marker.
-    - Input: `--run-dir`, `--issue-source`, `--run-id`, `--node-id`,
-      `--bot-login`.
+    - Input: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`,
+      `--exclude-login`.
     - Extracts issue: `yq '.issue' "$RUN_DIR/$ISSUE_SOURCE"`.
     - Auto-detects repo: `gh repo view --json nameWithOwner`.
     - Fetches comments: `gh api repos/{owner}/{repo}/issues/<N>/comments`.
@@ -456,8 +451,7 @@ graph LR
     design, decision]`). Engine treats `phases` as opaque config data.
     Node IDs use activity-based naming (FR-33): `specification`, `design`,
     `decision`, `implementation`, `build`, `verify`, `tech-lead-review`, `optimize`
-  - CommitResult: `{ commitHash, filesStaged: string[], message: string }`
-    (enriched for verbose output)
+  - ~~CommitResult~~: **Deleted** (FR-29: engine no longer commits)
   - ValidationRule: `{ type: "file_exists"|"file_not_empty"|"contains_section"|
     "custom_script"|"frontmatter_field", path?, field?, allowed?, ... }`
   - LoopResult: `{ ..., bodyResults: AgentResult[] }` — accumulated per-iteration
@@ -571,15 +565,13 @@ graph LR
     when `result.output` exists. Suppressed in quiet mode. Shown in default
     and verbose modes.
   - **Verbose Edge Cases** (behavioral contracts verified by tests):
-    - **Default mode (no `-v`):** All 6 verbose methods produce zero stderr
+    - **Default mode (no `-v`):** All 4 verbose methods produce zero stderr
       output. `OutputManager` constructed with `verbose=false` suppresses all
       verbose calls unconditionally.
     - **Empty input dir:** `resolveInputArtifacts()` returns empty list →
       `verboseInputs()` reports `0 files` without error. No `Deno.stat()` calls.
     - **Missing file stat:** `Deno.stat()` failure on input artifact →
       graceful skip, verbose output includes error detail for affected path.
-    - **Zero staged files at commit:** `commitNodeChanges()` detects no staged
-      files → `verboseCommit()` reports no-op commit. No git commit created.
   - **Phase Registry Init**: In `engine.ts` `run()`, `setPhaseRegistry(config)`
     called before `ensureRunDirs()`. On `--resume`: config re-loaded from
     `state.config_path`, then `setPhaseRegistry()` called (registry not persisted
@@ -590,12 +582,14 @@ graph LR
     - `impl`: implementation (body nodes `build`, `verify` defined inline via
       `nodes` sub-object)
     - `report`: optimize, tech-lead-review
-  - **Rollback Before Post-Pipeline Nodes**: When `pipelineSuccess === false`,
-    engine calls `rollbackUncommitted()` before executing post-pipeline nodes.
-    Reverts staged/unstaged modifications (`git checkout -- .` +
-    `git reset HEAD`). Does NOT `git clean` — preserves untracked files.
-    Extracts failed node ID via `getNodesByStatus(state, "failed")[0]`, writes
-    to `{{run_dir}}/failed-node.txt` for meta-agent consumption.
+  - **Failure Hook Before Post-Pipeline Nodes (FR-34)**: When
+    `pipelineSuccess === false`, engine executes `config.defaults.on_failure_script`
+    (if configured) via `runFailureHook()` before post-pipeline nodes. Script
+    is pipeline-specific (e.g., `.sdlc/scripts/rollback-uncommitted.sh` performs
+    `git checkout -- . && git reset HEAD`). Engine treats it as opaque
+    `Deno.Command` invocation — domain-agnostic. Extracts failed node ID via
+    `getNodesByStatus(state, "failed")[0]`, writes to `{{run_dir}}/failed-node.txt`
+    for meta-agent consumption.
   - **Post-Pipeline Node Collection & Ordering**: `collectPostPipelineNodes()`
     collects nodes where `run_on !== undefined` (replaces `run_always`-based
     collection). `sortPostPipelineNodes()` sorts them topologically using
@@ -647,10 +641,11 @@ graph LR
     Pipeline config:
     ```yaml
     defaults:
+      on_failure_script: .sdlc/scripts/rollback-uncommitted.sh
       hitl:
         ask_script: .sdlc/scripts/hitl-ask.sh
         check_script: .sdlc/scripts/hitl-check.sh
-        issue_source: plan/pm/01-spec.md
+        artifact_source: plan/pm/01-spec.md
         poll_interval: 60
         timeout: 7200
     ```
