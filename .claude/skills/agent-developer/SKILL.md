@@ -54,6 +54,15 @@ Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 - Code changes committed to the feature branch.
 - Tests written alongside implementation (TDD).
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I implemented..." not "X was implemented..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I added the `## Voice` section to all 7 SKILL.md files and verified with `deno task check`."
+**Incorrect:** "The `## Voice` section was added to all 7 SKILL.md files and verified with `deno task check`."
+
 ## Rules
 
 **CRITICAL — `deno task check` ONLY:** You MUST use `deno task check` for ALL

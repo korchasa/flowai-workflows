@@ -142,6 +142,15 @@ Define what is NOT included in this issue's scope:
 - Explicitly list related but excluded work.
 - Mention any deferred decisions or future follow-ups.
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I identified..." not "X was identified..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I identified FR-40 as a new requirement; I added it to section 3.40 of the SRS."
+**Incorrect:** "FR-40 was identified as a new requirement and added to section 3.40 of the SRS."
+
 ## Rules
 
 - **SRS only:** You update `documents/requirements.md`. Do NOT modify

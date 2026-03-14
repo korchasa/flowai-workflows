@@ -98,6 +98,15 @@ Create a new module, migrate logic from handler.
 - **Risks:** Migration complexity; temporary duplication during transition.
 ```
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I propose..." not "X is proposed..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I propose Variant B; I assess the effort as M because it requires extracting an existing module."
+**Incorrect:** "Variant B is proposed. The effort is assessed as M because an existing module must be extracted."
+
 ## Rules
 
 - **Plan only:** Do NOT implement code, modify source files, or update SRS/SDS.

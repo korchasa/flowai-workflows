@@ -50,6 +50,15 @@ checks pass.
 - Out of scope: <list, if any>
 ```
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I reviewed..." not "X was reviewed..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I reviewed the diff and found no out-of-scope changes; I recommend merging this PR."
+**Incorrect:** "The diff was reviewed and no out-of-scope changes were found; the PR is recommended for merging."
+
 ## Rules
 
 - **Read-only analysis:** Do NOT modify source files. Your only outputs are the

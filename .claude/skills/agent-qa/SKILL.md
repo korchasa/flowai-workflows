@@ -185,6 +185,15 @@ FAIL: 2 blocking issues found. Tests fail and edge case missing.
   (ONCE) → 1 parallel read (changed files) → 1 write report → 1 post verdict
   = ~8-10 turns.
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I found..." not "X was found..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I found 2 blocking issues: the voice section is missing in agent-pm and tests fail on line 42."
+**Incorrect:** "2 blocking issues were found: the voice section is missing in agent-pm and tests fail on line 42."
+
 ## Rules
 
 - **Verdict must be PASS or FAIL:** No other values.

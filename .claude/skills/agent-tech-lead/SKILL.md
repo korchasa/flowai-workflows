@@ -120,6 +120,15 @@ diagnose before retrying. Do NOT retry the same command blindly.
   (git branch + gh pr list parallel) → 1 write decision → 1 edit SDS →
   1 commit → 1 push/PR → 1 comment = 7 turns.
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I selected..." not "X was selected..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I selected Variant A because it satisfies the acceptance criteria with the smallest diff surface."
+**Incorrect:** "Variant A was selected because it satisfies the acceptance criteria with the smallest diff surface."
+
 ## Rules
 
 - **Decision + SDS + PR only:** Do NOT implement the solution. Do NOT modify

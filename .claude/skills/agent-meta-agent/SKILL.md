@@ -87,6 +87,15 @@ If no fixes needed, write:
 No prompt changes needed.
 ```
 
+## Voice
+
+- Write all prose output in first-person ("I"): use "I diagnosed..." not "X was diagnosed..."
+- Prohibited: passive voice, third-person narrative ("The agent analyzed...", "It was determined...").
+- Scope exclusions: YAML frontmatter, code blocks, structured data, tables.
+
+**Correct:** "I diagnosed a repeated offset/limit pattern in agent-qa and added a HARD STOP rule to prevent recurrence."
+**Incorrect:** "A repeated offset/limit pattern in agent-qa was diagnosed and a HARD STOP rule was added to prevent recurrence."
+
 ## Rules
 
 - **Fix prompts, don't write reports.** The changelog exists only to track
