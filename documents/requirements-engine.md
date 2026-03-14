@@ -268,7 +268,6 @@
   - [x] `NodeConfig` in `types.ts` has `run_on?: "always" | "success" | "failure"` field. `run_always` deprecated. Evidence: `engine/types.ts:66-69` (`run_on?` field, `run_always?: boolean` with `@deprecated` tag)
   - [x] `config.ts` normalizes `run_always: true` → `run_on: "always"` for backward compat. Evidence: `engine/config.ts:341-347` (normalizes `run_always: true` → `run_on: "always"`, deletes `run_always`)
   - [x] Engine filters post-pipeline nodes: skips `run_on: success` nodes when pipeline failed, skips `run_on: failure` nodes when pipeline succeeded. Evidence: `engine/engine.ts:182-199` (skip logic with `markNodeSkipped`)
-  - [ ] Committer nodes (`commit-present`, `commit-meta`) do NOT run when pipeline fails (configured as `run_on: success`).
   - [x] Meta-agent runs on every outcome (`run_on: always`). Evidence: `.sdlc/pipeline.yaml:174` (`optimize` node `run_on: always`), `engine/engine.ts:182-199` (`run_on: always` bypasses skip filter)
   - [x] `pipeline.yaml` migrated from `run_always: true` to appropriate `run_on` values. Evidence: `.sdlc/pipeline.yaml:174` (`optimize: run_on: always`), `.sdlc/pipeline.yaml:200` (`tech-lead-review: run_on: always`)
   - [x] Engine remains domain-agnostic — no git/PR/GitHub logic in engine code. Evidence: `engine/git.ts` deleted; `engine/engine.ts` uses generic `on_failure_script` hook; `engine/mod.ts` git re-exports removed.
