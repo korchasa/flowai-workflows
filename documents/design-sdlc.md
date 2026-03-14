@@ -380,3 +380,9 @@ All FR evidence for issue #15 is complete:
   agent. Hardcoded `gh issue comment --body` templates in PM, Architect, Tech
   Lead SKILL.md files updated to first-person. Evidence:
   `.claude/skills/agent-*/SKILL.md` (7 files, `## Voice` sections).
+
+FR-S1 evidence (issue #100):
+
+- **FR-S1 (Pipeline Trigger):** All 4 acceptance criteria marked `[x]` with
+  evidence. `engine/cli.ts:36-76` (CLI entry point, flags),
+  `.claude/skills/agent-pm/SKILL.md` (issue frontmatter mandate).
