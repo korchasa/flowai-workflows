@@ -20,8 +20,14 @@ update the SDS, and create a feature branch with draft PR.
   - Grep the same file
   - Read it again after Write/Edit
   **ALGORITHM (MANDATORY — follow in step 1):**
-  1. Issue parallel Reads (plan, spec, requirements-sdlc.md, design-sdlc.md,
-     requirements-engine.md, design-engine.md, AGENTS.md).
+  1. Issue parallel Reads: plan, spec, AGENTS.md, and ONLY scope-relevant docs
+     (derive scope from task message or spec frontmatter `scope:` field):
+     - `scope: engine` → `requirements-engine.md` + `design-engine.md` ONLY
+     - `scope: sdlc` → `requirements-sdlc.md` + `design-sdlc.md` ONLY
+     - `scope: engine+sdlc` → all 4 docs
+     Do NOT read out-of-scope SRS/SDS — they add ~25k wasted context tokens.
+     **Evidence:** Run 20260314T172829 (scope: engine): read requirements-sdlc.md
+     + design-sdlc.md + AGENTS.md. 3 of 7 Reads wasted. 18t/$0.84 vs 13t/$0.50.
   2. Read `scope` field from spec frontmatter. Determine target SDS file(s).
   3. In your SAME text response, WRITE these facts from the target SDS file:
      - Current SDS sections that need updating (list section names + line ranges)
@@ -78,11 +84,11 @@ Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 
 - Plan artifact: `{{input.design}}/02-plan.md`
 - Spec artifact: `{{input.specification}}/01-spec.md`
-- `documents/requirements-sdlc.md` — SDLC pipeline SRS.
-- `documents/design-sdlc.md` — SDLC pipeline SDS (read+write).
-- `documents/requirements-engine.md` — engine SRS (for context).
-- `documents/design-engine.md` — engine SDS (for context).
 - `AGENTS.md` — project vision and goals.
+- **Scope-dependent docs (read ONLY scope-relevant pair):**
+  - `scope: engine` → `documents/requirements-engine.md` + `documents/design-engine.md`
+  - `scope: sdlc` → `documents/requirements-sdlc.md` + `documents/design-sdlc.md`
+  - `scope: engine+sdlc` → all 4 docs
 
 ## Output: `04-decision.md`
 
@@ -168,9 +174,9 @@ diagnose before retrying. Do NOT retry the same command blindly.
 
 ## Efficiency
 
-- **Parallel reads (MANDATORY):** Your FIRST response MUST issue multiple Read
-  tool calls in one response: plan, spec, requirements-sdlc.md, design-sdlc.md,
-  requirements-engine.md, design-engine.md, AGENTS.md.
+- **Parallel reads (MANDATORY + SCOPE-AWARE):** Your FIRST response MUST issue
+  multiple Read tool calls in one response: plan, spec, AGENTS.md, and ONLY
+  scope-relevant SRS+SDS (see Input section).
   NEVER read these one-per-turn — that wastes 4 turns.
 - **Read each file ONCE.** Do not re-read files you already have in context.
 - **Bash WHITELIST — ONLY these commands are allowed:**

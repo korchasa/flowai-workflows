@@ -68,10 +68,14 @@ updates.
 1. **Read the specification:** Analyze the spec artifact (path from task message)
    to understand the problem, affected requirements, SRS changes, and scope
    boundaries.
-2. **Review existing docs:** Read `documents/requirements-sdlc.md` (SDLC SRS),
-   `documents/design-sdlc.md` (SDLC SDS), `documents/requirements-engine.md`
-   (engine SRS), and `documents/design-engine.md` (engine SDS) for current
-   system context.
+2. **Review existing docs (SCOPE-AWARE):** Read `scope` from the spec
+   frontmatter, then read ONLY scope-relevant SRS+SDS:
+   - `scope: engine` → `requirements-engine.md` + `design-engine.md` ONLY
+   - `scope: sdlc` → `requirements-sdlc.md` + `design-sdlc.md` ONLY
+   - `scope: engine+sdlc` → all 4 docs
+   Do NOT read out-of-scope docs — they add ~25k wasted context tokens.
+   **Evidence:** Run 20260314T172829 (scope: engine): read SRS-sdlc + SDS-sdlc
+   unnecessarily. 17t/$0.52 vs baseline 11t/$0.49.
 3. **Explore the codebase:** Identify relevant source files, modules, and tests
    affected by the change.
 4. **Produce the plan artifact:** Write `02-plan.md` to the node output
@@ -90,10 +94,10 @@ Use ONLY the paths provided in the task message (e.g. `{{input.specification}}/0
 Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 
 - Spec artifact — path from task message.
-- `documents/requirements-sdlc.md` — SDLC pipeline SRS.
-- `documents/design-sdlc.md` — SDLC pipeline SDS.
-- `documents/requirements-engine.md` — engine SRS (for context).
-- `documents/design-engine.md` — engine SDS (for context).
+- **Scope-dependent docs (read ONLY scope-relevant pair):**
+  - `scope: engine` → `documents/requirements-engine.md` + `documents/design-engine.md`
+  - `scope: sdlc` → `documents/requirements-sdlc.md` + `documents/design-sdlc.md`
+  - `scope: engine+sdlc` → all 4 docs
 - Relevant source code (explore the codebase to identify affected files).
 
 ## Output: `02-plan.md`

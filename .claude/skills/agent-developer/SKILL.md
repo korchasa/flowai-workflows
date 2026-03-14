@@ -18,8 +18,11 @@ implement the code changes defined in the task breakdown from the Architect.
 - **HARD STOP — ZERO Grep calls on ANY file you already Read.** After you Read
   a file, its FULL content is in your context. Do NOT Grep it. Do NOT re-Read it.
   **Instead:** Extract what you need from your context in your text response.
-  **Evidence:** Run 20260314T080106: Read design.md twice + Grep "all 7 agent
-  nodes" on design.md after Read = 2 wasted calls. 14t/$0.44 vs 10t/$0.31.
+  This includes searching for specific sections (FR-E5, FR-E7, etc.) — scroll
+  your context, do NOT Grep.
+  **Evidence:** Run 20260314T172829: Read requirements-engine.md then Grepped it
+  4× for FR-E5/E7/E9 sections + Grepped design-engine.md after Read = 6 wasted
+  Grep calls. Run 20260314T080106: same pattern, 2 wasted calls.
 - **Grep-first for multi-file checks:** When checking if a pattern exists across
   many files (e.g., all SKILL.md files), use ONE Grep call FIRST instead of
   reading each file individually. Only Read files that need actual editing.
@@ -67,13 +70,20 @@ updates.
 
 1. **Read task breakdown:** Follow `04-decision.md` — implement tasks in order.
 2. **Read efficiently:**
-   - **Parallel reads (MANDATORY):** Your FIRST assistant response MUST contain
-     multiple Read tool calls — one for each file you need. Include ALL target
-     files from `04-decision.md` `tasks[].files`, their test files,
-     `documents/requirements-sdlc.md`, `documents/design-sdlc.md`,
-     `documents/requirements-engine.md`, and `documents/design-engine.md`. Issue ALL Read
-     calls in one response so they execute concurrently. NEVER read files
-     one-per-turn — that wastes turns.
+   - **Parallel reads (MANDATORY + SCOPE-AWARE):** Your FIRST assistant response
+     MUST contain multiple Read tool calls in one response (concurrent execution).
+     Include: `04-decision.md` (to get scope + task files), target source files
+     from `tasks[].files`, and their test files.
+     **SCOPE-AWARE DOC READS:** Read ONLY the SRS+SDS for the issue's scope
+     (from spec frontmatter `scope:` field — check decision file or task message):
+     - `scope: engine` → Read `requirements-engine.md` + `design-engine.md` ONLY
+     - `scope: sdlc` → Read `requirements-sdlc.md` + `design-sdlc.md` ONLY
+     - `scope: engine+sdlc` → Read all 4 docs
+     Do NOT read out-of-scope docs. They add ~25k tokens to context, inflating
+     cost for every subsequent turn.
+     **Evidence:** Run 20260314T172829 (scope: engine): read requirements-sdlc.md
+     + design-sdlc.md = 2 wasted Reads + ~25k context tokens. 29t/$1.39 vs
+     baseline 16t/$0.51.
    - **Read once, never re-read:** After reading a file, retain its content.
      Do NOT re-read the same file. If an Edit fails, check the error message —
      do not re-read the whole file.
@@ -110,10 +120,10 @@ Use ONLY the paths provided in the task message.
 Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 
 - Task breakdown (decision artifact) — path from task message.
-- `documents/requirements-sdlc.md` — SDLC pipeline SRS.
-- `documents/design-sdlc.md` — SDLC pipeline SDS.
-- `documents/requirements-engine.md` — engine SRS (for context).
-- `documents/design-engine.md` — engine SDS (for context).
+- **Scope-dependent docs (read ONLY scope-relevant pair):**
+  - `scope: engine` → `documents/requirements-engine.md` + `documents/design-engine.md`
+  - `scope: sdlc` → `documents/requirements-sdlc.md` + `documents/design-sdlc.md`
+  - `scope: engine+sdlc` → all 4 docs
 - Source code (as referenced in task breakdown).
 - On iteration > 1: QA report at `<run-dir>/verify/05-qa-report.md` (derive
   `<run-dir>` from the decision path in the task message, e.g.,

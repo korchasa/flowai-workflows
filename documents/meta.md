@@ -1,30 +1,29 @@
 # Meta-Agent Memory
 
 ## Agent Baselines
-- pm (specification): 16t/$0.65/87s — up from 13t/$0.50 (requirements.md hit 26k token limit)
-- architect (design): 11t/$0.49/75s — stable
-- tech-lead (decision): 13t/$0.50/81s — improved (was 18t/$0.68)
-- developer (build): 16t/$0.51/73s — stable cost, but 9/13 Reads wasted on SKILL.md files
-- qa (verify): 19t/$0.73/93s — up from 15t/$0.52. 6/10 Reads wasted on SKILL.md files
-- Total run cost: $2.88 (up from $2.50)
+- pm (specification): 14t/$0.89/289s — cost up (was $0.65)
+- architect (design): 17t/$0.52/94s — turns up (was 11t), cost stable
+- tech-lead (decision): 18t/$0.84/301s — regressed (was 13t/$0.50)
+- developer (build): 29t/$1.39/253s — major regression (was 16t/$0.51)
+- qa (verify): 16t/$0.83/241s — slightly up (was 19t/$0.73)
+- Total run cost: $4.46 (up from $2.88)
 - 1 iteration (QA passed first try)
 
 ## Active Patterns
-- skill-self-invoke-cross-agent: WATCHING, first seen 20260314T052906, last
-  seen 20260314T092842. Developer + QA both called Skill as first action AGAIN.
-  Root cause identified: unresolved merge conflict markers in SKILL.md corrupted
-  prompt structure — FORBIDDEN rules were garbled between conflict markers.
-  Fix: resolved all conflicts in all 7 agents. Need 1 clean run to confirm.
-- agent-skill-read-waste: NEW, first seen 20260314T092842. Developer read ALL
-  7 agent SKILL.md files (9 wasted Reads). QA read all 6 other agent SKILL.md
-  files (6 wasted Reads). Fix: added HARD STOP "Do NOT read .claude/skills/"
-  rule to both agents.
-- merge-conflict-corruption: NEW→FIXED in 20260314T092842. 6 of 7 agent
-  SKILL.md files + meta.md had unresolved merge conflicts from FR-40/FR-43
-  commits. All resolved.
-- cross-run-path-confusion: WATCHING→2nd clean run (092842). 1 more to RESOLVE.
-- tech-lead-design-reread: WATCHING→1st clean run (092842). 2 more to RESOLVE.
-- developer-bash-whitelist-violation: WATCHING→1st clean run (092842). 2 more.
+- skill-self-invoke-cross-agent: RESOLVED (clean in 172829). No Skill calls.
+- agent-skill-read-waste: RESOLVED (clean in 172829). No .claude/skills/ reads.
+- merge-conflict-corruption: RESOLVED (clean in 172829).
+- cross-run-path-confusion: RESOLVED (3rd clean run: 172829).
+- tech-lead-design-reread: RESOLVED (2nd clean run: 172829).
+- developer-bash-whitelist-violation: RESOLVED (2nd clean run: 172829).
+- scope-unaware-doc-reads: NEW, first seen 20260314T172829. All agents read ALL
+  4 SRS/SDS docs regardless of issue scope. For engine-scope task, developer
+  read SRS-sdlc + SDS-sdlc (2 wasted), tech-lead read SRS-sdlc + SDS-sdlc +
+  AGENTS.md (3 wasted), architect read SRS-sdlc + SDS-sdlc (2 wasted).
+  Fix: added scope-aware read algorithm to architect, tech-lead, developer.
+- developer-grep-after-read-v2: NEW, first seen 20260314T172829. Developer
+  Grepped requirements-engine.md 4× and design-engine.md 2× AFTER Reading them.
+  Rule exists but was ignored. Updated evidence to reference this run.
 
 ## Resolved Patterns
 - pm-tool-results-reread: RESOLVED (3+ clean runs)
@@ -51,6 +50,9 @@
   HARD STOP prohibition on reading `.claude/skills/` files (9+6 wasted Reads).
   PM prompt consolidated (removed duplicate execution algorithm, kept STEP 1-6).
   meta.md — resolved merge conflict between HEAD and origin/main branches.
+- 20260314T172829: architect + tech-lead + developer — added scope-aware doc
+  reading (read ONLY scope-relevant SRS/SDS based on spec frontmatter `scope:`
+  field). developer — updated Grep-after-Read evidence with this run's data.
 
 ## Lessons Learned
 - Total pipeline cost baseline for S-effort issue: ~$2.50.
@@ -60,7 +62,9 @@
 - **Rule placement matters.** HARD STOP before Responsibilities = strongest.
 - **Cross-agent patterns:** Fix in one agent, apply to ALL.
 - **Positive algorithms > prohibition.** Algorithm approach works better.
-- **Cost trajectory:** $5.09→$2.31→$2.24→$2.76→$4.11→$2.50→$2.88.
+- **Cost trajectory:** $5.09→$2.31→$2.24→$2.76→$4.11→$2.50→$2.88→$4.46.
+- **Scope-aware reads save ~25k tokens/agent.** Out-of-scope SRS/SDS docs add
+  context that inflates cost per turn. Biggest impact on developer (most turns).
 - **Scope enforcement needs explicit file path deny-lists.**
 - **Merge conflicts in agent prompts are catastrophic.** They corrupt prompt
   structure — rules between conflict markers become unparseable. This was likely

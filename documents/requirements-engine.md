@@ -357,21 +357,32 @@
 
 ### 3.15 FR-E15 (ex FR-30): Node Result Summary
 
-- **Description:** After each agent node completes, the engine displays a one-line
-  result summary in the terminal output. Summary includes the first line of the
-  agent result (truncated to 120 chars), cost, duration, and turn count. Provides
-  at-a-glance pipeline progress without requiring verbose mode.
+- **Description:** After each agent node completes, the engine displays a
+  one-line result summary in the terminal. Summary includes a multi-line
+  extract of the agent result (up to 3 non-empty lines, total ≤400 chars,
+  collapsed to a single line via ` | ` separator), cost, duration, and turn
+  count. Provides at-a-glance pipeline progress without requiring verbose mode.
+- **Motivation:** Prior single-line truncation (`split("\n")[0].slice(0, 120)`)
+  captured only the first line of result text, which is typically a generic
+  header ("Done. Here's what I did:"). Substantive details — artifact paths,
+  decisions, actions — appear in lines 2–5 (avg result: 626 chars, 6–15 lines).
 - **Acceptance criteria:**
   - [x] `OutputManager.nodeResult(nodeId, output)` displays one-line summary.
     Evidence: `engine/output.ts` (`nodeResult()` method).
-  - [x] Format: `[HH:MM:SS] <nodeId>  RESULT: <first line ≤120 chars> | cost=$X.XXXX | duration=Xs | turns=N`.
-    Evidence: `engine/output.ts` (`nodeResult()` formatting).
+  - [ ] Result text extract: up to 3 non-empty lines from `output.result`, each
+    truncated to 120 chars, joined with ` | ` separator, total excerpt ≤400
+    chars. Empty lines skipped. Single-line results unchanged.
+  - [ ] Format: `[HH:MM:SS] <nodeId>  RESULT: <excerpt> | cost=$X.XXXX | duration=Xs | turns=N`.
+    (excerpt = collapsed multi-line extract; no literal newlines in output)
   - [x] Shown in default and verbose modes; suppressed in quiet mode.
     Evidence: `engine/output.ts` (`verbosity !== "quiet"` guard).
   - [x] Called for top-level agent nodes in `executeNode()` and for loop body
     nodes in `executeLoopNode()` `onNodeComplete` callback.
     Evidence: `engine/engine.ts` (two call sites).
-  - [x] `deno task check` passes.
+  - [ ] `extractResultExcerpt(result: string): string` — pure function in
+    `output.ts`: filters empty lines, takes first 3, truncates each to 120
+    chars, joins with ` | `, trims total to 400 chars. Unit-testable without I/O.
+  - [ ] `deno task check` passes.
 
 ### 3.16 FR-E16 (ex FR-31): Prompt Path Validation at Config Load
 
@@ -501,6 +512,43 @@
     `engine/output.ts` (`nodeOutput()` condition).
   - [x] `deno task check` passes. Evidence: design.md (FR-41 referenced as implemented).
 
+### 3.22 FR-E22: Pipeline Final Summary with Node Results
+
+- **Description:** The pipeline final summary block (printed after all nodes
+  complete) must include per-node result text alongside existing metadata
+  (Pipeline name, Run ID, Status, Duration, Nodes count). Eliminates the need
+  to scroll back through interleaved logs to find what each agent produced after
+  a 30+ minute run.
+- **Motivation:** Current `summary()` output (`engine/output.ts:98-111`) renders
+  only aggregate metadata. Per-node result text is available in
+  `.sdlc/runs/<run-id>/logs/<node-id>.json` but not in `state.json`, forcing
+  operators to read N log files after the run. Issue #109: "After a 30+ minute
+  run, the operator has to scroll back through interleaved logs to find what
+  each agent produced."
+- **Acceptance criteria:**
+  - [ ] `NodeState` in `types.ts` gains `result?: string` field — first 400
+    chars of agent `ClaudeCliOutput.result` text, persisted to `state.json`
+    at node completion.
+  - [ ] `markNodeCompleted()` in `state.ts` accepts optional `result?: string`
+    param; writes it to `NodeState.result` when provided.
+  - [ ] Engine passes `result` text to `markNodeCompleted()` for all agent node
+    completions (top-level nodes in `executeNode()` and loop body nodes in
+    `executeLoopNode()` `onNodeComplete` callback).
+  - [ ] `OutputManager.summary()` renders per-node result lines below the
+    existing aggregate block. One line per completed agent node:
+    `  <nodeId padded>  <excerpt>` where excerpt = `extractResultExcerpt()`
+    output (FR-E15). Skips nodes with no result (merge, human, skipped nodes).
+  - [ ] Node results section is shown in default and verbose modes; suppressed
+    in quiet mode. Consistent with `nodeResult()` visibility guard.
+  - [ ] `RunSummary` interface in `types.ts` gains
+    `nodeResults?: Record<string, string>` — map from nodeId → result excerpt.
+    Populated by engine before calling `printSummary()`.
+  - [ ] Backward-compatible: existing `state.json` files without `result`
+    fields remain valid; missing results render as absent (not error).
+  - [ ] Unit tests cover: result present, result absent, quiet suppression,
+    mixed node types (agent + merge).
+  - [ ] `deno task check` passes.
+
 ## 4. Non-Functional Requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -548,3 +596,4 @@
 | FR-34  | FR-E19 | Generic Pipeline Failure Hook (`on_failure_script`) |
 | FR-39  | FR-E20 | Repeated File Read Warning |
 | FR-41  | FR-E21 | Semi-Verbose Output Mode (`-s`) |
+| —      | FR-E22 | Pipeline Final Summary with Node Results |
