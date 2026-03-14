@@ -176,6 +176,15 @@ graph LR
   - Interactive: Claude Code discovers skills directly from
     `.claude/skills/agent-<name>/SKILL.md` → user invokes `/agent-<name>`.
     No symlinks required (canonical location).
+- **Agent Execution Summary (FR-40):** All 7 agents must produce a `## Summary`
+  section in their output artifacts. Content: 2-5 bullet points (actions taken,
+  key decisions, artifacts produced, issues encountered). 6 agents (PM,
+  Architect, Tech Lead, QA, Meta-Agent, Tech Lead Review) append `## Summary`
+  to their markdown artifact files. Developer includes summary in commit message
+  body (no separate artifact file). Pipeline enforces via `contains_section:
+  Summary` validation on 6 nodes (`specification`, `design`, `decision`,
+  `verify`, `optimize`, `tech-lead-review`). Developer (`build`) excluded from
+  file-based validation — uses existing `custom_script: deno task check`.
 - **Migration (FR-36):** Complete. Formerly `agents/<name>/SKILL.md` with
   symlinks from `.claude/skills/`. Migrated to canonical `.claude/skills/`
   layout; `agents/` directory removed; symlink indirection eliminated. Legacy
