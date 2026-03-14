@@ -8,7 +8,12 @@ import type {
 import { topoSort } from "./dag.ts";
 import { runHuman } from "./human.ts";
 import type { UserInput } from "./human.ts";
-import { markNodeFailed, markRunAborted } from "./state.ts";
+import {
+  isNodeCompleted,
+  markNodeFailed,
+  markNodeSkipped,
+  markRunAborted,
+} from "./state.ts";
 import type { OutputManager } from "./output.ts";
 
 /** Shared execution context passed to extracted node executor free functions. */
@@ -109,6 +114,59 @@ export function collectAllNodeIds(config: PipelineConfig): string[] {
     }
   }
   return ids;
+}
+
+/**
+ * Execute post-pipeline nodes (those with `run_on` set), filtered by condition.
+ * Runs failure hook first if pipeline failed. Skips nodes whose run_on condition
+ * does not match the pipeline outcome. Swallows individual node errors.
+ */
+export async function executePostPipelineNodes(
+  execCtx: NodeExecutionContext,
+  postPipelineNodeIds: string[],
+  pipelineSuccess: boolean,
+  executeNode: (nodeId: string) => Promise<boolean>,
+): Promise<void> {
+  if (postPipelineNodeIds.length === 0) return;
+
+  if (!pipelineSuccess) {
+    await runFailureHook(
+      execCtx.config.defaults?.on_failure_script,
+      execCtx.output,
+    );
+  }
+
+  for (const nodeId of postPipelineNodeIds) {
+    if (isNodeCompleted(execCtx.state, nodeId)) continue;
+
+    const nodeRunOn = execCtx.config.nodes[nodeId].run_on;
+    if (nodeRunOn === "success" && !pipelineSuccess) {
+      markNodeSkipped(execCtx.state, nodeId);
+      execCtx.output.nodeSkipped(
+        nodeId,
+        "skipped: run_on=success but pipeline failed",
+      );
+      await execCtx.saveState();
+      continue;
+    }
+    if (nodeRunOn === "failure" && pipelineSuccess) {
+      markNodeSkipped(execCtx.state, nodeId);
+      execCtx.output.nodeSkipped(
+        nodeId,
+        "skipped: run_on=failure but pipeline succeeded",
+      );
+      await execCtx.saveState();
+      continue;
+    }
+
+    try {
+      await executeNode(nodeId);
+    } catch (err) {
+      execCtx.output.warn(
+        `Post-pipeline node ${nodeId} failed: ${(err as Error).message}`,
+      );
+    }
+  }
 }
 
 /**

@@ -32,7 +32,7 @@ import type { RunSummary } from "./output.ts";
 import { executeAgentNode } from "./agent-node.ts";
 import { executeMergeNode } from "./merge.ts";
 import { executeLoopNode } from "./loop.ts";
-import { executeHumanNode } from "./node-dispatch.ts";
+import { executeHumanNode, executePostPipelineNodes } from "./node-dispatch.ts";
 import type { NodeExecutionContext } from "./node-dispatch.ts";
 
 /** Main pipeline engine. Orchestrates node execution across DAG levels. */
@@ -167,48 +167,12 @@ export class Engine {
     }
 
     // Execute post-pipeline nodes (filtered by run_on condition)
-    if (postPipelineNodeIds.length > 0) {
-      // Pre-step: on failure, run failure hook
-      if (!pipelineSuccess) {
-        await runFailureHook(
-          this.config.defaults?.on_failure_script,
-          this.output,
-        );
-      }
-
-      for (const nodeId of postPipelineNodeIds) {
-        if (isNodeCompleted(this.state, nodeId)) continue;
-
-        // Filter by run_on condition
-        const nodeRunOn = this.config.nodes[nodeId].run_on;
-        if (nodeRunOn === "success" && !pipelineSuccess) {
-          markNodeSkipped(this.state, nodeId);
-          this.output.nodeSkipped(
-            nodeId,
-            "skipped: run_on=success but pipeline failed",
-          );
-          await saveState(this.state);
-          continue;
-        }
-        if (nodeRunOn === "failure" && pipelineSuccess) {
-          markNodeSkipped(this.state, nodeId);
-          this.output.nodeSkipped(
-            nodeId,
-            "skipped: run_on=failure but pipeline succeeded",
-          );
-          await saveState(this.state);
-          continue;
-        }
-
-        try {
-          await this.executeNode(nodeId);
-        } catch (err) {
-          this.output.warn(
-            `Post-pipeline node ${nodeId} failed: ${(err as Error).message}`,
-          );
-        }
-      }
-    }
+    await executePostPipelineNodes(
+      this.makeExecCtx(),
+      postPipelineNodeIds,
+      pipelineSuccess,
+      (nodeId) => this.executeNode(nodeId),
+    );
 
     // Finalize run state
     if (pipelineSuccess) {
