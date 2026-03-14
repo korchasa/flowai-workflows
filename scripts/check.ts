@@ -133,6 +133,7 @@ Usage:
 Checks performed:
   - Formatting check (deno fmt --check)
   - Linting (deno lint)
+  - Type check (deno check — all engine + scripts entry points)
   - Secret scan (gitleaks)
   - Tests (deno test)
   - Pipeline integrity check
@@ -171,6 +172,18 @@ if (import.meta.main) {
 
   await run("deno", ["fmt", "--check"], "Formatting Check");
   await run("deno", ["lint"], "Linting");
+  const typeCheckFiles: string[] = [];
+  for (const dir of ["engine", "scripts"]) {
+    for await (const entry of Deno.readDir(dir)) {
+      if (
+        entry.isFile && entry.name.endsWith(".ts") &&
+        !entry.name.includes("_test.") && !entry.name.includes(".test.")
+      ) {
+        typeCheckFiles.push(`${dir}/${entry.name}`);
+      }
+    }
+  }
+  await run("deno", ["check", ...typeCheckFiles.sort()], "Type Check");
   await run("gitleaks", ["detect", "--no-git"], "Secret Scan", true);
   const testDirs = ["scripts", ".auto-flow", "engine"];
   const testableDir = (await Promise.all(

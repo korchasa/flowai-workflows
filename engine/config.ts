@@ -20,6 +20,14 @@ export const DEFAULT_PIPELINE_DEFAULTS: Required<PipelineDefaults> = {
   ...DEFAULT_SETTINGS,
   max_parallel: 0,
   claude_args: [],
+  model: "",
+  hitl: {
+    ask_script: "",
+    check_script: "",
+    poll_interval: 60,
+    timeout: 7200,
+  },
+  on_failure_script: "",
 };
 
 /** Parse YAML string into PipelineConfig, validate schema, merge defaults. */
