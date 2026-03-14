@@ -99,22 +99,18 @@ block direct invocations. Always use `deno task check`.
   **Evidence:** Run 20260314T000902 wrote pipeline.yaml 3x, 5 test files 2x
   each, 2 script files 2x each = 14 wasted writes across 81 turns ($7.02).
   Target: 1 write per file → ≤35 turns, ~$3.00.
+- **HARD STOP — Read() calls MUST NOT have offset or limit parameters.**
+  NEVER pass `offset` or `limit` to ANY Read call — not on re-reads, not on
+  first reads, not on temp files, not on ANY file. Always call Read with
+  file_path ONLY. Violation = wasted turn.
+  **Evidence:** 6 consecutive runs had offset/limit violations. Run
+  20260314T022056: re-read requirements.md at offset=822 after full read.
+  Run 20260314T020922: chunk-read temp file 4x. STOP DOING THIS.
 - **ONE READ PER FILE (MANDATORY).** After reading a file once, retain its
   content in context. Do NOT Read the same file again. If an Edit fails, read
   the error — do NOT re-read the whole file.
   This applies to ALL files — source files, spec files, AND tool-result temp
   files (paths like `/home/.../.claude/.../tool-results/*.txt`).
-  **FORBIDDEN: offset/limit parameters on Read.** NEVER use offset or limit
-  parameters on ANY Read call. Always read files fully (no parameters). Chunked
-  reading wastes 3-4 turns per file. All project files are under 2000 lines —
-  one full Read gets everything.
-  **CRITICAL: `deno task check` output.** The Bash tool stores large output in a
-  temp file (path like `/home/.../.claude/.../tool-results/*.txt`). Read it
-  with ONE Read call, NO offset/limit. Extract all needed info in that single
-  read. Do NOT chunk-read the temp file.
-  **Evidence:** Run 20260314T020922 chunk-read check output temp file 4x
-  (offsets 1, 100, 400, 459) — 3 wasted reads. Run 20260314T014728 read 3x —
-  2 wasted. ALWAYS: single Read, no offset/limit.
 - **Plan before editing (MANDATORY for >3 files):** Before your first Edit/Write,
   output a checklist: `FILE → TOOL (Edit/Write/Edit+replace_all) → CHANGE`.
   Then execute one call per file, in order. No re-reads, no re-writes.

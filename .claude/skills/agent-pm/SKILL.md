@@ -119,13 +119,21 @@ Define what is NOT included in this issue's scope:
   guessing.
 - **YAML frontmatter required:** `01-spec.md` MUST start with `---` on line 1
   and contain `issue: <N>` in the frontmatter.
-- **FORBIDDEN: Bash file inspection.** Do NOT use `head`, `cat`, `tail`,
-  `grep`, `find`, `ls`, or `python3` via Bash. Use Read or Grep tools only.
-- **FORBIDDEN: Grep after Read.** If you already Read a file, do NOT Grep it
-  and do NOT use `grep` via Bash on it. You already have the content in context.
-- **FORBIDDEN: Re-reading with offset/limit.** After a full Read (no
-  offset/limit), the entire file is in context. Do NOT issue additional Read
-  calls with offset/limit parameters for the same file — this wastes turns.
+- **Bash WHITELIST (MANDATORY).** Bash is ONLY for these commands — nothing else:
+  `git branch --show-current`, `git pull origin main`,
+  `gh issue view`, `gh issue list`, `gh issue comment`, `mkdir -p`.
+  Do NOT use `head`, `cat`, `tail`, `grep`, `wc`, `find`, `ls`, or `python3`
+  via Bash. Use Read for files. If you already Read a file, its ENTIRE content
+  is in context — do NOT search it via Bash or Grep.
+  **Evidence:** Run 20260314T021602 used `wc -l && grep -n` via Bash on
+  requirements.md (already in context) — wasted 1 turn + triggered offset/limit
+  re-read.
+- **FORBIDDEN: offset/limit parameters on Read.** NEVER use offset or limit
+  parameters on ANY Read call. Always read files fully (no parameters). All
+  project files are under 2000 lines — one full Read gets everything. Chunked
+  reading wastes turns.
+  **Evidence:** Run 20260314T021602 re-read requirements.md with offset=820
+  limit=40 after full read — wasted 1 turn.
 - **FORBIDDEN: `gh issue list` on `sdlc/issue-*` branch.** The branch name
   already tells you the issue number. Running `gh issue list` wastes 2+ turns.
 - **ONE WRITE for SRS updates (MANDATORY — ZERO EXCEPTIONS).**

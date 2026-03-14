@@ -1,12 +1,12 @@
 # Meta-Agent Memory
 
 ## Agent Baselines
-- pm (specification): 10t/$0.47/55s — stable
-- architect (design): 14t/$0.40/53s — stable
-- tech-lead (decision): 13t/$0.42/64s — stable
-- developer (build): 12t/$0.51/61s — improved (was 17t), chunk-read waste remains
-- qa (verify): 16t/$0.54/79s — improved (was 19t), offset/limit fix confirmed
-- Total run cost: $2.34
+- pm (specification): 14t/$0.71/88s — stable
+- architect (design): 8t/$0.40/85s — Agent subagent persists despite ban
+- tech-lead (decision): 13t/$0.47/62s — stable
+- developer (build): 4t/$0.20/8s — clean (no-op skip-implementation task)
+- qa (verify): 17t/$0.73/105s — offset/limit re-read persists (8th run)
+- Total run cost: $2.50
 - 1 iteration (QA passed first try)
 
 ## Active Patterns
@@ -26,16 +26,27 @@
 - pm-offset-reread: RESOLVED, first seen 20260314T014914,
   last seen 20260314T014914. Fix confirmed: 0 offset/limit re-reads in
   20260314T020000 (2 Reads total, no offset/limit). 2 clean runs.
-- developer-offset-reread: WATCHING, first seen 20260314T020214,
-  last seen 20260314T020922. Previous fix insufficient — developer chunk-read
-  temp file 4x (never did full read, used offset/limit from start). Fix v2:
-  banned ALL offset/limit params, not just "re-reads after full read".
+- developer-offset-reread: RESOLVED, first seen 20260314T020214,
+  last seen 20260314T020922. Fix v2 confirmed: 0 offset/limit reads in
+  20260314T021602. 1 clean run.
 - qa-offset-reread: RESOLVED, first seen 20260314T020214,
   last seen 20260314T020214. Fix confirmed: 0 offset/limit reads in
   20260314T020922. 3 Reads total, all clean.
-- developer-grep-via-bash: NEW, first seen 20260314T020922. Developer ran
-  `grep -rn` via Bash despite existing ban. Fix: rewrote rule as explicit
-  Bash whitelist (only deno task check, git add/commit/push).
+- developer-grep-via-bash: RESOLVED, first seen 20260314T020922,
+  last seen 20260314T020922. Fix confirmed: 0 grep-via-Bash in 20260314T021602.
+- developer-offset-persistent: RESOLVED, first seen 20260314T020214,
+  last seen 20260314T022056. Fix v3 confirmed: 0 offset/limit reads in
+  20260314T022619 (only 3 clean Reads). 1 clean run.
+- qa-offset-persistent: WATCHING, first seen 20260314T020214,
+  last seen 20260314T022619. Fix v3 (HARD STOP in Efficiency section) FAILED.
+  Read requirements.md at offset=826. Fix v4: moved HARD STOP to top of
+  prompt (before Responsibilities), replaced Efficiency section copy with
+  back-reference.
+- architect-subagent-waste: WATCHING, first seen 20260314T022056,
+  last seen 20260314T022619. FORBIDDEN rule at line 100 FAILED — still spawned
+  Agent/Explore. Fix v2: elevated to HARD STOP before Responsibilities.
+- pm-bash-blacklist-ignored: WATCHING, first seen 20260314T021602,
+  last seen 20260314T021602. Fix: converted to WHITELIST. Verify next run.
 - pm-branch-shortcut-regression: RESOLVED (3 consecutive runs with shortcut
   working: 22→17t, no gh issue list on branch).
 - tech-lead-bash-exploration: RESOLVED (all 8 Bash commands whitelisted,
@@ -74,7 +85,22 @@
 - 20260314T020214: qa — added FORBIDDEN offset/limit + no-partial-reads rule.
   Read requirements.md with limit=100, then offset=820. → RESOLVED (0 in 20260314T020922)
 - 20260314T020922: developer — banned ALL offset/limit params on Read + rewrote
-  Bash rule as explicit whitelist. Chunk-read temp file 4x + grep via Bash. → WATCHING
+  Bash rule as explicit whitelist. Chunk-read temp file 4x + grep via Bash. → RESOLVED
+- 20260314T021602: pm — converted Bash FORBIDDEN blacklist to WHITELIST. PM
+  used wc+grep via Bash + offset/limit re-read (12t, target 8t). → WATCHING
+- 20260314T022056: developer — elevated offset/limit ban from nested paragraph
+  to top-level "HARD STOP" standalone bullet. Re-read requirements.md at
+  offset=822 despite existing ban (was buried in paragraph). → WATCHING
+- 20260314T022056: qa — elevated offset/limit ban from nested paragraph to
+  top-level "HARD STOP" standalone bullet. Read temp file at offset=800 despite
+  existing ban (was buried in paragraph). → WATCHING
+- 20260314T022056: architect — added FORBIDDEN Agent tool rule. Used subagent
+  for grep sweep (wasteful). → FAILED (still used Agent in 20260314T022619)
+- 20260314T022619: architect — elevated Agent ban to HARD STOP at top of prompt
+  (before Responsibilities). FORBIDDEN at line 100 was ignored. → WATCHING
+- 20260314T022619: qa — moved offset/limit HARD STOP from Efficiency section to
+  top of prompt (before Responsibilities). 8th consecutive violation at
+  offset=826 on requirements.md. → WATCHING
 
 ## Lessons Learned
 - PM/SDS-update scope overlap resolved by explicit constraints in PM prompt.
@@ -116,3 +142,14 @@
 - **"After full read" condition is too narrow.** Developer never did a full
   read — it chunk-read from the start with offset/limit. Rule must ban
   offset/limit unconditionally, not just "after a full read".
+- **Rule placement matters as much as rule content.** Nested rules inside
+  paragraphs get ignored even with FORBIDDEN/NEVER keywords. Critical bans
+  must be standalone top-level bullets with "HARD STOP" prefix to survive
+  agent attention decay.
+- **Section placement matters too.** HARD STOP in an "Efficiency" section
+  (line 113) still gets ignored — agent treats efficiency as advisory. Moving
+  the rule BEFORE Responsibilities (top of prompt, right after role description)
+  is the strongest placement. Same for FORBIDDEN in a "Rules" list at line 100.
+- **FORBIDDEN keyword fails for Agent tool bans.** Agent/Explore is attractive
+  because it "feels thorough." Must frame as HARD STOP with explicit
+  alternative: "Use Grep with `-i: true` — 1% of the cost."
