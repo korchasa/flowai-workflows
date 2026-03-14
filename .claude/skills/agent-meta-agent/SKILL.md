@@ -77,6 +77,10 @@ Minimal changelog of prompt edits applied in this run. Format:
 - **Problem:** <what went wrong, with evidence: turns/cost/error>
 - **Fix:** <what was changed in the prompt>
 - **File:** `.claude/skills/agent-<name>/SKILL.md`
+
+## Summary
+
+<N> fix(es) applied to <agents list>. Key pattern: <one-line insight>.
 ```
 
 If no fixes needed, write:
@@ -85,6 +89,10 @@ If no fixes needed, write:
 # Changelog — Run <run-id>
 
 No prompt changes needed.
+
+## Summary
+
+No fixes applied. Pipeline ran within baseline parameters.
 ```
 
 ## Rules

@@ -111,7 +111,18 @@ Create a new module, migrate logic from handler.
 - **Affected files:** `src/new-module.ts`, `src/new-module_test.ts`, `src/handler.ts`
 - **Effort:** M
 - **Risks:** Migration complexity; temporary duplication during transition.
+
+## Summary
+
+Recommend Variant B: better long-term modularity despite migration complexity.
 ```
+
+### `## Summary` (required)
+
+After all variants, `02-plan.md` MUST end with a `## Summary` section covering:
+- Variant count and names
+- Key trade-off between them
+- Recommended direction
 
 ## Rules
 

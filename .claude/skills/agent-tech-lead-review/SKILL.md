@@ -51,6 +51,10 @@ checks pass.
 ## Scope Check
 - In scope: <list>
 - Out of scope: <list, if any>
+
+## Summary
+
+<Verdict (MERGE/OPEN)>, CI <green/failing>, <merged or left open with reason>
 ```
 
 ## Rules
