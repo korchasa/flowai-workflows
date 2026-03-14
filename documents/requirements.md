@@ -895,6 +895,31 @@
     4th+ reads → warning each time; different paths counted independently.
   - [ ] `deno task check` passes.
 
+### 3.39 FR-40: First-Person Voice in Agent Outputs
+
+- **Description:** All agents MUST use first-person ("I") narrative voice in
+  prose output — handoff artifacts, PR/issue comments, QA reports, and
+  specification files. Passive voice and third-person are prohibited in
+  narrative prose.
+- **Rationale:** First-person attribution makes reports more readable and
+  clearly identifies which agent performed each action. Consistent voice reduces
+  cognitive load when reviewing multi-agent pipeline outputs.
+- **Scope:** All prose narrative in agent-produced files and GitHub comments.
+  Excludes: YAML frontmatter, code blocks, structured data, and table content.
+- **Compliance:** Enforced via agent system prompts (SKILL.md `## Voice`
+  section). No engine-level enforcement required.
+- **Acceptance criteria:**
+  - [ ] Each agent SKILL.md includes a `## Voice` section mandating first-person
+    ("I") narrative and prohibiting passive voice/third-person in prose.
+  - [ ] Correct/incorrect examples provided in each `## Voice` section.
+    - Correct: "I selected issue #42 as highest priority"
+    - Incorrect: "Issue #42 was selected."
+  - [ ] Voice rule applied to all agents: pm, architect, tech-lead, developer,
+    qa, tech-lead-review, meta-agent.
+  - [ ] YAML frontmatter, code blocks, and structured data explicitly excluded
+    from the voice requirement.
+  - [ ] `deno task check` passes.
+
 ---
 
 ## 4. Non-functional requirements
