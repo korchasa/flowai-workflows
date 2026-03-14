@@ -491,6 +491,62 @@
     `engine/output.ts` (`nodeOutput()` condition).
   - [x] `deno task check` passes. Evidence: design.md (FR-41 referenced as implemented).
 
+### 3.22 FR-E22: Fan-Out (Dynamic Parallel Node Spawning)
+
+- **Description:** Engine must support fan-out — a node that dynamically spawns
+  multiple parallel instances of a downstream node based on its output. A
+  "splitter" node (e.g., PM) produces a structured artifact listing N
+  sub-tasks; the engine reads this artifact and spawns N instances of the target
+  node type (e.g., developer), each receiving its own sub-task slice as input.
+  Results are collected and merged before downstream nodes continue.
+- **Motivation:** Reduces batch size per agent by decomposing large tasks into
+  independent sub-tasks executed in parallel. Addresses batch size gravity:
+  smaller units = lower risk, faster feedback, cheaper retries. Enables
+  patterns like "PM splits issue → N developers implement in parallel → merge
+  results → QA verifies."
+- **Acceptance criteria:**
+  - [ ] Pipeline YAML supports `fan_out` field on a node, specifying:
+    - `source`: artifact path (template) containing sub-task list
+    - `target`: node ID to instantiate per sub-task
+    - `merge_strategy`: how to combine results (`concat` | `merge_node`)
+  - [ ] Engine parses `fan_out` config at load time; validates `source` and
+    `target` references exist.
+  - [ ] At runtime, after splitter node completes, engine reads the source
+    artifact, extracts sub-task entries, and creates N node instances of the
+    target node.
+  - [ ] Each spawned instance receives its sub-task data via a dedicated
+    `{{node_dir}}` and `{{fan_out.index}}` / `{{fan_out.total}}` template vars.
+  - [ ] Spawned instances execute in parallel (up to `max_parallel` limit).
+  - [ ] Fan-out results are collected into a single output directory accessible
+    to downstream nodes via `{{input.<fan_out_node>}}`.
+  - [ ] If any spawned instance fails, the fan-out node is marked as failed
+    (fail-fast). Remaining instances are cancelled/ignored.
+  - [ ] `state.json` tracks each spawned instance as a sub-entry under the
+    fan-out node (e.g., `implementation[0]`, `implementation[1]`).
+  - [ ] `--dry-run` shows the fan-out config but cannot predict instance count
+    (depends on runtime splitter output).
+  - [ ] Resume (`--resume`) handles partially completed fan-out: skips finished
+    instances, re-runs failed/pending ones.
+  - [ ] `deno task check` passes.
+
+### 3.24 FR-E24: Engine Module Size Reduction
+
+- **Description:** `engine.ts` must remain ≤ 500 LOC. Core execution logic
+  (agent, loop, merge, HITL, node dispatch) must be extracted into separate
+  modules under `engine/`. Each extracted module owns its function group.
+  Public interfaces unchanged.
+- **Acceptance:**
+  - [x] `engine.ts` ≤ 500 LOC. Evidence: `engine/engine.ts` (435 LOC).
+  - [x] `executeAgentNode` extracted to `agent-node.ts`. Evidence:
+    `engine/agent-node.ts`.
+  - [x] `executeLoopNode` extracted to `loop.ts`. Evidence: `engine/loop.ts`.
+  - [x] `executeMergeNode` extracted to `merge.ts`. Evidence: `engine/merge.ts`.
+  - [x] HITL execution logic extracted to `hitl.ts`. Evidence: `engine/hitl.ts`.
+  - [x] `executeHumanNode` + node dispatch utilities extracted to
+    `node-dispatch.ts`. Evidence: `engine/node-dispatch.ts`.
+  - [x] All existing tests pass (no behavioral regression). Evidence: `deno
+    task check` passes (CI green on branch `sdlc/issue-92`).
+
 ## 4. Non-Functional Requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -538,3 +594,5 @@
 | FR-34  | FR-E19 | Generic Pipeline Failure Hook (`on_failure_script`) |
 | FR-39  | FR-E20 | Repeated File Read Warning |
 | FR-41  | FR-E21 | Semi-Verbose Output Mode (`-s`) |
+| —      | FR-E22 | Fan-Out (Dynamic Parallel Node Spawning) |
+| —      | FR-E24 | Engine Module Size Reduction |
