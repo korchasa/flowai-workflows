@@ -102,8 +102,12 @@ block direct invocations. Always use `deno task check`.
 - **ONE READ PER FILE (MANDATORY).** After reading a file once, retain its
   content in context. Do NOT Read the same file again. If an Edit fails, read
   the error — do NOT re-read the whole file.
-  **Evidence:** Run 20260314T000902 read 5 test files 3x each and stage-7-qa.sh
-  3x = 12 wasted reads.
+  This applies to ALL files — source files, spec files, AND tool-result temp
+  files (paths like `/home/.../.claude/.../tool-results/*.txt`).
+  **CRITICAL: `deno task check` output.** The Bash tool stores large output in a
+  temp file. Read it AT MOST ONCE. Extract all needed info in that single read.
+  **Evidence:** Run 20260314T014728 read the check output temp file 3x — 2 reads
+  were pure waste. Run 20260314T000902 read 5 test files 3x each = 12 wasted.
 - **Plan before editing (MANDATORY for >3 files):** Before your first Edit/Write,
   output a checklist: `FILE → TOOL (Edit/Write/Edit+replace_all) → CHANGE`.
   Then execute one call per file, in order. No re-reads, no re-writes.

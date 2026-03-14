@@ -29,10 +29,15 @@ produce a specification artifact, updating the project's SRS.
    get full details. View ONLY the selected issue — never other issues.
 3. **Review existing docs:** In ONE response, issue Read calls for BOTH
    `documents/requirements.md` AND `documents/design.md` in parallel.
-   **Read each file ONCE.** Do NOT re-read, grep, or tail a file you already
-   read. Do NOT use Grep to search files you already read — you have the full
-   content. Do not probe irrelevant files (`ls`, `find`, filesystem exploration).
+   **Read each file EXACTLY ONCE — no offset, no limit, no re-reads.**
+   After the initial Read, the ENTIRE file is in your context (both files are
+   under 2000 lines). Do NOT re-read with offset/limit parameters — that is
+   the same file and wastes turns. Do NOT use Grep to search files you already
+   read. Do not probe irrelevant files (`ls`, `find`, filesystem exploration).
    Only read source files directly referenced in the issue body.
+   **Evidence:** Run 20260314T014914 wasted 4 turns re-reading requirements.md
+   with offset/limit (lines 1-100, 350-550, 550-750, 750-950) after already
+   reading the full 919-line file. Result: 14 turns/$0.70 instead of target 8t.
 4. **Update the SRS:** Add or modify requirements in `documents/requirements.md`
    to reflect the issue. Every new requirement gets a status marker `[ ]`
    (pending).
@@ -118,6 +123,9 @@ Define what is NOT included in this issue's scope:
   `grep`, `find`, `ls`, or `python3` via Bash. Use Read or Grep tools only.
 - **FORBIDDEN: Grep after Read.** If you already Read a file, do NOT Grep it
   and do NOT use `grep` via Bash on it. You already have the content in context.
+- **FORBIDDEN: Re-reading with offset/limit.** After a full Read (no
+  offset/limit), the entire file is in context. Do NOT issue additional Read
+  calls with offset/limit parameters for the same file — this wastes turns.
 - **FORBIDDEN: `gh issue list` on `sdlc/issue-*` branch.** The branch name
   already tells you the issue number. Running `gh issue list` wastes 2+ turns.
 - **ONE WRITE for SRS updates (MANDATORY — ZERO EXCEPTIONS).**

@@ -1,12 +1,12 @@
 # Meta-Agent Memory
 
 ## Agent Baselines
-- pm (specification): 13t/$0.54/91s — stable (simple task, no SRS changes needed)
-- architect (design): 15t/$0.43/76s — stable
-- tech-lead (decision): 14t/$0.47/89s — stable
-- developer (build): 14t/$0.50/50s — stable (simple 2-file rename)
-- qa (verify): 21t/$0.67/105s — ISSUE: 7 re-reads of check output temp file
-- Total run cost: $2.61 (lowest yet; simple task)
+- pm (specification): 14t/$0.70/94s — ISSUE: 4 offset/limit re-reads of SRS
+- architect (design): 16t/$0.45/77s — stable
+- tech-lead (decision): 13t/$0.42/77s — stable
+- developer (build): 11t/$0.51/47s — stable (no temp-file re-reads)
+- qa (verify): 13t/$0.39/51s — stable (temp-file fix confirmed 2 runs)
+- Total run cost: $2.47
 - 1 iteration (QA passed first try)
 
 ## Active Patterns
@@ -18,10 +18,14 @@
   20t/$1.21 in 20260314T010515 (was 81t/$7.02). 1 clean run.
 - developer-reread-waste: RESOLVED, first seen 20260314T000902.
   20t/11 Reads in 20260314T010515 (no wasted re-reads). 1 clean run.
-- qa-reread-waste: REGRESSED, first seen 20260313T234144,
-  last seen 20260314T013359. Recurred: 7 reads of same temp file (was marked
-  RESOLVED after 3 clean runs). Fix v2 applied: explicit temp-file naming in
-  QA prompt. WATCHING.
+- qa-reread-waste: RESOLVED, first seen 20260313T234144,
+  last seen 20260314T013359. Fix v2 confirmed: 13t/1 temp read in 20260314T014728
+  (was 21t/7 reads). Explicit path pattern + evidence in prompt = effective.
+- developer-temp-reread: RESOLVED, first seen 20260314T014728,
+  last seen 20260314T014728. Fix confirmed: 0 temp re-reads in 20260314T014914.
+- pm-offset-reread: NEW, first seen 20260314T014914. PM re-reads SRS 4x with
+  offset/limit after full read (919-line file). Fix applied: explicit FORBIDDEN
+  rule for offset/limit re-reads + evidence. WATCHING.
 - pm-branch-shortcut-regression: RESOLVED (3 consecutive runs with shortcut
   working: 22→17t, no gh issue list on branch).
 - tech-lead-bash-exploration: RESOLVED (all 8 Bash commands whitelisted,
@@ -48,7 +52,11 @@
   (20t/$1.21 in 20260314T010515, down from 81t/$7.02)
 - 20260314T010515: no fixes needed — all agents within acceptable ranges
 - 20260314T013359: qa — strengthened temp-file re-read rule with explicit path
-  pattern and dual-run evidence. WATCHING for next run.
+  pattern and dual-run evidence. → RESOLVED (13t in 20260314T014728)
+- 20260314T014728: developer — added explicit temp-file re-read prevention
+  (mirroring QA fix). 3 re-reads of check output temp file. → RESOLVED (0 in 20260314T014914)
+- 20260314T014914: pm — added FORBIDDEN offset/limit re-read rule. PM read
+  requirements.md 5x (1 full + 4 offset/limit). WATCHING.
 
 ## Lessons Learned
 - PM/SDS-update scope overlap resolved by explicit constraints in PM prompt.
@@ -78,3 +86,9 @@
   rule is insufficient — agent doesn't recognize tool-result temp files as
   "files" covered by the rule. Must explicitly name the path pattern and
   reference concrete past failures.
+- **Temp-file re-read pattern is cross-agent.** Any agent that runs
+  `deno task check` via Bash can exhibit it. When fixing in one agent, proactively
+  apply same fix to all agents that run Bash commands with large output.
+- **Offset/limit re-reads are a distinct waste pattern.** Agent reads full file
+  (under 2000 lines), then re-reads sections with offset/limit — believing
+  it needs "focused" reads. Must explicitly forbid offset/limit after full read.
