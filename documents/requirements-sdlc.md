@@ -41,10 +41,10 @@
 
 - **Description:** Single entry point `deno task run [--prompt "..."]`. PM agent autonomously triages open GitHub issues — selects highest-priority open issue, fetches its title and body, and writes `issue: <N>` in `01-spec.md` YAML frontmatter. `--prompt` provides optional additional context passed to the PM agent.
 - **Acceptance criteria:**
-  - [ ] `deno task run` starts pipeline; PM selects highest-priority open issue autonomously.
-  - [ ] `deno task run --prompt "..."` passes additional context string to PM agent.
-  - [ ] PM writes `issue: <N>` in `01-spec.md` YAML frontmatter after issue selection.
-  - [ ] Common engine flags (`--resume`, `--dry-run`, `-v`, `-q`, `--config`) work with the single entry point.
+  - [x] `deno task run` starts pipeline; PM selects highest-priority open issue autonomously. Evidence: `engine/cli.ts:36-76` (CLI argument parsing + pipeline entry point), `.claude/skills/agent-pm/SKILL.md` (PM triage logic via `gh issue list`)
+  - [x] `deno task run --prompt "..."` passes additional context string to PM agent. Evidence: `engine/cli.ts:40-42` (`--prompt` arg parsed into `cliArgs.prompt`)
+  - [x] PM writes `issue: <N>` in `01-spec.md` YAML frontmatter after issue selection. Evidence: `.claude/skills/agent-pm/SKILL.md` (Output Format section mandates YAML frontmatter with `issue: N`)
+  - [x] Common engine flags (`--resume`, `--dry-run`, `-v`, `-q`, `--config`) work with the single entry point. Evidence: `engine/cli.ts:36-76` (`--resume` :43-45, `--dry-run` :47-49, `-v` :50-53, `-q` :58-61, `--config` :37-39)
 
 ### 3.2 FR-S2 (ex FR-2): Stage 1 — Project Manager (Specification)
 
