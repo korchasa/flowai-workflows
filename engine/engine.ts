@@ -51,6 +51,7 @@ export class Engine {
   private userInput: UserInput;
   private startTime = 0;
 
+  /** Create an engine instance with the given options and optional user-input provider. */
   constructor(options: EngineOptions, userInput: UserInput = terminalInput) {
     this.options = options;
     this.output = new OutputManager(options.verbosity);
@@ -334,6 +335,7 @@ export class Engine {
     }
   }
 
+  /** Run an agent node: invoke Claude CLI, handle HITL if triggered, save logs. */
   private async executeAgentNode(
     nodeId: string,
     node: NodeConfig,
@@ -444,6 +446,7 @@ export class Engine {
     return result;
   }
 
+  /** Merge inputs by copying each input directory into the merge node's output dir. */
   private async executeMergeNode(
     nodeId: string,
     node: NodeConfig,
@@ -465,6 +468,7 @@ export class Engine {
     return true;
   }
 
+  /** Delegate to runLoop(), then record iteration count and failure state. */
   private async executeLoopNode(
     nodeId: string,
     _node: NodeConfig,
@@ -523,6 +527,7 @@ export class Engine {
     return result.success;
   }
 
+  /** Prompt the user for input and abort the run if response matches abort_on. */
   private async executeHumanNode(
     nodeId: string,
     node: NodeConfig,

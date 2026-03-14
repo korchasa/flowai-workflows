@@ -2,14 +2,19 @@ import type { ClaudeCliOutput, Verbosity } from "./types.ts";
 
 /** Input artifact descriptor for verbose output. */
 export interface VerboseInput {
+  /** Absolute path to the input artifact file. */
   path: string;
+  /** File size in bytes for display. */
   sizeBytes: number;
 }
 
 /** Validation result descriptor for verbose output. */
 export interface VerboseValidationResult {
+  /** Validation rule name or identifier. */
   rule: string;
+  /** Whether the rule check passed. */
   passed: boolean;
+  /** Optional failure detail or context message. */
   detail?: string;
 }
 
@@ -34,6 +39,7 @@ export class OutputManager {
   private encoder = new TextEncoder();
   private customWriter?: (text: string) => void;
 
+  /** Create an OutputManager with the given verbosity and optional custom writer. */
   constructor(
     verbosity: Verbosity = "normal",
     writer?: (text: string) => void,
@@ -218,6 +224,7 @@ export class OutputManager {
     this.write(`${"─".repeat(40)}\n`);
   }
 
+  /** Format current time as HH:MM:SS for status line prefix. */
   private timestamp(): string {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -226,6 +233,7 @@ export class OutputManager {
     }`;
   }
 
+  /** Convert milliseconds to human-readable duration (e.g. "2m30s"). */
   private formatDuration(ms: number): string {
     if (ms < 1000) return `${ms}ms`;
     const seconds = Math.floor(ms / 1000);
@@ -235,6 +243,7 @@ export class OutputManager {
     return `${minutes}m${remainingSeconds > 0 ? `${remainingSeconds}s` : ""}`;
   }
 
+  /** Write text to custom writer or stderr. */
   private write(text: string): void {
     if (this.customWriter) {
       this.customWriter(text);
@@ -246,13 +255,21 @@ export class OutputManager {
 
 /** Summary statistics for a pipeline run. */
 export interface RunSummary {
+  /** Pipeline name from config. */
   name: string;
+  /** Unique run identifier (timestamp-based). */
   runId: string;
+  /** Final run outcome (e.g. "success", "failed"). */
   status: string;
+  /** Total wall-clock duration in milliseconds. */
   durationMs: number;
+  /** Total number of nodes in the pipeline. */
   total: number;
+  /** Count of successfully completed nodes. */
   completed: number;
+  /** Count of nodes that failed during execution. */
   failed: number;
+  /** Count of nodes skipped (e.g. via resume). */
   skipped: number;
   /** Per-node result excerpts for display in run summary (FR-E22). */
   nodeResults?: Record<string, string>;

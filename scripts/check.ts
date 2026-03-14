@@ -133,9 +133,11 @@ Usage:
 Checks performed:
   - Formatting check (deno fmt --check)
   - Linting (deno lint)
-  - Type check (deno check — all engine + scripts entry points)
+  - Type check (deno check — all .ts files incl. tests)
+  - CLI smoke test (engine/cli.ts --help)
   - Secret scan (gitleaks)
   - Tests (deno test)
+  - Doc lint: JSDoc, private-type-ref, circular deps (deno doc --lint)
   - Pipeline integrity check
   - Comment marker scan (TODO/FIXME/HACK/XXX)
 
@@ -172,19 +174,27 @@ if (import.meta.main) {
 
   await run("deno", ["fmt", "--check"], "Formatting Check");
   await run("deno", ["lint"], "Linting");
+
+  // Type check all .ts files (source + tests) in engine/ and scripts/
   const typeCheckFiles: string[] = [];
   for (const dir of ["engine", "scripts"]) {
     for await (const entry of Deno.readDir(dir)) {
-      if (
-        entry.isFile && entry.name.endsWith(".ts") &&
-        !entry.name.includes("_test.") && !entry.name.includes(".test.")
-      ) {
+      if (entry.isFile && entry.name.endsWith(".ts")) {
         typeCheckFiles.push(`${dir}/${entry.name}`);
       }
     }
   }
   await run("deno", ["check", ...typeCheckFiles.sort()], "Type Check");
-  await run("gitleaks", ["detect", "--no-git"], "Secret Scan", true);
+
+  // Smoke test: verify CLI entry point actually starts
+  await run(
+    "deno",
+    ["run", "-A", "engine/cli.ts", "--help"],
+    "CLI Smoke Test",
+  );
+
+  await run("gitleaks", ["detect", "--no-git"], "Secret Scan");
+
   const testDirs = ["scripts", ".auto-flow", "engine"];
   const testableDir = (await Promise.all(
     testDirs.map(async (d) => ({ d, has: await hasTestFiles(d) })),
@@ -200,6 +210,14 @@ if (import.meta.main) {
     console.log("\n--- Tests ---");
     console.log("No test files found, skipping.");
   }
+
+  // Doc lint: missing JSDoc, private-type-ref, circular deps
+  await run(
+    "deno",
+    ["doc", "--lint", "engine/mod.ts"],
+    "Doc Lint",
+  );
+
   await pipelineIntegrity();
   await commentScan();
 

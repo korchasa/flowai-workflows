@@ -3,6 +3,7 @@
 export type {
   ClaudeCliOutput,
   EngineOptions,
+  ErrorCategory,
   HitlConfig,
   NodeConfig,
   NodeSettings,
@@ -20,7 +21,9 @@ export type {
 export { interpolate } from "./template.ts";
 export { DEFAULT_SETTINGS, loadConfig, parseConfig } from "./config.ts";
 export { buildLevels, buildLoopBodyOrder } from "./dag.ts";
+export type { ExecutionLevels } from "./dag.ts";
 export { allPassed, formatFailures, runValidations } from "./validate.ts";
+export type { ValidationResult } from "./validate.ts";
 export {
   clearPhaseRegistry,
   createRunState,
@@ -34,15 +37,24 @@ export {
   setPhaseRegistry,
 } from "./state.ts";
 export { runAgent } from "./agent.ts";
-export type { AgentResult } from "./agent.ts";
+export type { AgentResult, AgentRunOptions, InvokeOptions } from "./agent.ts";
 export { detectHitlRequest, runHitlLoop } from "./hitl.ts";
-export type { HitlQuestion, HitlRunOptions } from "./hitl.ts";
+export type {
+  ClaudeRunner,
+  HitlQuestion,
+  HitlRunOptions,
+  ScriptRunner,
+} from "./hitl.ts";
 export { markNodeWaiting } from "./state.ts";
 export { saveAgentLog } from "./log.ts";
 export { extractFrontmatterField, runLoop } from "./loop.ts";
-export type { LoopResult } from "./loop.ts";
+export type { LoopResult, LoopRunOptions } from "./loop.ts";
 export { runHuman } from "./human.ts";
 export type { HumanResult, UserInput } from "./human.ts";
 export { OutputManager } from "./output.ts";
-export type { RunSummary } from "./output.ts";
+export type {
+  RunSummary,
+  VerboseInput,
+  VerboseValidationResult,
+} from "./output.ts";
 export { Engine } from "./engine.ts";

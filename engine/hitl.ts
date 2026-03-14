@@ -10,9 +10,13 @@ import type { OutputManager } from "./output.ts";
 
 /** Structured question extracted from AskUserQuestion permission denial. */
 export interface HitlQuestion {
+  /** The question text to present to the human. */
   question: string;
+  /** Optional heading displayed above the question. */
   header?: string;
+  /** Selectable answer choices with labels and optional descriptions. */
   options?: Array<{ label: string; description?: string }>;
+  /** Whether the user can select multiple options. */
   multiSelect?: boolean;
 }
 
@@ -29,19 +33,31 @@ export type ClaudeRunner = (
 
 /** Options for running the HITL poll loop. */
 export interface HitlRunOptions {
+  /** HITL configuration (scripts, timeouts, polling). */
   config: HitlConfig;
+  /** ID of the node awaiting human input. */
   nodeId: string;
+  /** Current pipeline run identifier. */
   runId: string;
+  /** Filesystem path to the run's root directory. */
   runDir: string;
+  /** Environment variables passed to scripts. */
   env: Record<string, string>;
+  /** Claude CLI session ID to resume after receiving a reply. */
   sessionId: string;
+  /** The question extracted from the agent's permission denial. */
   question: HitlQuestion;
+  /** Node configuration for the agent being paused. */
   node: NodeConfig;
+  /** Template context for artifact resolution. */
   ctx: TemplateContext;
+  /** Resolved node settings (timeouts, retries). */
   settings: Required<NodeSettings>;
+  /** Extra CLI flags forwarded to Claude on resume. */
   claudeArgs?: string[];
   /** Claude model override. Forwarded to invokeClaudeCli on resume. */
   model?: string;
+  /** Output manager for status/progress messages. */
   output?: OutputManager;
   /** Injected script runner — defaults to real shell; override in tests. */
   scriptRunner?: ScriptRunner;

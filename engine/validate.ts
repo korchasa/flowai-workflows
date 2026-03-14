@@ -3,8 +3,11 @@ import { interpolate } from "./template.ts";
 
 /** Result of running a validation rule. */
 export interface ValidationResult {
+  /** The validation rule that was evaluated. */
   rule: ValidationRule;
+  /** Whether the validation check passed. */
   passed: boolean;
+  /** Human-readable outcome description. */
   message: string;
 }
 

@@ -33,9 +33,10 @@ export function assertThrows(
     throw new AssertionError(msg ?? "Expected function to throw.");
   }
   if (errorClass && !(thrown instanceof errorClass)) {
+    const actualName = (thrown as Error).constructor.name;
     throw new AssertionError(
       msg ??
-        `Expected error to be instance of "${errorClass.name}", but got "${thrown.constructor.name}".`,
+        `Expected error to be instance of "${errorClass.name}", but got "${actualName}".`,
     );
   }
   if (msgIncludes && !thrown.message.includes(msgIncludes)) {

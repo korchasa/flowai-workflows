@@ -3,13 +3,17 @@ import { interpolate } from "./template.ts";
 
 /** Result of a human node interaction. */
 export interface HumanResult {
+  /** Whether the interaction completed without triggering an abort condition. */
   success: boolean;
+  /** The user's text response (or resolved option label). */
   response: string;
+  /** True if the response matched one of the node's abort_on values. */
   aborted: boolean;
 }
 
 /** Interface for user input (injectable for testing). */
 export interface UserInput {
+  /** Display a message and return the user's text response. */
   prompt(message: string): Promise<string>;
 }
 

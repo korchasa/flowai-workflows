@@ -16,10 +16,15 @@ import type { OutputManager } from "./output.ts";
 
 /** Result of a loop execution. */
 export interface LoopResult {
+  /** Whether the loop exited via its exit condition (true) or failed/exhausted (false). */
   success: boolean;
+  /** Number of completed iterations. */
   iterations: number;
+  /** Error description when the loop did not succeed. */
   error?: string;
+  /** Categorized error type for observability and resume logic. */
   error_category?: ErrorCategory;
+  /** Last observed value of the condition field before exit or exhaustion. */
   lastConditionValue?: string;
   /** Per-iteration AgentResult entries for log extraction by the engine. */
   bodyResults: AgentResult[];
@@ -27,21 +32,29 @@ export interface LoopResult {
 
 /** Options for running a loop node. */
 export interface LoopRunOptions {
+  /** ID of the loop node in the pipeline DAG. */
   loopNodeId: string;
+  /** Full pipeline configuration (nodes, defaults, env). */
   config: PipelineConfig;
+  /** Mutable run state shared with the engine. */
   state: RunState;
+  /** Factory that builds a TemplateContext for a body node at a given iteration. */
   buildCtx: (nodeId: string, iteration: number) => TemplateContext;
+  /** Called when a body node begins execution within an iteration. */
   onNodeStart?: (nodeId: string, iteration: number) => void;
+  /** Called after a body node finishes (success or failure). */
   onNodeComplete?: (
     nodeId: string,
     iteration: number,
     result: AgentResult,
   ) => void;
+  /** Called at the start of each loop iteration. */
   onIteration?: (iteration: number, maxIterations: number) => void;
   /** OutputManager for verbose diagnostics (forwarded to runAgent). */
   output?: OutputManager;
   /** Verbosity level for terminal output filtering (forwarded to runAgent). */
   verbosity?: Verbosity;
+  /** Persist run state to disk after node completion. */
   saveState?: () => Promise<void>;
 }
 

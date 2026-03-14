@@ -45,20 +45,31 @@ export async function resolveInputArtifacts(
 
 /** Result of an agent node execution. */
 export interface AgentResult {
+  /** Whether the agent completed successfully (all validations passed). */
   success: boolean;
+  /** Claude CLI session ID for potential --resume continuation. */
   session_id?: string;
+  /** Parsed CLI output including cost, duration, and result text. */
   output?: ClaudeCliOutput;
+  /** Number of validation-failure continuations performed. */
   continuations: number;
+  /** Human-readable error message if execution failed. */
   error?: string;
+  /** Classified failure reason for structured error handling. */
   error_category?: ErrorCategory;
+  /** Tool permission denials encountered during execution. */
   permission_denials?: PermissionDenial[];
 }
 
 /** Options for running an agent. */
 export interface AgentRunOptions {
+  /** Pipeline node configuration (prompt, hooks, validation rules). */
   node: NodeConfig;
+  /** Template context for interpolating prompt/hook variables. */
   ctx: TemplateContext;
+  /** Resolved node settings (timeouts, retries, continuations). */
   settings: Required<NodeSettings>;
+  /** Extra CLI arguments passed to claude command (e.g. --dangerously-skip-permissions). */
   claudeArgs?: string[];
   /** Claude model override (e.g. "claude-sonnet-4-6"). Omit = CLI default. */
   model?: string;
@@ -254,18 +265,27 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
 
 // --- Internal helpers ---
 
+/** Low-level options for a single claude CLI invocation (initial or resume). */
 export interface InvokeOptions {
+  /** Path to system prompt file appended via --append-system-prompt-file. */
   promptFile?: string;
   /** Cached prompt content (takes priority over promptFile). */
   promptContent?: string;
+  /** Task prompt passed to claude via -p flag. */
   taskPrompt: string;
+  /** Session ID for --resume continuation (omit for initial invocation). */
   resumeSessionId?: string;
+  /** Extra CLI arguments passed to claude command. */
   claudeArgs?: string[];
   /** Claude model override. Skipped on resume (session inherits model). */
   model?: string;
+  /** Max seconds before SIGTERM kills the claude process. */
   timeoutSeconds: number;
+  /** Max retry attempts on CLI crash/error before giving up. */
   maxRetries: number;
+  /** Base delay between retries in seconds (doubled each attempt). */
   retryDelaySeconds: number;
+  /** Callback invoked with each formatted stream event line for terminal display. */
   onOutput?: (line: string) => void;
   /** Path to write real-time stream-json log file. */
   streamLogPath?: string;
