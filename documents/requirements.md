@@ -845,23 +845,23 @@
   a glance. `NodeState` already records `started_at`, `completed_at`, and
   `duration_ms` — no engine changes required.
 - **Acceptance criteria:**
-  - [ ] Dashboard HTML includes a Gantt-style timeline section (rendered in
-    `generate-dashboard.ts`).
-  - [ ] Each node rendered as a horizontal bar: left offset =
+  - [x] Dashboard HTML includes a Gantt-style timeline section (rendered in
+    `generate-dashboard.ts`). Evidence: `scripts/generate-dashboard.ts:117` (`computeTimeline`), `scripts/generate-dashboard.ts:152` (`renderTimeline`), `scripts/generate-dashboard.ts:305-306` (integrated in `renderHtml`).
+  - [x] Each node rendered as a horizontal bar: left offset =
     `(node.started_at − run.started_at) / total_duration`; width =
-    `node.duration_ms / total_duration` (proportional, percentage-based CSS).
-  - [ ] Parallel nodes (overlapping time ranges) are stacked vertically in the
-    timeline view (each on its own row).
-  - [ ] Bottleneck node (max `duration_ms`) is visually distinguished (e.g.,
-    distinct fill color or border).
-  - [ ] Nodes with missing `started_at` or `duration_ms` (skipped/pending) are
-    omitted from the timeline.
-  - [ ] Timeline renders correctly when only one node has timing data.
-  - [ ] No external CDN dependencies; all CSS/JS inlined.
-  - [ ] `escHtml()` applied to node labels rendered in the timeline.
-  - [ ] Unit tests cover: bar position/width calculation, bottleneck detection,
-    parallel node stacking, single-node edge case, missing-timing omission.
-  - [ ] `deno task check` passes.
+    `node.duration_ms / total_duration` (proportional, percentage-based CSS). Evidence: `scripts/generate-dashboard.ts:140-141` (`offsetPct`, `widthPct` computation).
+  - [x] Parallel nodes (overlapping time ranges) are stacked vertically in the
+    timeline view (each on its own row). Evidence: `scripts/generate-dashboard.ts:165` (`<div class="timeline-row">` per bar).
+  - [x] Bottleneck node (max `duration_ms`) is visually distinguished (e.g.,
+    distinct fill color or border). Evidence: `scripts/generate-dashboard.ts:143` (`isBottleneck` flag), `scripts/generate-dashboard.ts:160-161` (CSS class applied), `scripts/generate-dashboard.ts:371` (`.timeline-bottleneck` CSS).
+  - [x] Nodes with missing `started_at` or `duration_ms` (skipped/pending) are
+    omitted from the timeline. Evidence: `scripts/generate-dashboard.ts:123` (`continue` on missing timing).
+  - [x] Timeline renders correctly when only one node has timing data. Evidence: `scripts/generate-dashboard_test.ts:323` (single-node test).
+  - [x] No external CDN dependencies; all CSS/JS inlined. Evidence: `scripts/generate-dashboard.ts:369-372` (timeline CSS in inlined `CSS` const).
+  - [x] `escHtml()` applied to node labels rendered in the timeline. Evidence: `scripts/generate-dashboard.ts:163` (`label = escHtml(nodeId)`).
+  - [x] Unit tests cover: bar position/width calculation, bottleneck detection,
+    parallel node stacking, single-node edge case, missing-timing omission. Evidence: `scripts/generate-dashboard_test.ts:288-472`.
+  - [x] `deno task check` passes. Evidence: QA PASS — all tests pass (run `20260314T060523`).
 
 ### 3.38 FR-39: Repeated File Read Warning
 
@@ -870,12 +870,12 @@
 - **Implementation:** `FileReadTracker` class in `engine/agent.ts`. Instantiated per `executeClaudeProcess()` call (counters reset per invocation). In event loop: for `tool_use` blocks with `name === "Read"`, calls `tracker.track(block.input.file_path)`. Non-null result written to log via `stampLines()`. Terminal `onOutput` callback unchanged (log-file-only).
 - **Warning format:** `[WARN] repeated file read: <path> (<N> times)`.
 - **Acceptance criteria:**
-  - [x] Stream log emits `[WARN] repeated file read: <path> (<N> times)` when same path is read >2 times in one session. Evidence: `engine/agent.ts` (`FileReadTracker.track()`), commit `ebe7cb2`.
-  - [x] Warning includes file path and read count. Evidence: `engine/agent.ts` (`FileReadTracker` return value format).
-  - [x] Warning is log-file-only — terminal `onOutput` callback unchanged. Evidence: `engine/agent.ts` (warning written via `stampLines()` to logFile only).
-  - [x] Counter resets per `executeClaudeProcess()` invocation (not cross-continuation). Evidence: `FileReadTracker` instantiated inside `executeClaudeProcess()`.
-  - [x] Execution not blocked by warning. Evidence: `track()` returns warning string; engine continues normally.
-  - [x] `FileReadTracker` is a pure-logic class — unit-testable without I/O. Evidence: `engine/agent_test.ts` (FileReadTracker unit tests).
+  - [x] Stream log emits `[WARN] repeated file read: <path> (<N> times)` when same path is read >2 times in one session. Evidence: `engine/agent.ts:332` (`FileReadTracker` class), `engine/agent.ts:346` (`track()` method), commit `ebe7cb2`.
+  - [x] Warning includes file path and read count. Evidence: `engine/agent.ts:346` (`FileReadTracker.track()` return value format).
+  - [x] Warning is log-file-only — terminal `onOutput` callback unchanged. Evidence: `engine/agent.ts:410` (`tracker` used in `executeClaudeProcess()`, warning written via `stampLines()` to logFile only).
+  - [x] Counter resets per `executeClaudeProcess()` invocation (not cross-continuation). Evidence: `engine/agent.ts:410` (`FileReadTracker` instantiated inside `executeClaudeProcess()`).
+  - [x] Execution not blocked by warning. Evidence: `engine/agent.ts:346` (`track()` returns warning string; engine continues normally).
+  - [x] `FileReadTracker` is a pure-logic class — unit-testable without I/O. Evidence: `engine/agent_test.ts:790-855` (FileReadTracker unit tests).
   - [x] `deno task check` passes. Evidence: QA PASS — all tests pass (run `20260314T060523`).
 
 ---
