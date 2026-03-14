@@ -108,8 +108,13 @@ After this step, files are FULLY in your context. In your text response:
 > Loaded design-<scope>.md.
 
 **AFTER STEP 3: ZERO Grep calls. ZERO re-reads. ZERO Edits. The content IS in your context.**
-**Evidence:** Run 20260314T175521 (scope: engine): PM read ALL 4 docs + re-read
-requirements-engine.md 3 extra times. 4 wasted Reads. 22t/$1.04 vs target 8t.
+**HARD STOP — ZERO re-reads of SRS files after Step 3.** If a Read was
+redirected to a tool-results file, reading THAT file counts as your read.
+Do NOT then re-read the original SRS file "to refresh" — it is ALREADY fully
+loaded from the tool-results file. Re-reading = wasted turn + doubled context.
+**Evidence:** Run 20260314T175521: read requirements-engine.md 4× = 3 wasted
+re-reads (22t/$1.04). Run 20260314T181758: re-read both SRS files after
+tool-results redirect + 4 Grep calls on files in context (24t/$1.00).
 
 **STEP 4 — WRITE SRS (ONE Write call per target SRS file, ZERO Edits):**
 Draft ALL changes in your text response FIRST. Then:

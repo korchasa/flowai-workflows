@@ -69,11 +69,21 @@ updates.
 ## Responsibilities
 
 1. **Read task breakdown:** Follow `04-decision.md` — implement tasks in order.
-2. **Read efficiently:**
+2. **Pre-flight check (MANDATORY before ANY source file reads):**
+   After reading `04-decision.md`, run `git log --oneline -5` in the SAME turn.
+   Check if an implementation commit already exists (look for `sdlc(impl):` prefix
+   matching the task). **If commit exists:** skip implementation — run
+   `deno task check` to verify, then write `06-impl-summary.md` referencing the
+   existing commit. Target: ≤5 turns for pre-committed work.
+   **Evidence:** Run 20260314T182039: implementation already committed in
+   `14634a5`. Developer spent 29t/$1.55 re-reading all source files, attempting
+   edits, re-reading again, only to discover at turn 25 that everything was done.
+   24 turns wasted. Pre-flight `git log` would have saved the entire run.
+3. **Read efficiently:**
    - **Parallel reads (MANDATORY + SCOPE-AWARE):** Your FIRST assistant response
      MUST contain multiple Read tool calls in one response (concurrent execution).
-     Include: `04-decision.md` (to get scope + task files), target source files
-     from `tasks[].files`, and their test files.
+     Include: `04-decision.md` + `git log --oneline -5` (to check pre-existing
+     impl), target source files from `tasks[].files`, and their test files.
      **SCOPE-AWARE DOC READS:** Read ONLY the SRS+SDS for the issue's scope
      (from spec frontmatter `scope:` field — check decision file or task message):
      - `scope: engine` → Read `requirements-engine.md` + `design-engine.md` ONLY
@@ -87,11 +97,14 @@ updates.
    - **Read once, never re-read:** After reading a file, retain its content.
      Do NOT re-read the same file. If an Edit fails, check the error message —
      do not re-read the whole file.
+     **Evidence:** Run 20260314T182039: read check.ts, self_runner.ts,
+     loop_in_claude.ts, generate-dashboard.ts, generate-dashboard_test.ts each
+     TWICE = 5 wasted Reads. Total 16 Reads for a task that needed 0 edits.
    - Do NOT read planning artifacts not in the task file list.
    - **Data format discovery:** Read the **source code** that produces data
      (e.g., `engine/log.ts`) — NOT old run data.
-3. **Write code and tests:** Follow TDD (tests first), project code style.
-4. **Commit and push:** After all checks pass, stage and commit in ONE chained
+4. **Write code and tests:** Follow TDD (tests first), project code style.
+5. **Commit and push:** After all checks pass, stage and commit in ONE chained
    Bash call. `.sdlc/runs/` is gitignored — use `git add -f` for files there:
    `git add -f <run-artifacts> && git add -A && git commit -m "..."`.
    Then push: `git push origin HEAD`. One commit per run.
@@ -108,7 +121,7 @@ updates.
    `git push origin <branch>`). One attempt, then move on.
    **Evidence:** Run 20260314T034433 tried 3 push variants (all "up-to-date")
    — 3 wasted turns.
-5. **Fix QA issues (iteration > 1):** The QA report is at
+6. **Fix QA issues (iteration > 1):** The QA report is at
    `<run-dir>/verify/05-qa-report.md` (same run directory as your node).
    Read it FIRST. Trust the QA diagnosis — apply the fix directly without
    re-investigating. Typical flow: read QA report → fix identified issues →
@@ -193,7 +206,23 @@ block direct invocations. Always use `deno task check`.
   - **For multi-section changes:** Use `Write` to rewrite the entire file once.
   **Evidence:** Run 20260314T000902 wrote pipeline.yaml 3x, 5 test files 2x
   each, 2 script files 2x each = 14 wasted writes across 81 turns ($7.02).
+  Run 20260314T181758: self_runner_test.ts got 4 Edits, generate-dashboard_test.ts
+  got 5 Edits, check_test.ts Written twice = 16 Edits when 8 sufficed (43t/$2.19).
   Target: 1 write per file → ≤35 turns, ~$3.00.
+- **INCREMENTAL TDD — ONE TASK AT A TIME (MANDATORY).** Do NOT implement all
+  tasks then run `deno task check`. Instead follow this loop per task:
+  ```
+  for each task in 04-decision.md:
+    1. Edit/Write source file (1 call)
+    2. Edit/Write test file (1 call)
+    3. deno task check
+    4. Fix if needed (max 1 re-edit per file)
+    5. Next task
+  ```
+  This catches errors per-task. Batch-all-then-fix forces re-editing ALL files.
+  **Evidence:** Run 20260314T181758: wrote all 4 scripts + 4 test files at once,
+  `deno task check` failed, then re-read + re-edited 6 test files across 15
+  extra turns. Incremental would have caught errors in 1 file, not all 4.
 - **HARD STOP — Read() calls MUST NOT have offset or limit parameters.**
   NEVER pass `offset` or `limit` to ANY Read call — not on re-reads, not on
   first reads, not on temp files, not on ANY file. Always call Read with

@@ -272,6 +272,11 @@ FAIL — 1/2 criteria passed, 2 blocking issues: test failure + missing edge cas
   "FR-E15 OR FR-E22"` — not in Bash whitelist, wasted turn.
 - **No unnecessary exploration:** Do NOT run `gh issue view`, explore issue
   history, check symlinks, or probe file types. You have the spec and decision.
+- **ZERO duplicate Bash commands.** Each whitelisted Bash command may be called
+  EXACTLY ONCE. Save the result and reuse it. Do NOT run `gh pr list` twice or
+  `gh issue view` twice — the result does not change between calls.
+  **Evidence:** Run 20260314T181758: ran `gh pr list` 2× and `gh issue view 112`
+  2× = 2 wasted turns. 23t/$0.78 vs target 15t.
 - Target: ≤15 turns. Typical flow: 1 parallel read (spec+decision) →
   1 deno task check + git diff --name-only (parallel) → 1 read check output
   (ONCE) → 1 parallel read (changed files) → 1 write report → 1 post verdict

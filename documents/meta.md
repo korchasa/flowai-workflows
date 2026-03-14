@@ -1,12 +1,12 @@
 # Meta-Agent Memory
 
 ## Agent Baselines
-- pm (specification): 22t/$1.04/164s — cost up (was 14t/$0.89)
-- architect (design): 16t/$0.70/97s — cost up (was 17t/$0.52)
-- tech-lead (decision): 23t/$0.87/159s — turns up (was 18t/$0.84)
-- developer (build): 31t/$2.24/361s — major cost regression (was 29t/$1.39)
-- qa (verify): 33t/$0.88/189s — turns DOUBLED (was 16t/$0.83)
-- Total run cost: $5.72 (up from $4.46)
+- pm (specification): 24t/$1.00/244s — regressed (was 18t/$0.79). SRS re-reads + Grep-after-Read.
+- architect (design): 16t/$0.54/80s — stable (was 17t/$0.57)
+- tech-lead (decision): 20t/$0.79/154s — slight regression (was 15t/$0.57)
+- developer (build): 43t/$2.19/409s — major regression (was 29t/$1.55). Batch-then-fix pattern.
+- qa (verify): 23t/$0.78/176s — regressed (was 15t/$0.37). Duplicate gh commands.
+- Total run cost: $5.29 (up from $3.85)
 - 1 iteration (QA passed first try)
 
 ## Active Patterns
@@ -17,20 +17,25 @@
 - tech-lead-design-reread: RESOLVED (2nd clean run: 172829).
 - developer-bash-whitelist-violation: RESOLVED (2nd clean run: 172829).
 - scope-unaware-doc-reads: WATCHING, first seen 172829, last seen 175521.
-  Root cause identified in 175521: pipeline YAML task_template hardcodes
-  "Read documents/requirements-sdlc.md and documents/design-sdlc.md" for
-  architect, tech-lead, developer — overrides scope-aware prompt algorithms.
-  Fix: replaced hardcoded doc refs in pipeline.yaml with "Read ONLY
-  scope-relevant SRS/SDS docs". Also added scope-aware STEP 3 to PM prompt.
-- developer-grep-after-read-v2: WATCHING, first seen 172829. Not seen in 175521
-  (developer had 0 Grep calls). Watching for confirmation.
-- qa-source-exploration: NEW, first seen 175521. QA made 9 Grep calls on
-  engine/*.ts source files after reading them + ran `deno test` separately
-  after `deno task check` + searched merged PRs. 33t vs target 15t.
-  Fix: added HARD STOP on source code Grep, prohibited `deno test` separately,
-  added `deno test` and `gh pr list --state merged` to Bash forbidden list.
-- pm-file-reread: NEW, first seen 175521. PM read requirements-engine.md 4×
-  (22t/$1.04 vs target 8t). Fix: added ONE READ PER FILE hard stop to PM.
+  Root cause in 175521: pipeline YAML task_template hardcodes sdlc doc refs.
+  Fix applied in 175521 (pipeline.yaml) + PM scope-aware STEP 3.
+  Run 181758 was engine+sdlc scope (all 4 reads correct) — cannot verify yet.
+- developer-grep-after-read-v2: RESOLVED (2nd clean run: 181758). 0 Grep calls.
+- developer-no-precheck-existing-impl: WATCHING, first seen 20260314T182039.
+  Fix applied (pre-flight git log). Run 181758: fresh impl, precheck N/A.
+- qa-source-exploration: WATCHING, first seen 175521. QA made 9 Grep calls on
+  source files + ran `deno test` separately. Fix: HARD STOP on source Grep,
+  prohibited `deno test`. Not seen in 181758 (0 source Grep, 0 deno test).
+- pm-file-reread: WATCHING, first seen 175521, last seen 181758. PM re-read
+  SRS files (4× in 175521, 2× in 181758). Fix: ONE READ PER FILE (175521) +
+  HARD STOP on SRS re-reads after Step 3 (181758).
+- developer-batch-then-fix: NEW, first seen 20260314T181758. Developer wrote all
+  4 scripts + 4 test files at once, deno task check failed, re-edited 6 test
+  files across 15 extra turns. 43t/$2.19 vs target 35t. Fix: added incremental
+  TDD algorithm (implement per-task, check after each).
+- qa-duplicate-gh-commands: NEW, first seen 20260314T181758. QA ran `gh pr list`
+  and `gh issue view 112` twice each. 23t/$0.78 vs target 15t. Fix: added
+  explicit "ZERO duplicate Bash commands" rule.
 
 ## Resolved Patterns
 - pm-tool-results-reread: RESOLVED (3+ clean runs)
@@ -65,6 +70,13 @@
   PM — added scope-aware STEP 3 + ONE READ PER FILE hard stop (was reading
   requirements-engine.md 4×). QA — added HARD STOP on source code Grep (9
   calls), prohibited `deno test` separately, added to Bash forbidden list.
+- 20260314T182039: developer — added pre-flight `git log` check to detect
+  already-committed implementation before starting work. Added fresh evidence
+  for ONE READ PER FILE rule (5 double-reads this run).
+- 20260314T181758: developer — added incremental TDD algorithm (per-task
+  implement+check loop) to prevent batch-then-fix pattern. pm — added HARD STOP
+  on SRS re-reads after Step 3. qa — added ZERO duplicate Bash commands rule.
+  Resolved merge conflicts in meta.md and agent-pm/SKILL.md from concurrent run.
 
 ## Lessons Learned
 - Total pipeline cost baseline for S-effort issue: ~$2.50.
@@ -74,24 +86,26 @@
 - **Rule placement matters.** HARD STOP before Responsibilities = strongest.
 - **Cross-agent patterns:** Fix in one agent, apply to ALL.
 - **Positive algorithms > prohibition.** Algorithm approach works better.
-- **Cost trajectory:** $5.09→$2.31→$2.24→$2.76→$4.11→$2.50→$2.88→$4.46→$5.72.
+- **Cost trajectory:** $5.09→$2.31→$2.24→$2.76→$4.11→$2.50→$2.88→$4.46→$3.85→$5.29.
 - **Scope-aware reads save ~25k tokens/agent.** Out-of-scope SRS/SDS docs add
   context that inflates cost per turn. Biggest impact on developer (most turns).
 - **Scope enforcement needs explicit file path deny-lists.**
 - **Merge conflicts in agent prompts are catastrophic.** They corrupt prompt
-  structure — rules between conflict markers become unparseable. This was likely
-  the root cause of Skill self-invocation persisting for 10+ runs despite
-  escalating prohibition language. Always verify no conflict markers after merge.
-- **requirements.md approaching 25k token limit.** PM hit 26k token Read error
-  in 092842, causing fallback to 6 Grep calls. May need to split SRS.
+  structure — rules between conflict markers become unparseable.
+- **requirements.md approaching 25k token limit.** May need to split SRS.
 - **Pre-flight checks > prohibition.** Self-check steps work better than bans.
-- **Positive alternatives with exact syntax.** Providing exact Grep call syntax
-  eliminates gap between "don't use bash grep" and knowing the alternative.
+- **Positive alternatives with exact syntax.** Providing exact syntax eliminates
+  gap between "don't use X" and knowing the alternative.
 - **ToolSearch for built-in tools is a cross-agent anti-pattern.**
 - **Background Bash is an anti-pattern for short commands.**
-- **Pipeline YAML task_template overrides prompt rules.** If the task message
-  explicitly says "Read file X", agents follow it even when their prompt says
-  not to. Task templates must align with prompt scope-aware algorithms.
-- **QA source-code Grep is exploratory waste.** QA's job is verifying
-  acceptance criteria, not code review. If `deno task check` passes and files
-  are read once, Grep on source adds no value.
+- **Pipeline YAML task_template overrides prompt rules.** Task templates must
+  align with prompt scope-aware algorithms.
+- **QA source-code Grep is exploratory waste.** QA verifies acceptance criteria,
+  not code review. If `deno task check` passes, Grep on source adds no value.
+- **Pre-flight `git log` saves entire runs.** When impl is pre-committed,
+  developer wastes all turns rediscovering existing work.
+- **Batch-all-then-fix is the anti-TDD.** When developer writes N files at once
+  then runs check, failures compound across all files → N re-edits. Incremental
+  (1 task → check → next) catches errors early in 1 file.
+- **Concurrent pipeline runs cause merge conflicts in shared files.** meta.md
+  and agent prompts edited by two meta-agent instances create git conflicts.
