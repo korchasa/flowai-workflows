@@ -29,12 +29,10 @@ import { terminalInput } from "./human.ts";
 import type { UserInput } from "./human.ts";
 import { OutputManager } from "./output.ts";
 import type { RunSummary } from "./output.ts";
-import {
-  executeAgentNode,
-  executeHumanNode,
-  executeLoopNode,
-  executeMergeNode,
-} from "./node-dispatch.ts";
+import { executeAgentNode } from "./agent-node.ts";
+import { executeMergeNode } from "./merge.ts";
+import { executeLoopNode } from "./loop.ts";
+import { executeHumanNode } from "./node-dispatch.ts";
 import type { NodeExecutionContext } from "./node-dispatch.ts";
 
 /** Main pipeline engine. Orchestrates node execution across DAG levels. */
@@ -463,11 +461,11 @@ export class Engine {
   }
 }
 
+export { resolveInputArtifacts } from "./agent-node.ts";
 export {
   collectAllNodeIds,
   collectPostPipelineNodes,
   findNodeConfig,
-  resolveInputArtifacts,
   runFailureHook,
   sortPostPipelineNodes,
 } from "./node-dispatch.ts";

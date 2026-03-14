@@ -11,8 +11,15 @@ import type {
 import { buildLoopBodyOrder } from "./dag.ts";
 import { runAgent } from "./agent.ts";
 import type { AgentResult } from "./agent.ts";
-import { markNodeCompleted, markNodeFailed, markNodeStarted } from "./state.ts";
+import {
+  getRunDir,
+  markNodeCompleted,
+  markNodeFailed,
+  markNodeStarted,
+} from "./state.ts";
 import type { OutputManager } from "./output.ts";
+import { saveAgentLog } from "./log.ts";
+import type { NodeExecutionContext } from "./node-dispatch.ts";
 
 /** Result of a loop execution. */
 export interface LoopResult {
@@ -210,4 +217,58 @@ export function extractFrontmatterField(
   }
 
   return undefined;
+}
+
+/** Execute a loop node. Delegates to runLoop() with callbacks wired to execCtx. */
+export async function executeLoopNode(
+  execCtx: NodeExecutionContext,
+  nodeId: string,
+): Promise<boolean> {
+  const loopResult = await runLoop({
+    loopNodeId: nodeId,
+    config: execCtx.config,
+    state: execCtx.state,
+    buildCtx: (bodyNodeId, iteration) =>
+      execCtx.buildContext(bodyNodeId, iteration),
+    onNodeStart: (id, iteration) =>
+      execCtx.output.status(id, `STARTED (iteration ${iteration})`),
+    onNodeComplete: (id, iteration, result) => {
+      if (result.success) {
+        execCtx.output.status(id, "COMPLETED");
+        if (result.output) {
+          execCtx.output.nodeResult(id, result.output);
+        }
+      } else {
+        execCtx.output.nodeFailed(id, result.error ?? "Failed");
+      }
+
+      // Save agent log for successful loop body nodes (iteration-qualified)
+      if (result.success && result.output) {
+        const runDir = getRunDir(execCtx.state.run_id);
+        const iterNodeId = `${id}-iter-${iteration}`;
+        saveAgentLog(runDir, iterNodeId, result.output).catch((err) => {
+          execCtx.output.warn(
+            `Failed to save log for ${iterNodeId}: ${(err as Error).message}`,
+          );
+        });
+      }
+    },
+    onIteration: (iteration, maxIterations) =>
+      execCtx.output.loopIteration(nodeId, iteration, maxIterations),
+    output: execCtx.output,
+    verbosity: execCtx.verbosity,
+    saveState: execCtx.saveState,
+  });
+
+  if (!loopResult.success) {
+    markNodeFailed(
+      execCtx.state,
+      nodeId,
+      loopResult.error ?? "Loop failed",
+      loopResult.error_category ?? "unknown",
+    );
+  }
+  execCtx.state.nodes[nodeId].iteration = loopResult.iterations;
+
+  return loopResult.success;
 }

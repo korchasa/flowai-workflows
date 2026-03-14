@@ -28,7 +28,7 @@
   },
   "fmt": {
     "proseWrap": "preserve",
-    "exclude": ["**/*.md", ".claude/"]
+    "exclude": ["**/*.md", ".claude/", ".auto-flow/"]
   },
   "lint": {
     "exclude": [".claude/"]
