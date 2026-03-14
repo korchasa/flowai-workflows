@@ -30,7 +30,13 @@ Run `git branch --show-current`. In your text response, WRITE:
 - **If NO:** go to STEP 2b.
 
 **STEP 2a — DIRECT ISSUE VIEW (sdlc/issue-N branch):**
-Run ONLY `gh issue view <N> --json body,title,comments`. ONE Bash call. Go to STEP 3.
+**YOUR BASH COMMAND MUST BE EXACTLY:**
+`gh issue view <N> --json body,title --jq '{title,body}'`
+**BEFORE calling Bash, verify your command does NOT contain the word `comments`.**
+If it does: REMOVE IT. `comments` floods output (25k+ tokens) → tool-results
+overflow → 4+ wasted retries → +$0.24 cost.
+**Evidence:** Run 20260314T080440: used `--json body,title,comments` → 4
+tool-results re-reads. Run 20260314T080106: same — 4 retries, all wasted.
 **BANNED in step 2a:** `git pull`, `gh issue list`. These are ONLY for step 2b.
 **9 consecutive runs violated this.** Run 20260314T072450: on `sdlc/issue-14`,
 ran git pull + 2x gh issue list = 3 wasted turns AGAIN. STOP.
@@ -45,8 +51,10 @@ Then `gh issue view <N> --json body,title,comments`. Go to STEP 3.
 Issue BOTH Read calls in ONE response (parallel):
 - `Read("documents/requirements.md")` — no offset, no limit
 - `Read("documents/design.md")` — no offset, no limit
-If requirements.md output is redirected to a tool-results file, Read that file
-ONCE. **MAX: 2 Read calls for requirements.md (original + tool-results). EVER.**
+If ANY tool output is redirected to a tool-results file, Read that file ONCE.
+If the tool-results file is too large (error or truncated), do NOT retry — use
+what you have in context. **MAX: 1 retry Read of any tool-results file. EVER.**
+**Evidence:** Run 20260314T080106: retried tool-results Read 4 times = all failed.
 After this step, BOTH files are FULLY in your context. In your text response:
 > Loaded requirements.md. Last FR: FR-XX (section 3.YY). Last section: ZZ at line NNN.
 > Loaded design.md.

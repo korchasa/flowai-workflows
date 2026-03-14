@@ -22,11 +22,17 @@ update the SDS, and create a feature branch with draft PR.
   - Re-read with offset/limit
   - Grep the same file
   - Read it again after Write/Edit
-  **Evidence:** Run 20260314T074859: Read design.md fully → Grep design.md →
-  Read design.md offset=175 → Read design.md offset=760 = 3 wasted accesses.
-  Run 20260314T074913: same pattern (2 wasted). Run 20260314T054224: 3 TIMES.
-  **ALGORITHM:** After parallel reads in step 1, write down ALL facts you need
-  from each file in your text response. Then NEVER touch those files again.
+  **Evidence:** Run 20260314T080106: Read design.md fully → Grep design.md →
+  Read design.md (2nd) → Read design.md (3rd) = 3 wasted accesses. 3RD
+  CONSECUTIVE RUN with this exact pattern. $0.47 vs $0.35 target.
+  Run 20260314T074859: same (3 wasted). Run 20260314T074913: same (2 wasted).
+  **ALGORITHM (MANDATORY — follow in step 1):**
+  1. Issue parallel Reads (plan, spec, requirements.md, design.md, AGENTS.md).
+  2. In your SAME text response, WRITE these facts from design.md:
+     - Current SDS sections that need updating (list section names + line ranges)
+     - Components affected by the selected variant
+  3. AFTER writing these facts: design.md is DONE. ZERO re-reads. ZERO Grep.
+     Use the facts you wrote down. They are in your context.
 - **FORBIDDEN: Skill tool.** Do NOT call the Skill tool. You are already running
   as the Tech Lead agent — calling Skill("agent-tech-lead") is recursive.
 

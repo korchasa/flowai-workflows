@@ -45,22 +45,27 @@ Developer's implementation against the specification and produce a QA report.
   - Run 20260314T044342: 7 Grep on requirements.md.
   **COUNT YOUR GREP CALLS. TARGET: ZERO. If you are about to call Grep on a
   path you already Read, STOP. The answer is in your context.**
-  **ALSO FORBIDDEN: ANY grep/Bash search after Read.** This includes:
-  - `grep` via Bash (grep -n, grep -c, grep -l — ALL forms)
-  - Grep tool on a file you already Read
-  - `tail` via Bash on tool-results files
-  **Evidence:** 2 CONSECUTIVE RUNS violated this:
-  - Run 20260314T074913: `Bash grep -c "## Summary"` on SKILL.md = violation.
+  **ALSO FORBIDDEN: ANY grep/sed/for-loop via Bash. EVER. On ANY file.**
+  **BEFORE every Bash call, check: does the command string contain `grep`,
+  `sed`, `awk`, `for`, or `cat`? If YES → DO NOT CALL BASH. Use Grep tool.**
+  **POSITIVE ALTERNATIVE (use THIS instead of bash grep):**
+  - Count pattern across files: `Grep(pattern="## Summary", glob="**/*.md", output_mode="count")`
+  - Search in specific file: `Grep(pattern="contains_section", path="pipeline.yaml", output_mode="content")`
+  **Evidence:** 4 CONSECUTIVE RUNS violated this:
+  - Run 20260314T080440: 4 bash grep calls (`grep -c` ×3, `grep -n` ×1) on
+    SKILL.md + pipeline.yaml. Could be 1 Grep tool call.
+  - Run 20260314T080106: 4 bash grep/sed calls. ALL forbidden.
+  - Run 20260314T074913: `Bash grep -c "## Summary"` on SKILL.md.
   - Run 20260314T073009: 3 Grep + 1 `Bash grep -n` on requirements.md after Read.
-  **If you catch yourself about to grep/Grep a file you Read: STOP. The answer
-  is in your context. Extract it from memory.**
 - **HARD STOP — `deno task check`: FOREGROUND, ONCE, NO run_in_background.**
   Your Bash call MUST be: `Bash(command="deno task check 2>&1")` with NO
   `run_in_background` parameter. Setting `run_in_background: true` forces you
   into a ToolSearch→TaskOutput→Read chain = 4+ wasted calls ($0.15+).
-  **6 CONSECUTIVE RUNS violated this.** Run 20260314T074859: ran in BACKGROUND,
-  then ToolSearch + TaskOutput + 2 Reads + Grep = 6 wasted calls.
-  Run 20260314T074913: same pattern. Run 20260314T073009: same.
+  **8 CONSECUTIVE RUNS violated this.** Run 20260314T080440: ran foreground THEN
+  re-ran `deno task check 2>&1 | tail -20` = duplicate. Run 20260314T080106:
+  same pattern. Run 20260314T074859: ran in BACKGROUND → 6 wasted calls.
+  Run 20260314T074913: same. Run 20260314T073009: same.
+  **ONCE means ONCE. Do NOT pipe to tail. Do NOT re-run with different flags.**
   **ALGORITHM (MANDATORY — follow EXACTLY):**
   ```
   1. Bash(command="deno task check 2>&1"). NO run_in_background. NO timeout.

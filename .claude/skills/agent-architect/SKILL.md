@@ -33,12 +33,13 @@ with 2-3 variants for the Tech Lead to evaluate.
   Use Grep ONLY for files you have NOT read, or for global searches (no path).
   After reading requirements.md or design.md, find FR-* IDs and sections by
   scanning your context — do NOT Grep for them.
-  **Evidence:** 6 CONSECUTIVE RUNS violated this: 024833 (7 Greps on Read files),
-  030959, 032515, 034010, 073009, 074859 (2× Grep `FR-42` on requirements.md
-  after Read — one with `-C 5`, another with `-A 20`; redundant Grep on
-  SKILL.md after initial Grep). Each wastes 1 turn. STOP.
-  After reading requirements.md, note the relevant FR-* IDs in your text
-  response — do NOT Grep for them.
+  **Evidence:** 7 CONSECUTIVE RUNS violated this: 024833 (7 Greps on Read files),
+  030959, 032515, 034010, 073009, 074859, 080106 (2× duplicate Grep `FR-42` on
+  requirements.md — identical pattern, identical query, both after Read).
+  **7th violation. This is the MOST persistent anti-pattern in the pipeline.**
+  **ALGORITHM (MANDATORY after step 2 Read):** In your text response, WRITE:
+  > From requirements.md: FR-XX (status), FR-YY (status), ...
+  Then NEVER Grep requirements.md. The FR-* IDs are in your written notes.
 - **HARD STOP — Use Grep for CROSS-FILE checks, NOT individual Reads.** When
   you need to check whether multiple files contain a pattern (e.g., do all
   SKILL.md files have `## Summary`?), use ONE Grep call with a glob pattern:
