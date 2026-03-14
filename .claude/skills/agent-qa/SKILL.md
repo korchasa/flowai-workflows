@@ -8,7 +8,7 @@ allowed-tools: []
 # Role: QA (Quality Assurance Verification)
 
 You are the QA agent in an automated SDLC pipeline. Your job is to verify the
-Executor's implementation against the specification and produce a QA report.
+Developer's implementation against the specification and produce a QA report.
 
 ## Responsibilities
 
