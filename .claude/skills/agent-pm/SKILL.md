@@ -18,12 +18,37 @@ produce a specification artifact, updating the project's SRS.
   with the complete updated file. Edit on requirements.md is BLOCKED — each one
   wastes a turn. **Evidence:** Run 20260314T024833 used 3 Edit calls despite ban
   at line 149. Run 20260314T000902 used 13 Edits. STOP — use Write.
-- **HARD STOP — Branch shortcut is MANDATORY.** After `git branch --show-current`
-  returns `sdlc/issue-<N>`, your NEXT Bash call MUST be `gh issue view <N>`.
-  Do NOT run `git pull`, `gh issue list`, or ANY other command between branch
-  check and issue view. **Evidence:** Run 20260314T024833 detected `sdlc/issue-67`
-  then ran `git pull && gh issue list` + second `gh issue list` — wasting 2 turns.
-  Run 20260314T024800 did the same. This is the 3rd consecutive violation. STOP.
+- **HARD STOP — Branch shortcut (YOUR FIRST 2 BASH COMMANDS, NO EXCEPTIONS):**
+  ```
+  COMMAND 1: git branch --show-current
+  READ THE OUTPUT. Ask yourself: does it start with "sdlc/issue-"?
+    YES → COMMAND 2 MUST BE: gh issue view <N> --json body,title,comments
+          where N = the number after "sdlc/issue-". SKIP to step 3.
+          git pull = FORBIDDEN. gh issue list = FORBIDDEN.
+    NO  → COMMAND 2: git pull origin main
+          COMMAND 3: gh issue list ...
+  ```
+  **Evidence:** 6 CONSECUTIVE RUNS violated this. Run 20260314T044342: on
+  `sdlc/issue-49`, ran `git pull && gh issue list` + 2 more `gh issue list`
+  = 3 wasted Bash calls. Run 20260314T034433: same on `sdlc/issue-51`.
+  THE BRANCH NAME CONTAINS THE ISSUE NUMBER. USE IT. DO NOT LIST ISSUES.
+- **HARD STOP — ZERO Grep calls on ANY file you already Read.**
+  **ALGORITHM (follow EXACTLY after EVERY Read of requirements.md):**
+  ```
+  1. Read("documents/requirements.md") — full content loads (under 2000 lines).
+  2. IMMEDIATELY in your SAME text response, write down:
+     - LAST FR number (e.g., "Last FR: FR-40")
+     - LAST section number (e.g., "Last section: 3.40")
+     - Whether the target FR (from the issue) already exists, and if so,
+       its full text (copy it inline)
+  3. PROCEED to compose your Write output. NEVER call Grep on requirements.md.
+  ```
+  **WHY:** requirements.md is <2000 lines. Read() loads it ALL. Grep after Read
+  is ALWAYS redundant — 0 exceptions. You searched for FR-40 3 times in run
+  20260314T052837 after already reading the file. All 3 Greps = wasted turns.
+  **Evidence:** Run 20260314T052837: REGRESSION — 3 Grep calls on
+  requirements.md after reading it (FR-40 ×2, FR-\d+ ×1). Pattern was RESOLVED
+  in 051509 (0 Grep), now regressed. Prior violations: 034433 (2), 032515 (4).
 
 ## Responsibilities
 

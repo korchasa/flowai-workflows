@@ -863,6 +863,38 @@
     parallel node stacking, single-node edge case, missing-timing omission.
   - [ ] `deno task check` passes.
 
+### 3.38 FR-39: Repeated File Read Warning in Stream Log
+
+- **Description:** The pipeline engine must detect when an agent reads the same
+  file path more than 2 times within a single agent session and emit a warning
+  line to the stream log. The warning is informational only — it must not block
+  or interrupt execution.
+- **Rationale:** Agents repeatedly reading the same file waste tokens and incur
+  unnecessary cost. This pattern is invisible in current logging and undetectable
+  by Meta-Agent without manual parsing of raw JSONL transcripts. A warning
+  enables automated prompt optimization (Meta-Agent) to flag and fix
+  redundant-read patterns in agent prompts.
+- **Scope:** Stream log only (`.sdlc/runs/<run-id>/logs/<node-id>.jsonl`).
+  Terminal output via `onOutput` callback is unchanged. Engine-level detection
+  only (not agent-internal).
+- **Acceptance criteria:**
+  - [ ] Engine tracks per-session file read counts by monitoring Claude CLI
+    `tool_use` events with `tool_name == "Read"` in the stream-json output.
+  - [ ] When a file path's read count exceeds 2 within one agent invocation,
+    engine writes a warning line to the stream log:
+    `[WARN] repeated file read: <path> (<N> times)`.
+  - [ ] Warning line is timestamped via existing `tsPrefix()` / `stampLines()`
+    mechanism (consistent with FR-33 log format).
+  - [ ] Warning is written to stream log only — terminal `onOutput` callback
+    receives no additional output.
+  - [ ] Execution is not blocked or interrupted by the warning.
+  - [ ] Warning triggers on the 3rd read (count > 2), not the 2nd.
+  - [ ] Each agent invocation (including continuation resumes) tracks reads
+    independently (counter resets between invocations).
+  - [ ] Unit tests cover: first 2 reads → no warning; 3rd read → warning;
+    4th+ reads → warning each time; different paths counted independently.
+  - [ ] `deno task check` passes.
+
 ---
 
 ## 4. Non-functional requirements

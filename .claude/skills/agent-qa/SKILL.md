@@ -16,6 +16,36 @@ Developer's implementation against the specification and produce a QA report.
   **Evidence:** 8 CONSECUTIVE RUNS violated this rule. Run 20260314T022619:
   read requirements.md at offset=826 after already reading it fully. Run
   20260314T022056: offset=800 on temp file. EVERY SINGLE RUN. STOP NOW.
+- **HARD STOP — ZERO Grep calls on ANY file you already Read.**
+  **ALGORITHM (follow EXACTLY for every file you Read):**
+  ```
+  1. Call Read(path).
+  2. IMMEDIATELY in your SAME text response, write down ALL facts you need:
+     - Test results: list "N passed, N failed" + any failure details
+     - Acceptance criteria: list each criterion + PASS/FAIL status
+     - Evidence lines: quote file:line references
+  3. PROCEED to next tool call. NEVER call Grep(path) afterward.
+  ```
+  **WHY THIS WORKS:** All tool-results files in this pipeline are <2000 lines.
+  Read() loads the FULL content. Grep after Read is always redundant — 0 exceptions.
+  **Evidence:** 3 CONSECUTIVE RUNS violated this:
+  - Run 20260314T051509: 5 Grep on tool-results files (560-992 lines each,
+    all fully loaded by Read). Searched for `ok | FAILED`, `passed|failed`,
+    `FR-40`, test line refs — ALL already in context.
+  - Run 20260314T051048: 5 Grep (3 requirements.md + 2 tool-results).
+  - Run 20260314T044342: 7 Grep on requirements.md.
+  **SPECIFIC CASE — `deno task check` output:** Bash stores large output in
+  `/home/.../.claude/.../tool-results/*.txt`. After you Read that file, extract
+  in your SAME text response: "N passed, N failed" + any failure names/lines.
+  Then NEVER Grep that file. Run 20260314T052837: Grepped bk01f2wuj.txt for
+  "FAILED|passed|failed" AFTER reading it — the answer was already in context.
+  **COUNT YOUR GREP CALLS. TARGET: ZERO. If you are about to call Grep on a
+  path you already Read, STOP. The answer is in your context.**
+- **HARD STOP — Run `deno task check` EXACTLY ONCE.** Do NOT run it twice.
+  Do NOT run it once in background and once in foreground. ONE invocation, read
+  the output, extract pass/fail. Done.
+  **Evidence:** Run 20260314T051048: ran `deno task check` twice (once
+  background, once foreground) = 1 wasted turn + duplicate output.
 
 ## Responsibilities
 
@@ -143,6 +173,9 @@ FAIL: 2 blocking issues found. Tests fail and edge case missing.
   `tail`, `ls`, `ls -la`, `file`, `find`, `for` loops, `git diff` with content
   output, `git log`, `git show`. Use Read/Grep tools for file inspection.
 - **FORBIDDEN: Agent tool.** Do NOT use subagents.
+- **FORBIDDEN: Skill tool.** Do NOT call `Skill: agent-qa` or any skill. Your
+  prompt is already loaded — calling Skill wastes a turn and doubles context.
+  **Evidence:** Run 20260314T052906: QA called `Skill: agent-qa` — redundant.
 - **Trust `deno task check`:** If all tests pass, do not manually re-verify
   things covered by tests. Focus on acceptance criteria not testable by CI.
 - **No unnecessary exploration:** Do NOT run `gh issue view`, explore issue

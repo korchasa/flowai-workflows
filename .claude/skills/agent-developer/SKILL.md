@@ -71,7 +71,11 @@ block direct invocations. Always use `deno task check`.
   `tasks[].files` plus test files. Do NOT modify:
   - `.github/`
   - `.sdlc/scripts/`
+  - `.claude/skills/` (agent prompts — meta-agent's job, NOT yours)
+  - `documents/meta.md` (meta-agent's memory — NOT yours)
   - `CLAUDE.md`
+  **Evidence:** Run 20260314T052906: committed 4 SKILL.md files + meta.md —
+  NONE in task breakdown. This is scope creep. You implement the TASK, nothing else.
 - **Self-referential safety:** If the task involves migrating or modifying
   pipeline agent prompts (files under `.claude/skills/agent-*/`), do NOT
   delete old prompt files during the pipeline run. The engine may still
@@ -127,4 +131,6 @@ Explicitly forbidden (unless listed in `04-decision.md` `tasks[].files`):
 
 - `.github/`
 - `.sdlc/scripts/`
+- `.claude/skills/` (agent prompts)
+- `documents/meta.md` (meta-agent memory)
 - `CLAUDE.md`
