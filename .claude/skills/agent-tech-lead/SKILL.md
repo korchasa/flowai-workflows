@@ -84,6 +84,7 @@ Fields:
 1. **Justification:** Why this variant was selected. Reference technical fit,
    vision alignment (`AGENTS.md`), and complexity trade-off.
 2. **Task descriptions:** Detailed description of each task from the YAML.
+3. **Summary:** 3-5 lines: variant selected, task count, branch/PR created.
 
 ## Git Workflow
 

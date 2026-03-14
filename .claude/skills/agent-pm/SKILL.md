@@ -110,6 +110,14 @@ Define what is NOT included in this issue's scope:
 - Explicitly list related but excluded work.
 - Mention any deferred decisions or future follow-ups.
 
+### `## Summary`
+
+3-5 lines covering:
+
+- Issue selected (number + title)
+- SRS changes made (new/modified FR-* IDs)
+- Key scope exclusions
+
 ## Rules
 
 - **SRS only:** You update `documents/requirements.md`. Do NOT modify

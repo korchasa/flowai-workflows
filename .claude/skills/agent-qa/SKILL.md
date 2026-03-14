@@ -110,6 +110,8 @@ verdict: FAIL
    - Affected file
    - Severity: `blocking` or `non-blocking`
 4. **Verdict Details:** Human-readable explanation of the verdict.
+5. **Summary:** 2-4 lines: verdict (PASS/FAIL), criterion pass/fail counts,
+   blocking issue count.
 
 ### Example
 
@@ -146,6 +148,10 @@ verdict: FAIL
 ## Verdict Details
 
 FAIL: 2 blocking issues found. Tests fail and edge case missing.
+
+## Summary
+
+FAIL — 1/2 criteria passed, 2 blocking issues: test failure + missing edge case.
 ```
 
 ## Efficiency

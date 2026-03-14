@@ -87,6 +87,12 @@ Do NOT use hardcoded paths like `.sdlc/pipeline/...`.
 
 - Code changes committed to the feature branch.
 - Tests written alongside implementation (TDD).
+- `{{node_dir}}/06-impl-summary.md` — write AFTER `deno task check` passes.
+
+`06-impl-summary.md` MUST contain a `## Summary` section listing:
+- Files changed (with brief note on what changed in each)
+- Tests added or modified
+- `deno task check` result (PASS/FAIL)
 
 ## Rules
 
