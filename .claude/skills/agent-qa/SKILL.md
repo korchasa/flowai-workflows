@@ -100,9 +100,15 @@ Use first-person ("I") in all narrative output. Prohibit passive voice and third
 ## Responsibilities
 
 1. **Run project checks:** Execute `deno task check` and capture output.
-2. **Verify acceptance criteria:** Check each criterion from `01-spec.md`.
-3. **Review changed files:** Inspect `git diff` for quality and correctness.
-4. **Produce QA report:** Write verdict (PASS/FAIL) with detailed findings.
+2. **Cross-check spec vs issue:** Fetch the original GitHub issue
+   (`gh issue view <N> --json title,body --jq '{title,body}'`, where N is from
+   `01-spec.md` frontmatter `issue:` field). Verify that the spec (`01-spec.md`)
+   and implementation actually address the issue's stated requirements — not
+   surrogate or alternative tasks. If the spec created different FRs than what
+   the issue asked for, this is a **blocking** issue ("spec drift from issue").
+3. **Verify acceptance criteria:** Check each criterion from `01-spec.md`.
+4. **Review changed files:** Inspect `git diff` for quality and correctness.
+5. **Produce QA report:** Write verdict (PASS/FAIL) with detailed findings.
 
 ## PR Progress
 
@@ -148,13 +154,17 @@ verdict: FAIL
 ### Required sections after frontmatter
 
 1. **Check Results:** Output summary of `deno task check`.
-2. **Acceptance Criteria:** Pass/fail per criterion from `01-spec.md`.
-3. **Issues Found:** List of issues (if any). Each issue must have:
+2. **Spec vs Issue Alignment:** Verify that `01-spec.md` faithfully addresses
+   the original GitHub issue requirements. List each issue requirement and
+   whether the spec covers it. If the spec created different/surrogate FRs
+   instead of what the issue asked for → blocking issue "spec drift from issue".
+3. **Acceptance Criteria:** Pass/fail per criterion from `01-spec.md`.
+5. **Issues Found:** List of issues (if any). Each issue must have:
    - Description
    - Affected file
    - Severity: `blocking` or `non-blocking`
-4. **Verdict Details:** Human-readable explanation of the verdict.
-5. **Summary:** 2-4 lines: verdict (PASS/FAIL), criterion pass/fail counts,
+6. **Verdict Details:** Human-readable explanation of the verdict.
+7. **Summary:** 2-4 lines: verdict (PASS/FAIL), criterion pass/fail counts,
    blocking issue count.
 
 ### Example
@@ -224,6 +234,7 @@ FAIL — 1/2 criteria passed, 2 blocking issues: test failure + missing edge cas
 - **Bash WHITELIST — ONLY these commands are allowed via Bash:**
   - `deno task check`
   - `git diff main...HEAD --name-only` (once, to get changed file list)
+  - `gh issue view <N> --json title,body --jq '{title,body}'` (once, for spec-vs-issue cross-check)
   - `gh pr list --head ... --json number`
   - `gh pr review <N> --approve/--request-changes --body "..."`
   - `gh issue comment <N> --body "..."`
@@ -252,8 +263,8 @@ FAIL — 1/2 criteria passed, 2 blocking issues: test failure + missing edge cas
 ## Rules
 
 - **Verdict must be PASS or FAIL:** No other values.
-- **PASS only if:** `deno task check` passes AND all acceptance criteria met
-  AND no blocking issues.
+- **PASS only if:** `deno task check` passes AND spec aligns with original
+  issue AND all acceptance criteria met AND no blocking issues.
 - **Every criterion covered:** QA report must address 100% of acceptance
   criteria from `01-spec.md`.
 - **Issues must have severity:** Each issue is `blocking` or `non-blocking`.

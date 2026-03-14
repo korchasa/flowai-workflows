@@ -39,9 +39,9 @@ nodes:
     task_template: |
       Select a GitHub issue to implement. Prefer issues labeled "in-progress"; fall back to any open issue.
       Output:
-        - {{node_dir}}/01-spec.md (YAML frontmatter with `issue: <N>`,
-          then problem, affected requirements, SRS changes, scope)
-        - Update documents/requirements-sdlc.md with new/modified requirements
+        - {{node_dir}}/01-spec.md (YAML frontmatter with `issue: <N>` and `scope: <engine|sdlc|engine+sdlc>`,
+          then problem, affected requirements, SRS changes, scope boundaries)
+        - Update the target SRS file(s) based on issue scope (see Scope Detection in prompt)
     validate:
       - type: file_exists
         path: "{{node_dir}}/01-spec.md"
@@ -50,6 +50,9 @@ nodes:
       - type: frontmatter_field
         path: "{{node_dir}}/01-spec.md"
         field: issue
+      - type: frontmatter_field
+        path: "{{node_dir}}/01-spec.md"
+        field: scope
       - type: contains_section
         path: "{{node_dir}}/01-spec.md"
         value: "Problem Statement"

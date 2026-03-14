@@ -22,10 +22,11 @@ update the SDS, and create a feature branch with draft PR.
   **ALGORITHM (MANDATORY — follow in step 1):**
   1. Issue parallel Reads (plan, spec, requirements-sdlc.md, design-sdlc.md,
      requirements-engine.md, design-engine.md, AGENTS.md).
-  2. In your SAME text response, WRITE these facts from design-sdlc.md:
+  2. Read `scope` field from spec frontmatter. Determine target SDS file(s).
+  3. In your SAME text response, WRITE these facts from the target SDS file:
      - Current SDS sections that need updating (list section names + line ranges)
      - Components affected by the selected variant
-  3. AFTER writing these facts: design-sdlc.md is DONE. ZERO re-reads. ZERO Grep.
+  4. AFTER writing these facts: target SDS is DONE. ZERO re-reads. ZERO Grep.
 - **FORBIDDEN: Skill tool, ToolSearch tool.** Do NOT call Skill (recursive) or
   ToolSearch. Your tools are already available.
 - **HARD STOP — ONE READ PER FILE. Including tool-results temp files.**
@@ -51,11 +52,16 @@ updates.
 2. **Select a variant:** Choose one variant. Justify the decision.
 3. **Produce task breakdown:** Write `04-decision.md` (see Output below) with
    an ordered, dependency-aware list of atomic tasks.
-4. **Update SDS:** Reflect the selected variant's design in
-   `documents/design-sdlc.md`. **Use ONE Write call with the complete updated file.**
-   Do NOT Write design-sdlc.md and then re-read + Edit it — that wastes 5+ turns.
+4. **Determine scope:** Read `scope` field from `01-spec.md` YAML frontmatter.
+   This determines which SDS file(s) to update:
+   - `engine` → `documents/design-engine.md`
+   - `sdlc` → `documents/design-sdlc.md`
+   - `engine+sdlc` → both SDS files
+5. **Update SDS:** Reflect the selected variant's design in the target SDS
+   file(s). **Use ONE Write call per SDS file with the complete updated content.**
+   Do NOT Write then re-read + Edit — that wastes 5+ turns.
    Plan all SDS changes BEFORE writing. Keep changes minimal and targeted.
-5. **Create branch + draft PR:** Create `sdlc/issue-<N>` branch, commit
+6. **Create branch + draft PR:** Create `sdlc/issue-<N>` branch, commit
    decision + SDS changes, push, and open a draft PR.
 
 ## Issue Progress
@@ -136,7 +142,7 @@ Fields:
 2. Commit decision artifact + SDS changes (single commit).
    **IMPORTANT:** `.sdlc/runs/` is gitignored. ALWAYS use `git add -f` for ALL
    files in that directory. Chain add+commit in ONE Bash call:
-   `git add -f <run-artifact-path> && git add documents/design-sdlc.md && git commit -m "..."`
+   `git add -f <run-artifact-path> && git add documents/design-*.md && git commit -m "..."`
    Do NOT try `git add` without `-f` first — it WILL fail silently.
    **Evidence:** Run 20260314T074859: first commit failed (no -f), then git
    status, then retry with -f = 2 wasted calls. Same in build agent.
@@ -182,11 +188,12 @@ diagnose before retrying. Do NOT retry the same command blindly.
   Read calls.
 - **FORBIDDEN: Grep tool after Read.** You Read 5 files in parallel. Do NOT
   then Grep any of those files. In this run, 2 Grep calls were wasted.
-- **ONE WRITE for SDS updates (MANDATORY).** Read design-sdlc.md once (in parallel
-  reads). Plan all changes in your text response. Write the complete updated
-  file with ONE Write call. Do NOT Write then re-read + Edit — that pattern
-  wastes 5+ turns. **Evidence:** Run 20260314T044647: wrote design.md, then
-  re-read it, then 4 Edit calls = 5 wasted turns. 23t/$1.32 vs target 10t.
+- **ONE WRITE per SDS file (MANDATORY).** Read target SDS file(s) once (in
+  parallel reads). Plan all changes in your text response. Write the complete
+  updated file with ONE Write call per SDS file. Do NOT Write then re-read +
+  Edit — that pattern wastes 5+ turns. **Evidence:** Run 20260314T044647: wrote
+  design.md, then re-read it, then 4 Edit calls = 5 wasted turns.
+  23t/$1.32 vs target 10t.
 - Keep SDS updates focused. One issue comment at the end, not multiple.
 - **Target: ≤10 turns.** Typical: 1 parallel read (5 inputs) → 1 branch check
   (git branch + gh pr list parallel) → 1 write decision → 1 edit SDS →
@@ -207,7 +214,10 @@ diagnose before retrying. Do NOT retry the same command blindly.
 ## Allowed File Modifications
 
 - `04-decision.md` in the node output directory (path from task message).
-- `documents/design-sdlc.md` — SDS updates for selected variant.
+- Target SDS file(s) based on `scope` field in `01-spec.md` frontmatter:
+  - `engine` → `documents/design-engine.md`
+  - `sdlc` → `documents/design-sdlc.md`
+  - `engine+sdlc` → both SDS files
 - Git operations: branch creation, commits, push, draft PR.
 
 Do NOT modify source code, tests, SRS, or any other files.
