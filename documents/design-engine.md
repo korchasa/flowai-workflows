@@ -93,7 +93,10 @@ graph TD
     `nodes[*].cost_usd` → `total_cost_usd`; called from
     `markNodeCompleted()` when optional `costUsd` param provided, FR-32).
     `markNodeCompleted()` also accepts optional `result?: string` param
-    (FR-E22) — persists excerpt to `NodeState.result` in `state.json`
+    (FR-E22) — persists excerpt to `NodeState.result` in `state.json`.
+    **`copyDir(src, dest)` (FR-E24):** exported free function — recursive
+    directory copy utility. Used by `executeMergeNode()` in `engine.ts`.
+    Moved from `engine.ts` as part of module size reduction
   - `agent.ts` — Claude CLI invocation, continuation loop, retry.
     `AgentRunOptions.model` and `InvokeOptions.model`: optional string for
     per-node model selection. `buildClaudeArgs()` emits `--model <value>` when
@@ -149,7 +152,14 @@ graph TD
     `assistant` events — emits only `text` blocks. Default `undefined` =
     all blocks (backward-compatible). Log file writes call without verbosity
     (full output preserved). `onOutput` callback path passes verbosity from
-    `AgentRunOptions` so terminal output is filtered at source
+    `AgentRunOptions` so terminal output is filtered at source.
+    **`executeAgentNode(params: AgentNodeParams)` (FR-E24):** exported free
+    function — extracted from `Engine` class in `engine.ts`. Accepts explicit
+    params object (`nodeId`, `nodeConfig`, `state`, `config`, `output`,
+    `options`, `ctx`, `runDir`, `streamLogPath`). Contains agent invocation,
+    HITL detection/resume, continuation loop, session_id/log persistence.
+    Mutates `state` via reference. `engine.ts` `executeNode()` imports and
+    delegates to this function for `type: "agent"` nodes
   - `loop.ts` — loop node execution with condition extraction, per-iteration
     `AgentResult` accumulation into `LoopResult.bodyResults`.
     `buildLoopBodyOrder()` reads from inline `nodes` sub-object (replaces
@@ -157,7 +167,15 @@ graph TD
     `buildContext()` resolves `inputs` against both sibling body nodes and
     top-level nodes. Accepts `streamLogPath` pattern from engine; computes
     iteration-qualified path `${nodeId}-iter-${i}.jsonl` per body node
-    invocation; forwards to inner `runAgent()` calls
+    invocation; forwards to inner `runAgent()` calls.
+    **`executeLoopNode(params: LoopNodeParams)` (FR-E24):** exported free
+    function — extracted from `Engine` class in `engine.ts`. Accepts explicit
+    params object (`nodeId`, `nodeConfig`, `state`, `config`, `output`,
+    `options`, `ctx`, `runDir`). Contains loop execution orchestration,
+    `onNodeComplete` callback for log saving and result display,
+    `markNodeCompleted()` calls with result excerpts. Mutates `state` via
+    reference. `engine.ts` `executeNode()` imports and delegates for
+    `type: "loop"` nodes
   - `hitl.ts` — HITL detection (`detectHitlRequest`) and poll loop
     (`runHitlLoop`); injectable `scriptRunner`/`claudeRunner` for testing
   - `human.ts` — terminal user input, abort logic
@@ -185,17 +203,25 @@ graph TD
     `RunSummary.nodeResults?: Record<string, string>` (FR-E22): optional
     per-node result excerpts. `summary()` renders per-node result lines after
     "Nodes:" when `nodeResults` present: `  <nodeId padded>  <excerpt>`.
-    Imports `ClaudeCliOutput` from `types.ts`
-  - `engine.ts` — main executor: level iteration, sequential dispatch, verbose
-    input resolution, node result summary display (FR-E15/E22),
-    loop-node log saving via `onNodeComplete` callback,
-    phase registry init via `setPhaseRegistry(config)` at engine startup,
-    pre-post-pipeline `on_failure_script` execution.
+    Imports `ClaudeCliOutput` from `types.ts`.
+    **`printSummary(state: RunState, config: PipelineConfig)` (FR-E24):**
+    method on `OutputManager` — extracted from `Engine` class in `engine.ts`.
+    Builds `nodeResults` from `state.nodes[*].result`, passes to `summary()`
+    for per-node result rendering in final summary block. `engine.ts` calls
+    `this.output.printSummary(this.state, this.config)` instead of private
+    method
+  - `engine.ts` — main executor: level iteration, sequential dispatch,
+    node type delegation to extracted functions (FR-E24), verbose
+    input resolution, phase registry init via `setPhaseRegistry(config)` at
+    engine startup, pre-post-pipeline `on_failure_script` execution.
+    **Module size reduction (FR-E24):** `executeAgentNode()` extracted to
+    `agent.ts`, `executeLoopNode()` extracted to `loop.ts`,
+    `printSummary()` extracted to `OutputManager` in `output.ts`,
+    `copyDir()` extracted to `state.ts`. `executeNode()` dispatches to
+    imported free functions for `agent` and `loop` node types. Target:
+    <500 LOC (from 654 → ~477).
     `executeNode()`: passes `extractResultExcerpt(result.output.result)` to
     `markNodeCompleted()` as `result` param (FR-E22).
-    `executeLoopNode()`: passes result excerpt in `onNodeComplete` callback.
-    `printSummary()`: builds `nodeResults` from `state.nodes[*].result`,
-    passes to `summary()` for per-node result rendering.
     Dry-run path (FR-28): applies `collectPostPipelineNodes()` +
     `sortPostPipelineNodes()` + level filtering before calling
     `dryRunPlan()`, passing filtered levels and post-pipeline node IDs with
@@ -268,14 +294,15 @@ graph TD
     Forwarded to `runAgent()` calls. Enables prompt/validation/continuation
     verbose for loop body nodes. Safety/commit verbose for loop body nodes:
     deferred (loop body bypasses `executeAgentNode()`).
-  - `engine.ts`: `executeAgentNode()` resolves input artifact paths+sizes by
+  - `engine.ts`: `executeNode()` resolves input artifact paths+sizes by
     walking `ctx.input` directories via `Deno.stat()`; calls
-    `this.output.verboseInputs()` before `runAgent()`. Passes `this.output`
-    and `nodeId` to `runAgent()`. Safety check and commit verbose removed
-    (engine no longer performs these — FR-29). `runFailureHook(script?)`:
-    private method (~10 lines), executes `on_failure_script` via
-    `Deno.Command()` on pipeline failure. Swallows errors (failure hook must
-    not crash engine). Replaces hard-wired `rollbackUncommitted()`.
+    `this.output.verboseInputs()` before delegating to `executeAgentNode()`.
+    Passes `this.output` and `nodeId` via params. Safety check and commit
+    verbose removed (engine no longer performs these — FR-29).
+    `runFailureHook(script?)`: private method (~10 lines), executes
+    `on_failure_script` via `Deno.Command()` on pipeline failure. Swallows
+    errors (failure hook must not crash engine). Replaces hard-wired
+    `rollbackUncommitted()`.
   - All existing callers pass no `output` arg — zero behavioral change.
 - **Deps:** `claude` CLI, `deno`, `git`, `jsr:@std/yaml`.
 
@@ -368,16 +395,17 @@ graph TD
   - **Continuation Loop**: invoke agent -> validate -> if fail: resume with
     error context -> repeat (max N). If limit reached: fail node.
   - **Verbose Output Flow** (`-v` mode, agent nodes only): In
-    `executeAgentNode()`: (1) resolve input artifact file paths+sizes from
-    `ctx.input` dirs via `Deno.stat()` → `verboseInputs()`, (2) `runAgent()`
-    (with `output` + `nodeId`) emits `verbosePrompt()` → Claude CLI executes →
-    `verboseValidation()` → on failure: `verboseContinuation()` → retry.
+    `executeNode()`: (1) resolve input artifact file paths+sizes from
+    `ctx.input` dirs via `Deno.stat()` → `verboseInputs()`, (2) delegate to
+    `executeAgentNode()` (in `agent.ts`) which emits `verbosePrompt()` →
+    Claude CLI executes → `verboseValidation()` → on failure:
+    `verboseContinuation()` → retry.
     All verbose methods guarded by `verbosity !== "verbose"` — no-op in
     default/quiet. Output: human-readable stderr lines with section headers.
   - **Loop Node Log Saving** (callback-based, no I/O in `loop.ts`):
     `runLoop()` accumulates `AgentResult` per body-node iteration into
     `LoopResult.bodyResults[]` (pure data, no filesystem ops). In
-    `executeLoopNode()` (`engine.ts`), the `onNodeComplete` callback iterates
+    `executeLoopNode()` (`loop.ts`), the `onNodeComplete` callback iterates
     `bodyResults`, calling `saveAgentLog()` with iteration-qualified nodeId
     (`${id}-iter-${i}`). Guard: only on `result.success && result.output`.
     `saveAgentLog()` errors caught and warned (non-fatal) — audit I/O must not
@@ -395,8 +423,9 @@ graph TD
     (2) `executeLoopNode()` `onNodeComplete` callback — calls `nodeResult()`
     when `result.output` exists; passes excerpt to `markNodeCompleted()`.
     Suppressed in quiet mode. Shown in default and verbose modes.
-    `printSummary()` builds `nodeResults` from persisted `state.nodes[*].result`
-    and passes to `summary()` for per-node result lines in final summary block.
+    `printSummary()` (on `OutputManager`) builds `nodeResults` from persisted
+    `state.nodes[*].result` and passes to `summary()` for per-node result
+    lines in final summary block.
   - **Verbose Edge Cases** (behavioral contracts verified by tests):
     - **Default mode (no `-v`):** All 4 verbose methods produce zero stderr
       output. `OutputManager` constructed with `verbose=false` suppresses all
