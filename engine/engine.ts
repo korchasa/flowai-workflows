@@ -17,7 +17,7 @@ import type { UserInput } from "./human.ts";
 import { acquireLock, defaultLockPath, releaseLock } from "./lock.ts";
 import { saveAgentLog } from "./log.ts";
 import { runLoop } from "./loop.ts";
-import { OutputManager } from "./output.ts";
+import { extractResultExcerpt, OutputManager } from "./output.ts";
 import type { RunSummary } from "./output.ts";
 import {
   collectPostPipelineNodes,
@@ -303,6 +303,9 @@ export class Engine {
           this.state,
           nodeId,
           lastAgentResult?.output?.total_cost_usd,
+          lastAgentResult?.output
+            ? extractResultExcerpt(lastAgentResult.output.result)
+            : undefined,
         );
         const duration = this.state.nodes[nodeId].duration_ms ?? 0;
         this.output.nodeCompleted(nodeId, duration);
@@ -479,6 +482,11 @@ export class Engine {
           this.output.status(id, "COMPLETED");
           if (result.output) {
             this.output.nodeResult(id, result.output);
+            if (id in this.state.nodes) {
+              this.state.nodes[id].result = extractResultExcerpt(
+                result.output.result,
+              );
+            }
           }
         } else {
           this.output.nodeFailed(id, result.error ?? "Failed");
@@ -608,6 +616,12 @@ export class Engine {
   /** Print final summary. */
   private printSummary(): void {
     const nodes = Object.values(this.state.nodes);
+    const nodeResults: Record<string, string> = {};
+    for (const [id, node] of Object.entries(this.state.nodes)) {
+      if (node.result) {
+        nodeResults[id] = node.result;
+      }
+    }
     const summary: RunSummary = {
       name: this.config.name,
       runId: this.state.run_id,
@@ -617,6 +631,9 @@ export class Engine {
       completed: nodes.filter((n) => n.status === "completed").length,
       failed: nodes.filter((n) => n.status === "failed").length,
       skipped: nodes.filter((n) => n.status === "skipped").length,
+      nodeResults: Object.keys(nodeResults).length > 0
+        ? nodeResults
+        : undefined,
     };
     this.output.summary(summary);
   }

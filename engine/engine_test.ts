@@ -820,3 +820,79 @@ Deno.test("runFailureHook — nonexistent script does not throw (swallows error)
   const output = cap.lines.join("");
   assertEquals(output.includes("WARN"), true);
 });
+
+// --- FR-E22: printSummary() nodeResults rendering tests ---
+
+Deno.test("summary() — renders node results from RunSummary nodeResults field", () => {
+  const cap = createCapture();
+  const out = new OutputManager("normal", cap.writer);
+
+  // Simulate a completed run state with result excerpts
+  const state = createRunState(
+    "test-run",
+    "cfg.yaml",
+    ["build", "verify"],
+    {},
+    {},
+  );
+  markNodeStarted(state, "build");
+  markNodeCompleted(
+    state,
+    "build",
+    0.01,
+    "Implemented feature X | Added tests",
+  );
+  markNodeStarted(state, "verify");
+  markNodeCompleted(state, "verify", 0.005, "All checks passed");
+
+  // Build nodeResults as printSummary() would
+  const nodeResults: Record<string, string> = {};
+  for (const [id, node] of Object.entries(state.nodes)) {
+    if ((node as NodeState).result) {
+      nodeResults[id] = (node as NodeState).result!;
+    }
+  }
+
+  out.summary({
+    name: "test-pipeline",
+    runId: state.run_id,
+    status: "completed",
+    durationMs: 60000,
+    total: 2,
+    completed: 2,
+    failed: 0,
+    skipped: 0,
+    nodeResults,
+  });
+
+  const joined = cap.lines.join("");
+  assertEquals(joined.includes("build"), true);
+  assertEquals(joined.includes("Implemented feature X"), true);
+  assertEquals(joined.includes("verify"), true);
+  assertEquals(joined.includes("All checks passed"), true);
+});
+
+Deno.test("summary() — omits nodeResults section when no nodes have results", () => {
+  const cap = createCapture();
+  const out = new OutputManager("normal", cap.writer);
+
+  out.summary({
+    name: "test-pipeline",
+    runId: "test-run",
+    status: "completed",
+    durationMs: 5000,
+    total: 1,
+    completed: 1,
+    failed: 0,
+    skipped: 0,
+  });
+
+  const joined = cap.lines.join("");
+  assertEquals(joined.includes("Pipeline:"), true);
+  assertEquals(joined.includes("1/1 completed"), true);
+  // No extra result lines injected
+  assertEquals(
+    joined.split("\n").filter((l) => l.match(/^\s+\w.*\s{2}/)).length,
+    0,
+  );
+});
