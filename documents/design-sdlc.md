@@ -440,11 +440,10 @@ FR-S24 evidence (issue #96):
 Engine refactoring (issue #92):
 
 - **engine.ts module size reduction:** Pure engine-scope refactoring — no SDLC
-  pipeline impact. Phase 1 complete: extracted `engine/hitl-handler.ts` (HITL
-  orchestration) and `engine/post-pipeline.ts` (post-pipeline executor), reducing
-  engine.ts from 849→637 LOC. Phase 2: Variant B selected — extract
-  `executeAgentNode()` (108 lines) and `executeLoopNode()` (52 lines) into
-  `engine/node-dispatch.ts`. Trivial executors (`executeMergeNode`,
-  `executeHumanNode`, 20 lines each) stay inline. Target: ≤500 LOC (~477
-  estimated). Engine public interfaces unchanged; SDLC pipeline transparent to
-  internal restructuring.
+  pipeline impact. Refactoring complete: engine.ts reduced to 435 LOC (target
+  ≤500). Extracted modules: `agent-node.ts` (209 LOC), `node-dispatch.ts` (199),
+  `merge.ts` (39), `hitl.ts` (280), `loop.ts` (274). Final variant: **Variant A
+  (Evidence-Only)** — add FR-E24 to engine SRS with acceptance criteria + evidence
+  from existing code. No further code changes. Test co-location and re-export
+  cleanup deferred (spec explicitly excludes). Engine public interfaces unchanged;
+  SDLC pipeline transparent to internal restructuring.
