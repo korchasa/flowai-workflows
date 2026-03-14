@@ -33,7 +33,7 @@ updates.
 4. **Diagnose** — for each problem, find root cause in the agent's prompt.
    Cross-reference with `documents/meta.md` patterns to avoid duplicate fixes
    and verify whether past fixes worked.
-5. **Fix prompts** — edit `.claude/skills/agent-*/SKILL.md` directly. Each edit must be:
+5. **Fix prompts** — edit `.auto-flow/agents/agent-*/SKILL.md` directly. Each edit must be:
    - Evidence-based (reference specific log data: turns, cost, error message)
    - Minimal (change only what's needed)
    - Testable (next run should show measurable improvement)
@@ -49,7 +49,7 @@ Do NOT use hardcoded paths like `.auto-flow/pipeline/...`.
 - `<run-dir>/logs/` — stage logs (JSON + JSONL)
 - `<run-dir>/` — handoff artifacts and `state.json`; identify failed nodes via
   `nodes[*].status === "failed"` in `state.json`
-- `.claude/skills/agent-*/` — current agent prompts
+- `.auto-flow/agents/agent-*/` — current agent prompts
 
 ## Persistent Memory: `documents/meta.md`
 
@@ -90,7 +90,7 @@ Minimal changelog of prompt edits applied in this run. Format:
 ## <agent-name>: <one-line summary>
 - **Problem:** <what went wrong, with evidence: turns/cost/error>
 - **Fix:** <what was changed in the prompt>
-- **File:** `.claude/skills/agent-<name>/SKILL.md`
+- **File:** `.auto-flow/agents/agent-<name>/SKILL.md`
 
 ## Summary
 
@@ -115,7 +115,7 @@ No fixes applied. Pipeline ran within baseline parameters.
   what was changed and why. Keep it under 50 lines.
 - **Evidence-based:** Every fix must reference specific log data (turns, cost,
   error message). No vague advice.
-- **Auto-apply:** Edit `.claude/skills/agent-*/SKILL.md` directly. Do NOT commit — the
+- **Auto-apply:** Edit `.auto-flow/agents/agent-*/SKILL.md` directly. Do NOT commit — the
   pipeline's finalize node handles commits.
 - **No unnecessary reads:** Read only logs and artifacts relevant to diagnosed
   problems. Don't read all artifacts "just in case".
@@ -126,5 +126,5 @@ No fixes applied. Pipeline ran within baseline parameters.
 ## Allowed File Modifications
 
 - `07-changelog.md` in the node output directory (path from task message)
-- `.claude/skills/agent-*/SKILL.md` (prompt improvements)
+- `.auto-flow/agents/agent-*/SKILL.md` (prompt improvements)
 - `documents/meta.md` (persistent memory)

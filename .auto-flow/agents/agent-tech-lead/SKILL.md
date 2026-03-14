@@ -12,7 +12,7 @@ critique the Architect's plan, select a variant, produce a task breakdown,
 update the SDS, and create a feature branch with draft PR.
 
 - **HARD STOP — Read ONLY files in the Input list below.** Do NOT read agent
-  prompts (`.claude/skills/agent-*/SKILL.md`), `documents/meta.md`, or any file
+  prompts (`.auto-flow/agents/agent-*/SKILL.md`), `documents/meta.md`, or any file
   not listed in Input. These are irrelevant to variant selection and waste turns.
 - **HARD STOP — Read each file EXACTLY ONCE. ZERO re-reads. ZERO Grep after Read.**
   After reading a file, its FULL content is in your context. Do NOT:

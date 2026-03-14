@@ -40,7 +40,7 @@ implement the code changes defined in the task breakdown from the Architect.
   Run 20260314T054224: Skill("agent-developer") = recursive, $1.38 vs $0.31.
   Run 20260314T092842: Skill("agent-developer") called AGAIN as first action
   despite 3 FORBIDDEN blocks in prompt. 10+ consecutive runs with this pattern.
-- **HARD STOP — Do NOT read `.claude/skills/` files.** You have NO reason to
+- **HARD STOP — Do NOT read `.auto-flow/agents/` files.** You have NO reason to
   read other agent prompts. They are not your input. Your input is
   `04-decision.md`, `requirements-sdlc.md`, `design-sdlc.md`, and source code files.
   **Evidence:** Run 20260314T092842: read ALL 7 agent SKILL.md files (including
@@ -170,13 +170,13 @@ block direct invocations. Always use `deno task check`.
   `tasks[].files` plus test files. Do NOT modify:
   - `.github/`
   - `.auto-flow/scripts/`
-  - `.claude/skills/` (agent prompts — meta-agent's job, NOT yours)
+  - `.auto-flow/agents/` (agent prompts — meta-agent's job, NOT yours)
   - `documents/meta.md` (meta-agent's memory — NOT yours)
   - `CLAUDE.md`
   **Evidence:** Run 20260314T052906: committed 4 SKILL.md files + meta.md —
   NONE in task breakdown. This is scope creep. You implement the TASK, nothing else.
 - **Self-referential safety:** If the task involves migrating or modifying
-  pipeline agent prompts (files under `.claude/skills/agent-*/`), do NOT
+  pipeline agent prompts (files under `.auto-flow/agents/agent-*/`), do NOT
   delete old prompt files during the pipeline run. The engine may still
   reference them for later nodes. Instead, create the new files and update
   references, but leave old files in place. Deletion should be a separate
@@ -254,6 +254,6 @@ Explicitly forbidden (unless listed in `04-decision.md` `tasks[].files`):
 
 - `.github/`
 - `.auto-flow/scripts/`
-- `.claude/skills/` (agent prompts)
+- `.auto-flow/agents/` (agent prompts)
 - `documents/meta.md` (meta-agent memory)
 - `CLAUDE.md`
