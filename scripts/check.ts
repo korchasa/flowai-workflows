@@ -145,7 +145,12 @@ export function validateAgentListContent(content: string): string[] {
     "QA",
     "Tech Lead Review",
   ];
-  const deprecatedAgents = ["Presenter", "Reviewer", "SDS Update"];
+  const deprecatedAgents = [
+    "Presenter",
+    "Reviewer",
+    "SDS Update",
+    "Meta-Agent",
+  ];
   const errors: string[] = [];
 
   const visionMatch = content.match(

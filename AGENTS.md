@@ -117,7 +117,7 @@ as aliases during migration.
 - Agents are stateless — all context from file artifacts and system prompts
 - YAML pipeline config defines node graph; no hardcoded stage order
 - Artifacts stored per-run for isolation
-- SDLC pipeline specifics (diff safety checks, Meta-Agent restrictions, etc.)
+- SDLC pipeline specifics (diff safety checks, etc.)
   are pipeline-level concerns, not engine-level
 
 ## Planning Rules
