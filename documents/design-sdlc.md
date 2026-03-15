@@ -162,6 +162,33 @@ graph LR
   code blocks, structured data, tables.
 - **Deps:** None (static content, versioned in git).
 
+### 3.4.1 Per-Agent Reflection Memory (FR-S28)
+
+- **Purpose:** Cross-run learning via per-agent memory files. Replaces shared
+  `documents/meta.md` with isolated `.auto-flow/memory/<agent-name>.md` per
+  agent. Eliminates merge conflicts, git noise, and scope violation (pipeline
+  state now in `.auto-flow/`, not `documents/`).
+- **Directory:** `.auto-flow/memory/` — 7 files, one per agent:
+  `agent-pm.md`, `agent-architect.md`, `agent-tech-lead.md`,
+  `agent-developer.md`, `agent-qa.md`, `agent-meta-agent.md`,
+  `agent-tech-lead-review.md`.
+- **Lifecycle:** Read at session start → execute task → full rewrite at session
+  end. Current-state snapshot, not append log. <=50 lines, agent-curated.
+- **Content categories:** Anti-patterns encountered, effective strategies,
+  environment quirks, baseline metrics.
+- **Meta-agent:** Full memory management logic in SKILL.md — reads own memory,
+  analyzes run, rewrites with compressed current-state patterns.
+- **Other 6 agents:** Shared ~10-line `## Reflection Memory` convention block
+  in each SKILL.md. Same template for all 6 — no per-agent customization.
+  Memory format evolves organically via meta-agent runs.
+- **Pipeline integration:** Each agent's `task_template` in `pipeline.yaml`
+  includes memory path hint as reinforcement alongside SKILL.md convention.
+- **Git tracking:** Memory files are git-tracked (not gitignored). Each agent
+  rewrites only its own file — no cross-agent memory reads.
+- **Interfaces:** File I/O only. No engine awareness — memory is pipeline-level
+  concern. Agents read/write via standard file tools.
+- **Deps:** None (static files, versioned in git).
+
 ### 3.5 HITL Pipeline Scripts (`.auto-flow/scripts/hitl-*.sh`)
 
 - **Purpose:** Deliver agent questions to humans and poll for replies. Pipeline-
@@ -338,7 +365,8 @@ graph LR
   in order. Meta-agent identifies failed nodes via `state.json`
   (`nodes[*].status === "failed"`). Edits `.auto-flow/agents/agent-*/SKILL.md`
   to fix diagnosed problems. Produces minimal `07-changelog.md` listing applied
-  fixes. Updates persistent memory in `documents/meta.md`. Posts 2-3 line
+  fixes. Updates own reflection memory in
+  `.auto-flow/memory/agent-meta-agent.md` (FR-S28). Posts 2-3 line
   summary to GitHub issue.
 - **Tech-Lead-Review Node**: Post-pipeline agent (`run_on: always`). Performs
   final code review, checks CI gates, merges PR if all pass. Handles
