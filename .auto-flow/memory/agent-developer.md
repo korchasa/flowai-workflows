@@ -16,6 +16,8 @@
 - For SCOPE-STRICT staging: `git add <task-files> .auto-flow/memory/agent-developer.md && git add -f <run-artifacts>`
 - For evidence-only tasks: Grep SKILL.md files for section headers + template lines → single Edit with all evidence inline
 - Check `git diff <file>` when git status shows M (modified) — prior agent may have already made partial changes
+- No-op tasks: run check, fix any pre-existing fmt issues, write summary, commit run artifact only
+- No-op detection: read decision + git log in parallel on first turn; if tasks=[] and sdlc(impl) commit exists, skip all source reads
 
 ## Environment Quirks
 
@@ -26,10 +28,13 @@
 - deno task check output >50KB gets persisted to temp file — check `<error>` wrapper vs `<persisted-output>` to determine pass/fail (no error tag = PASS)
 - `git diff HEAD` shows both staged and unstaged changes vs HEAD; `git diff --cached` shows only staged
 - PM agent may add FR sections with unchecked ACs — developer's job is to mark them with evidence
+- No-op tasks (tasks[].files empty): still need to fix pre-existing fmt issues before check passes
 
 ## Baseline Metrics
 
 - Run 20260315T003418: ~14 turns, scope sdlc, issue #121 (FR-S29), 7 SKILL.md + 2 memory files
 - Run 20260315T005937: ~8 turns, scope sdlc, issue #121 (FR-S29), 1 SKILL.md (incremental), pre-committed impl found
 - Run 20260315T011256: ~7 turns, scope sdlc, issue #121 (FR-S29), evidence-only AC marking in requirements-sdlc.md
+- Run 20260315T012827: ~6 turns, scope sdlc, issue #121 (FR-S29), no-op pass-through + fmt fix
+- Run 20260315T013850: ~4 turns, scope sdlc, issue #121 (FR-S29), no-op pass-through (tasks=[])
 - Target: ≤35 turns. All runs achieved well under target.
