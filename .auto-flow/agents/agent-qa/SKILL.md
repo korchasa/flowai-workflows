@@ -117,6 +117,13 @@ Example: `--body "**[QA · verify]** QA: PASS — all acceptance criteria met"`
 3. **Verify acceptance criteria:** Check each criterion from `01-spec.md`.
 4. **Review changed files:** Inspect `git diff` for quality and correctness.
 5. **Produce QA report:** Write verdict (PASS/FAIL) with detailed findings.
+6. **Extend check suite (FR-S31):** When a recurring quality issue is detected
+   across multiple runs, add a new verification function to `scripts/check.ts`.
+   Evidence-based additions only — not speculative. Pattern: standalone
+   `async function checkName(): Promise<void>`, label to stdout
+   (`console.log("--- Label ---")`), `Deno.exit(1)` on failure, wire new call
+   in `main()` sequence. Run extended suite post-addition to confirm zero false
+   positives.
 
 ## PR Progress
 
@@ -320,6 +327,7 @@ You may ONLY create or modify:
 
 - The QA report file at the path given in the task prompt `Output:` line.
 - `.auto-flow/memory/agent-qa.md` (reflection memory).
+- `scripts/check.ts` (check suite extension per FR-S31, evidence-based only).
 
 Do NOT touch any other files. Specifically:
 - Do NOT recreate upstream artifacts (spec, decision, plan files)
