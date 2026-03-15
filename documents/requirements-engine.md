@@ -624,6 +624,19 @@
   - [x] All identified obsolete tasks are removed from `deno.json`. Evidence: `deno.json:6-18` — no `.sdlc/scripts/stage-*_test.ts` references present.
   - [x] All remaining active tests pass. Evidence: `deno task check` PASS (run 20260315T155429).
 
+### 3.30 FR-E30: Pipeline Prepare Command (`prepare_command`)
+
+- **Description:** `PipelineDefaults` supports optional `prepare_command` (string). Executed as a shell command once, after config validation and run directory creation, before any node starts. Skipped on `--resume`. Failure (non-zero exit) is fatal: pipeline aborts immediately. Supports template interpolation: `{{run_dir}}`, `{{run_id}}`, `{{env.*}}`, `{{args.*}}`. Completes the hook lifecycle: `pre_run` (pre-config) → config load → `prepare_command` (pre-node) → node execution → `on_failure_script` (post-failure).
+- **Motivation:** Pipeline-level environment preparation (e.g., repo reset to clean state) belongs before node execution, not inside a node's `before` hook. Node hooks are unreliable for env prep: with `--skip`, `--only`, or `--resume`, the first node may be bypassed, leaving the environment unprepared.
+- **Acceptance criteria:**
+  - [ ] `PipelineDefaults.prepare_command` is an optional string field; validated at config load. Evidence: `engine/types.ts`
+  - [ ] Executed once after config validation and run-dir creation, before first node starts. Evidence: `engine/engine.ts`
+  - [ ] Skipped when `--resume` flag is active. Evidence: `engine/engine.ts`
+  - [ ] Non-zero exit aborts pipeline immediately with clear error message. Evidence: `engine/engine.ts`
+  - [ ] Template variables `{{run_dir}}`, `{{run_id}}`, `{{env.*}}`, `{{args.*}}` interpolated before execution. Evidence: `engine/engine.ts`
+  - [ ] Logged at normal verbosity level. Evidence: `engine/engine.ts`
+  - [ ] Unit tests cover: execution on fresh run, skip on resume, failure abort, template interpolation. Evidence: `engine/engine_test.ts`
+
 ## 4. Non-Functional Requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -679,3 +692,4 @@
 | —      | FR-E27 | Test Suite Integrity |
 | —      | FR-E28 | Shared Backoff Utility (`nextPause()`) |
 | —      | FR-E29 | Legacy Test Task Removal |
+| —      | FR-E30 | Pipeline Prepare Command (`prepare_command`) |

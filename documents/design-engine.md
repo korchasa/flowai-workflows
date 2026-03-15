@@ -65,6 +65,7 @@ graph TD
     `NodeState.error_category`, `NodeState.cost_usd` (FR-32 per-node cost),
     `RunState.total_cost_usd` (FR-32 aggregated run cost),
     `PipelineDefaults.on_failure_script` (FR-34 configurable failure hook),
+    `PipelineDefaults.prepare_command` (FR-E30 post-config/pre-node shell hook),
     `HitlConfig.artifact_source` (renamed from `issue_source`),
     `HitlConfig.exclude_login` (renamed from `bot_login`),
     `Verbosity` union: `"quiet"|"normal"|"semi-verbose"|"verbose"` (FR-41))
@@ -216,6 +217,15 @@ graph TD
     Two-phase config loading (FR-E24): `run()` reads raw YAML →
     `extractPreRun()` → `runPreRunScript()` if present → `loadConfig()`
     re-reads (potentially updated) config.
+    **Pipeline Prepare Command (FR-E30):** `runPrepareCommand(cmd, runDir,
+    runId, env, args, output): Promise<void>` — exported free function.
+    Builds pipeline-level `TemplateContext` (`node_dir: ""`, `input: {}`,
+    real `run_dir`/`run_id`/`env`/`args`), calls `interpolate()` from
+    `template.ts`, executes via `Deno.Command("sh", ["-c", interpolated])`.
+    Non-zero exit throws → caught by `run()` → state saved → pipeline aborts.
+    Call site: `runWithLock()`, after `ensureRunDirs()` + `saveState()`,
+    before level loop. Guarded by `!this.options.resume && cmd` (skipped on
+    resume — environment already prepared by original run).
     `executeNode()`: passes `extractResultExcerpt(result.output.result)` to
     `markNodeCompleted()` as `result` param (FR-E22).
     `executeLoopNode()`: passes result excerpt in `onNodeComplete` callback.
@@ -400,7 +410,9 @@ graph TD
   - Pipeline Config: YAML (`.sdlc/pipeline.yaml`). Top-level keys: `name`,
     `version`, `defaults`, `phases`, `nodes`. `phases` key declares
     named phase groups with member stage IDs. Engine treats `phases` as opaque
-    config data.
+    config data. `defaults.prepare_command` (FR-E30): optional string, shell
+    command executed post-config/pre-node with template interpolation
+    (supports `{{run_dir}}`, `{{run_id}}`, `{{env.*}}`, `{{args.*}}` only).
   - ValidationRule: `{ type: "file_exists"|"file_not_empty"|"contains_section"|
     "custom_script"|"frontmatter_field", path?, field?, allowed?, ... }`
   - LoopResult: `{ ..., bodyResults: AgentResult[] }` — accumulated per-iteration
@@ -532,6 +544,15 @@ graph TD
         poll_interval: 60
         timeout: 7200
     ```
+  - **Pipeline Prepare Command (FR-E30):** In `runWithLock()`, after
+    `ensureRunDirs()` + `saveState()`, before level loop: if
+    `!options.resume && defaults.prepare_command` is non-empty, calls
+    `runPrepareCommand()`. Flow: build pipeline-level `TemplateContext`
+    (`node_dir: ""`, `input: {}`, real `run_dir`/`run_id`/`env`/`args`) →
+    `interpolate(cmd, ctx)` → `Deno.Command("sh", ["-c", result])` →
+    on non-zero exit: throw `Error("prepare_command failed (exit N): cmd")`.
+    Caught by `run()` error handler → state saved → pipeline aborts.
+    Resume runs skip entirely (environment already prepared).
   - **Phase Registry Init**: `setPhaseRegistry(config)` called at engine
     startup before `ensureRunDirs()` in `engine.ts` `run()`. `getNodeDir()`
     resolves phase-aware paths: `${runDir}/${phase}/${nodeId}` when phase
