@@ -2,7 +2,7 @@
 
 ## 0. Resolved Design Decisions
 
-- **Target project:** This repo (auto-sdlc). Project-agnostic reuse deferred.
+- **Target project:** This repo (auto-flow). Project-agnostic reuse deferred.
 - **Concurrent pipelines:** One pipeline per branch. Single local execution assumed. No concurrent locking.
 - **Cost limits:** Not tracked. No budget constraints.
 - **Agent prompts:** Written incrementally alongside implementation.
@@ -32,7 +32,7 @@
 - **Assumptions and constraints:**
   - A devcontainer provides the runtime environment with all required tools (see FR-S10).
   - Each agent is stateless between runs — all context comes from input artifacts and its system prompt.
-  - The target project is this repository (auto-sdlc). Pipeline design should be project-agnostic for future reuse in other repos.
+  - The target project is this repository (auto-flow). Pipeline design should be project-agnostic for future reuse in other repos.
 - **Goal:** Automate the full development cycle for feature requests: from issue triage to a ready-to-merge PR — fully autonomous, no human gates between stages. PR merge is the only human checkpoint (post-pipeline, not between stages).
 
 ## 3. Functional Requirements
@@ -205,17 +205,17 @@
   - **On pipeline failure:** runs automatically when any stage fails after exhausting its continuation limit.
 - **Trigger mechanism:** Engine executes meta-agent node as a post-pipeline node. In `pipeline.yaml`, the meta-agent node is configured with `run_on: always` (engine SRS FR-25) to run regardless of upstream success/failure. Failed node ID identified via `state.json` (nodes with `status: "failed"`). Engine does NOT write a separate `failed-node.txt` — that violates engine SRS FR-29.
 - **Input:**
-  - `documents/meta.md` — persistent memory (read first).
+  - `.auto-flow/memory/agent-meta-agent.md` — own reflection memory (read first; FR-S28).
   - Run logs from `<run-dir>/logs/` and `state.json` (failed node context from `nodes[*].status` field; no `failed-node.txt`).
   - Current agent prompts from `.auto-flow/agents/agent-*/`.
 - **Output:**
   - Primary: edited `.auto-flow/agents/agent-*/SKILL.md` (prompt fixes).
   - Secondary: `<run-dir>/meta-agent/07-changelog.md` (minimal fix log).
-  - Persistent: updated `documents/meta.md` (cross-run memory).
+  - Persistent: updated `.auto-flow/memory/agent-meta-agent.md` (own reflection memory; FR-S28).
 - **Acceptance criteria:**
   - Agent analyzes logs, diagnoses problems, and edits agent prompts directly.
   - `07-changelog.md` lists each fix with evidence (turns/cost/error data).
-  - `documents/meta.md` updated with new patterns, fix outcomes, baselines.
+  - `.auto-flow/memory/agent-meta-agent.md` rewritten with new patterns, fix outcomes, baselines (FR-S28).
   - Does NOT produce verbose reports — focus is on prompt optimization.
   - [ ] `.auto-flow/agents/agent-meta-agent/SKILL.md` Input section references `state.json` for failed-node context; no `failed-node.txt` reference (engine SRS FR-29 compliance).
 - **Quality metrics:**
@@ -593,7 +593,7 @@
 
 ### 3.26 FR-S26: Pipeline Asset Directory Consolidation
 
-- **Desc:** All pipeline assets (config, agent prompts, scripts, tasks, runs) MUST be consolidated under `.auto-flow/` directory. Eliminates `.sdlc/` (domain-specific naming, violates engine's domain-agnostic principle) and decouples agent prompts from `.claude/skills/` (Claude Code's skill-system coupling).
+- **Desc:** All pipeline assets (config, agent prompts, scripts, tasks, runs) MUST be consolidated under `.auto-flow/` directory. Eliminates `.auto-flow/` (domain-specific naming, violates engine's domain-agnostic principle) and decouples agent prompts from `.claude/skills/` (Claude Code's skill-system coupling).
 - **Directory layout:**
   ```
   .auto-flow/
@@ -619,7 +619,7 @@
   - [ ] Active scripts at `.auto-flow/scripts/` (rollback-uncommitted.sh, hitl-ask.sh, hitl-check.sh, lib.sh)
   - [ ] Tasks at `.auto-flow/tasks/`; runs at `.auto-flow/runs/`
   - [ ] Deprecated stage scripts (`stage-*.sh`) and their `*_test.ts` files deleted
-  - [ ] Zero `.sdlc/` path references remain in codebase (except git history)
+  - [ ] Zero `.auto-flow/` path references remain in codebase (except git history)
   - [ ] Zero `.claude/skills/agent-*` path references remain in codebase
   - [ ] `deno task run` works with `.auto-flow/pipeline.yaml` as default config path
   - [ ] `deno task check` passes clean
@@ -637,6 +637,29 @@
   - [ ] All three scripts: unknown flags produce error message referencing `--help` and exit non-zero.
   - [ ] Output format follows `engine/cli.ts` pattern: `<Tool> — <description>\n\nUsage:\n  deno task <name> [options]\n\nOptions:\n  ...\n\nExamples:\n  ...`.
   - [ ] `deno task check` passes.
+
+### 3.28 FR-S28: Per-Agent Reflection Memory
+
+- **Description:** Each agent owns its own reflection memory stored at `.auto-flow/memory/<agent-name>.md`. At session start, agent reads its memory file. At session end, agent rewrites the file in full (not append) with compressed current-state knowledge: anti-patterns, effective strategies, environment quirks, baseline metrics. Agent decides what to retain, evicting stale or resolved items.
+- **Motivation:** Centralized `documents/meta.md` caused: (1) git history pollution from per-run updates to `documents/`; (2) merge conflicts on concurrent runs; (3) ~60% dead-weight content (resolved patterns duplicate git history); (4) no measurable quality improvement; (5) scope violation (pipeline-level data in project docs). Per-agent decentralized memory eliminates all five issues.
+- **Storage:** `.auto-flow/memory/<agent-name>.md` — one file per agent. Git tracking TBD (tracked enables review; gitignored avoids noise — open decision per issue #117).
+- **Lifecycle per agent run:**
+  1. Read `.auto-flow/memory/<self>.md` at session start before main work.
+  2. Execute main task.
+  3. Rewrite `.auto-flow/memory/<self>.md` at end — full rewrite, compress stale data out.
+- **Memory content (agent-curated, ≤50 lines):**
+  - Known anti-patterns in own behavior and avoidance strategies.
+  - Effective strategies discovered empirically.
+  - Environment quirks and gotchas.
+  - Baseline metrics (turns, cost) for self-assessment.
+- **Scope:** All 7 pipeline agents: pm, architect, tech-lead, tech-lead-review, developer, qa, meta-agent.
+- **Acceptance criteria:**
+  - [ ] `.auto-flow/memory/` directory exists in repo.
+  - [ ] Each of 7 agent `SKILL.md` files includes: (a) read-memory step at session start, (b) rewrite-memory step at session end.
+  - [ ] `pipeline.yaml` `task_templates` or `defaults` exposes `.auto-flow/memory/<agent-name>.md` path to each agent.
+  - [ ] `documents/meta.md` removed or repurposed (no longer used as shared cross-run memory).
+  - [ ] At least one end-to-end pipeline run completes with agents reading/writing their own memory files.
+  - [ ] `deno task check` passes after changes.
 
 ## 4. Non-functional requirements
 
@@ -749,3 +772,4 @@ engine/                                # Deno/TypeScript pipeline engine
 | —      | FR-S25 | Phase-Organized SDLC Artifact Directories |
 | —      | FR-S26 | Pipeline Asset Directory Consolidation |
 | —      | FR-S27 | CLI Help for SDLC Utility Scripts |
+| —      | FR-S28 | Per-Agent Reflection Memory |
