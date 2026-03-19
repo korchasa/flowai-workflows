@@ -46,3 +46,4 @@ type: feedback
 - Eighth session (issue #149, iteration 2): ~6 turns, PASS verdict (FR-S34 restored at line 737; Appendix C at line 904; 509 tests, 28/28 ACs)
 - Ninth session (issue #150, iteration 1): ~6 turns, FAIL verdict (FR-E33 missing from requirements-engine.md; PM agent never added it)
 - Tenth session (issue #150, iteration 2): ~6 turns, PASS verdict (FR-E33 restored at line 665; FR-E9 updated at line 180; Appendix at line 751; 514 tests, 10/10 ACs)
+- Eleventh session (issue #151, iteration 1): ~5 turns, FAIL verdict (FR-S35 missing from requirements-sdlc.md; PM agent never persisted it)

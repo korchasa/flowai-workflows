@@ -104,6 +104,17 @@
   - State test at line 408 retains "falls back" name semantically (implies old dual-mechanism), but body is correct — non-blocking.
   - 514 tests (up from 509) confirms new config_test.ts + state_test.ts tests added.
 
+## 2026-03-19T27:XX — Issue #151 (iteration 1)
+
+- **Turns:** ~5
+- **Cost:** ~$0.14 (est)
+- **Verdict:** FAIL
+- **Outcome:** 7/9 acceptance criteria passed. 519 tests, 0 failures. All 5 implementation tasks correct: pipeline.yaml uses `{{input.specification}}/01-spec.md` (line 23), `interpolate()` in `hitl.ts:buildScriptArgs()` (line 264), template resolution test in `hitl_test.ts` (lines 232–277), `validateHitlArtifactSource()` + `hitlArtifactSource()` in `check.ts` (lines 110–146), 4 tests in `check_test.ts` (lines 109–130). Blocking: `documents/requirements-sdlc.md` not in diff, 0 matches for FR-S35 — PM agent never added section 3.35 or Appendix C row. Self-approval failed → used `gh issue comment` fallback on issue #151.
+- **Key learnings:**
+  - PM-stage SRS persistence failure confirmed again (6th consecutive issue: #147, #148, #149, #150, #151). Grep for FR number as 1st action after git diff — pattern is 100% reliable now.
+  - 519 tests (up from 514) confirms new hitl_test + check_test tests were added.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-S35) in one turn gives full picture immediately.
+
 ## 2026-03-19T26:XX — Issue #150 (iteration 2)
 
 - **Turns:** ~6
