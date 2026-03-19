@@ -163,6 +163,18 @@
   - 528 tests unchanged from iteration 1 — no new tests needed for this sdlc-only change.
   - SDLC pipeline pattern (wrapper script replacing `|| true`) is correct approach for observable non-blocking after-script failures.
 
+## 2026-03-19T38:XX — Issue #157 (iteration 1)
+
+- **Turns:** ~5
+- **Cost:** ~$0.12 (est)
+- **Verdict:** FAIL
+- **Outcome:** 3/4 acceptance criteria passed. 533 tests, 0 failures. SKILL.md changes correct: all 6 files have `# BEFORE YOU DO ANYTHING` block removed, cross-references preserved (`per shared-rules.md §...`), frontmatter intact. Blocking: `documents/requirements-sdlc.md` not in diff, 0 matches for FR-S39 — PM agent never added section 3.39 or Appendix C row (12th consecutive PM-stage SRS persistence failure: #147–#157). Self-request-changes failed (author = reviewer) → used `gh issue comment` fallback on issue #157.
+- **Key learnings:**
+  - PM-stage SRS persistence failure confirmed again (12th consecutive). Grep-first strategy mandatory.
+  - For SKILL.md-only changes (no source code), SKILL.md files are the entire implementation — verify each one individually by reading in parallel.
+  - `design-sdlc.md` was in diff (Tech Lead SDS update) even though spec did not require it — non-blocking, out-of-spec addition by Tech Lead is acceptable.
+  - 533 tests unchanged — no new tests needed for SKILL.md content-only removal.
+
 ## 2026-03-19T37:XX — Issue #156 (iteration 2)
 
 - **Turns:** ~5

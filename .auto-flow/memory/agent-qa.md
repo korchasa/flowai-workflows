@@ -12,7 +12,7 @@ type: feedback
 - When developer uses a Write (full rewrite) for a large SRS file, PM-stage additions (like FR-S32, FR-S33) can be silently dropped. Check for new sections promised in spec's "SRS Changes" section even if `deno task check` passes.
 - When `requirements-engine.md` or `requirements-sdlc.md` is NOT in `git diff main...HEAD --name-only`, it means the PM agent never added the promised FR section. Grep for the FR number to confirm before writing verdict.
 - Stale ACs in existing FRs can become contradictory after a new FR removes a feature (e.g., FR-S13 AC claiming standalone invocability after FR-S33 removes interactive skill discovery). Check for contradictions in related FRs.
-- PM-stage SRS persistence failure is a recurring pattern (issues #147, #148, #149, #150, #151, #153, #154, #155, #156). Always check if SRS file is in diff immediately. This pattern now extends to engine scope (requirements-engine.md), not just sdlc scope.
+- PM-stage SRS persistence failure is a recurring pattern (issues #147, #148, #149, #150, #151, #153, #154, #155, #156, #157). Always check if SRS file is in diff immediately. This pattern now extends to engine scope (requirements-engine.md), not just sdlc scope. 12 consecutive failures as of issue #157.
 - Issue #155 (engine+sdlc scope): both requirements-engine.md AND requirements-sdlc.md can be absent from diff simultaneously when two new FRs span both scopes in same issue. Fixed in iteration 2 — both files were in diff and both FRs confirmed present.
 
 ## Effective Strategies
@@ -58,3 +58,4 @@ type: feedback
 - Nineteenth session (issue #155, iteration 2): ~5 turns, PASS verdict (FR-E36 at line 756 + Appendix 854; FR-S37 at line 850 + Appendix 983; both SRS files in diff; 533 tests, 10/10 ACs)
 - Twentieth session (issue #156, iteration 1): ~5 turns, FAIL verdict (FR-S38 absent from requirements-sdlc.md; not in diff; 0 grep matches; PM-stage persistence failure, 10th consecutive)
 - Twenty-first session (issue #156, iteration 2): ~5 turns, PASS verdict (FR-S38 at line 864 §3.38 + Appendix C line 1001; requirements-sdlc.md in diff; pipeline.yaml all 6 nodes migrated; 533 tests, 4/4 ACs)
+- Twenty-second session (issue #157, iteration 1): ~5 turns, FAIL verdict (FR-S39 absent from requirements-sdlc.md; not in diff; 0 grep matches; PM-stage persistence failure, 12th consecutive; SKILL.md changes correct)
