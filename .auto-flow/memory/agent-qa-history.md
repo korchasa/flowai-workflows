@@ -91,3 +91,15 @@
   - When FR is found in grep output, check all 4 spec-promised sub-sections (FR section, NFR, Appendix B, Appendix C) in the same grep output — saves a turn vs separate reads.
   - FR-S13 AC semantics evolve as system changes — check for cross-FR contradictions whenever a feature is removed.
   - `tail -40` is sufficient to get final check summary lines (vs `tail -80`).
+
+## 2026-03-19T25:XX — Issue #150 (iteration 1)
+
+- **Turns:** ~6
+- **Cost:** ~$0.16 (est)
+- **Verdict:** FAIL
+- **Outcome:** 7/10 acceptance criteria passed. 514 tests, 0 failures. Implementation correct: mutual-exclusivity validation added to `engine/config.ts` (lines 133–149), `setPhaseRegistry()` simplified to exclusive if/else in `engine/state.ts`, 4 new tests in `config_test.ts`, 2 new tests in `state_test.ts`. `.auto-flow/pipeline.yaml` fixed (necessary — engine now rejects both mechanisms). Blocking: `documents/requirements-engine.md` not in diff, 0 matches for FR-E33 — PM agent never added section 3.33, FR-E9 update, or Appendix cross-reference row. Self-approval failed → used `gh issue comment` fallback on issue #150.
+- **Key learnings:**
+  - PM-stage SRS persistence failure now extends to engine scope (requirements-engine.md), not just sdlc scope. Same grep-first strategy applies.
+  - `pipeline.yaml` modification is expected and necessary when engine enforcement would break it — not out-of-scope.
+  - State test at line 408 retains "falls back" name semantically (implies old dual-mechanism), but body is correct — non-blocking.
+  - 514 tests (up from 509) confirms new config_test.ts + state_test.ts tests added.
