@@ -56,7 +56,8 @@ graph TD
 - **Purpose:** Configurable DAG-based pipeline executor. Replaces hardcoded
   shell script orchestration with YAML-driven node graph.
 - **Modules:**
-  - `types.ts` — type declarations (incl. `ValidationRule.type` union,
+  - `types.ts` — type declarations (incl. `ValidationRule.type` union
+    (`"artifact"` added — FR-E33: composite rule with `sections?: string[]`),
     `NodeConfig.run_on` (`"always"|"success"|"failure"`), `NodeConfig.phase`,
     `NodeConfig.env`, `NodeConfig.model` (per-node Claude model override),
     `PipelineDefaults.model` (default model for all nodes),
@@ -86,6 +87,10 @@ graph TD
     checks file existence via `Deno.statSync()`. Skips paths containing `{{`
     (unresolvable at load time). Called from `mergeDefaults()` alongside
     `validatePromptPaths()`.
+    `validateValidationRule()` (FR-E33): `"artifact"` added to `validTypes`.
+    When `type === "artifact"`: validates `sections` is present, is array,
+    non-empty, all elements are strings. Missing/invalid → config error at
+    parse time
     `normalizeRunOn()` pass (in `mergeDefaults()`):
     if `node.run_always === true && !node.run_on` → sets `run_on = "always"`;
     if both present, `run_on` wins; deletes `run_always` from config
@@ -98,7 +103,13 @@ graph TD
     Excludes loop body nodes (from `nodes` sub-object) from top-level
     graph; loop node itself remains in DAG with its declared `inputs`.
   - `validate.ts` — artifact validation rules (file_exists, not_empty,
-    contains_section, custom_script, frontmatter_field)
+    contains_section, custom_script, frontmatter_field, artifact).
+    `checkArtifact(path, sections)` (FR-E33): self-contained private function.
+    Stat → read → heading-regex loop → aggregate. Fail-fast on absent/empty
+    file (single error, skip section checks). All missing sections collected
+    into one aggregate `ValidationResult`. Heading regex duplicated from
+    `checkContainsSection()` (~1 line) — intentional, avoids refactoring
+    existing private helpers
   - `state.ts` — RunState persistence to `state.json`, resume logic,
     phase registry (`setPhaseRegistry()`, `getPhaseForNode()`,
     `clearPhaseRegistry()` — see §3.2),
@@ -426,7 +437,9 @@ graph TD
     command executed post-config/pre-node with template interpolation
     (supports `{{run_dir}}`, `{{run_id}}`, `{{env.*}}`, `{{args.*}}` only).
   - ValidationRule: `{ type: "file_exists"|"file_not_empty"|"contains_section"|
-    "custom_script"|"frontmatter_field", path?, field?, allowed?, ... }`
+    "custom_script"|"frontmatter_field"|"artifact", path?, field?, allowed?,
+    sections?: string[], ... }` — `sections` required when `type === "artifact"`
+    (FR-E33)
   - LoopResult: `{ ..., bodyResults: AgentResult[] }` — accumulated per-iteration
     agent results; consumed by `executeLoopNode()` callback for log saving
   - LoopNodeConfig: `{ ..., nodes: Record<string, NodeConfig> }` — inline
@@ -460,6 +473,11 @@ graph TD
   file_not_empty, contains_section, custom_script, frontmatter_field) after
   each node. Validation failures trigger continuation (resume with error
   context) rather than immediate node failure.
+  - `artifact` (FR-E33): Composite rule — file existence + multi-section
+    presence in single rule. Config: `{ type: "artifact", path, sections }`.
+    Fail-fast: file absent/empty → single error, no section checks. File
+    present → check all sections via heading regex, collect missing into one
+    aggregate error. Section matching identical to `contains_section`.
   - `frontmatter_field`: Reads artifact file, extracts YAML frontmatter via
     `^---\n([\s\S]*?)\n---` regex, parses target field, checks value against
     allowed set. Config: `{ type: "frontmatter_field", path, field, allowed }`.
