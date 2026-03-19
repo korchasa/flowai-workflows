@@ -702,6 +702,27 @@
   - [ ] New checks follow existing code style and `run()`/scan pattern.
   - [ ] `deno task check` passes after QA agent adds a new check.
 
+### 3.32 FR-S32: SDLC Artifact File Numbering Standard
+
+- **Description:** SDLC pipeline artifact filenames MUST use gapless sequential
+  numeric prefixes reflecting actual pipeline execution order.
+- **Motivation:** Non-gapless or inverted prefix numbering (e.g., `06-impl-summary`
+  produced before `05-qa-report`) breaks alphabetical-sort as an execution-order
+  proxy, creating confusion for developers and tooling relying on prefix ordering.
+- **Rules:**
+  - Prefix sequence MUST be gapless (`01, 02, 03, …`) — no skipped numbers.
+  - Prefix order MUST match DAG execution order.
+  - All references (pipeline.yaml, agent SKILL.md prompts, docs, validation rules)
+    MUST use the canonical gapless filenames.
+- **Acceptance criteria:**
+  - [x] Artifact sequence is `01-spec → 02-plan → 03-decision → 04-impl-summary →
+    05-qa-report → 06-review` — no gaps, no ordering inversions. Evidence:
+    `.auto-flow/pipeline.yaml` outputs, `documents/design-sdlc.md §2.2`.
+  - [x] `pipeline.yaml`, all agent SKILL.md files, and documentation reference the
+    canonical gapless filenames exclusively (zero matches for old names
+    `04-decision`, `06-impl-summary`, `08-review`). Evidence: grep sweep
+    post-implementation confirms zero matches across all SKILL.md files and docs.
+
 ## 4. Non-functional requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -817,3 +838,4 @@ engine/                                # Deno/TypeScript pipeline engine
 | —      | FR-S29 | AGENTS.md Agent List Accuracy |
 | —      | FR-S30 | Stale Path Reference Cleanup in SDLC Artifacts |
 | —      | FR-S31 | QA Agent Check Suite Extension |
+| —      | FR-S32 | SDLC Artifact File Numbering Standard |
