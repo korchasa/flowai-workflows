@@ -127,6 +127,18 @@
   - Pipeline.yaml fix (removing dual-mechanism usage) is always expected when engine adds a new validation rule that rejects it.
   - 10 ACs across SRS + config implementation + state implementation + tests is the correct decomposition for this class of issue.
 
+## 2026-03-19T29:XX — Issue #152 (iteration 1)
+
+- **Turns:** ~5
+- **Cost:** ~$0.14 (est)
+- **Verdict:** PASS
+- **Outcome:** All 5 acceptance criteria passed. 524 tests, 0 failures. FR-E34 present at line 693 (section 3.34) and Appendix at line 786. Implementation: `engine.ts:385-388` info log at `on_error: continue` branch, 5 FR-E34 integration tests in `engine_test.ts` (lines 1009–1165), `design-engine.md` FR-E34 section at lines 617–655. Self-approval failed → used `gh issue comment` fallback on issue #152.
+- **Key learnings:**
+  - First time FR-E34 passed on iteration 1 — developer correctly included `requirements-engine.md` in diff and marked all ACs with evidence.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-E34) confirmed PASS in one parallel turn.
+  - 524 tests (up from 519) confirms 5 new FR-E34 tests were added.
+  - SRS persistence failure pattern broken for this issue — PM + Developer both delivered correctly.
+
 ## 2026-03-19T28:XX — Issue #151 (iteration 2)
 
 - **Turns:** ~6
