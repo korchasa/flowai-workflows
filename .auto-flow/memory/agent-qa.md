@@ -19,16 +19,18 @@ type: feedback
 - `tail -80 <temp-file>` gets the final summary/pass-fail lines without recursive nesting.
 - Grep for old artifact names across agents/ and documents/ to verify rename sweep completeness.
 - Cross-check spec's "SRS Changes" section against actual SRS content — new FR sections (like FR-S32) can be lost if developer rewrote the file.
+- For fix iterations (iteration > 1): grep for specific content (e.g., `grep -n "FR-S32" file`) to confirm presence before reading the whole file — saves a turn.
 
 ## Environment Quirks
 
 - Large `deno task check` output → stored in temp file → reading temp file → stored in another temp file (recursive nesting). Use `tail` on the first temp file to get final lines.
 - PR self-approval always fails in this repo (author = reviewer). Always use `gh issue comment` fallback.
-- `documents/requirements-sdlc.md` is 74.9KB — too large to display inline; saved to temp file. Use `tail` + targeted Grep instead of full Read.
+- `documents/requirements-sdlc.md` is large — too large to display inline; use targeted Grep instead of full Read.
 
 ## Baseline Metrics
 
 - Target: ≤15 turns
 - First session (issue #129): ~10 turns, PASS verdict
 - Second session (issue #146): ~8 turns, PASS verdict
-- Third session (issue #147): ~11 turns, FAIL verdict (FR-S32 missing from SRS)
+- Third session (issue #147, iteration 1): ~11 turns, FAIL verdict (FR-S32 missing from SRS)
+- Fourth session (issue #147, iteration 2): ~9 turns, PASS verdict (FR-S32 restored)
