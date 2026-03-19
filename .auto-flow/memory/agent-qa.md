@@ -16,13 +16,14 @@ type: feedback
 ## Effective Strategies
 
 - Read spec + decision in parallel as first action (already done before running checks).
-- Run `deno task check` and `git diff main...HEAD --name-only` and `gh issue view` all in one parallel turn.
+- Run `deno task check` and `git diff main...HEAD --name-only` and `gh issue view` all in one parallel turn; add `grep -n "FR-SXX" requirements-sdlc.md` to the same turn.
 - Read all key changed source files in one parallel response after getting the diff.
-- `tail -80 <temp-file>` gets the final summary/pass-fail lines without recursive nesting.
+- `tail -40 <temp-file>` gets the final summary/pass-fail lines without recursive nesting.
 - Grep for old artifact names across agents/ and documents/ to verify rename sweep completeness.
 - Cross-check spec's "SRS Changes" section against actual SRS content — new FR sections (like FR-S32, FR-S33) can be lost if PM agent failed to persist changes.
 - For fix iterations (iteration > 1): grep for specific content (e.g., `grep -n "FR-S33" file`) to confirm presence before reading the whole file — saves a turn.
 - When spec lists SRS changes, grep for the FR number in the SRS immediately after getting the diff. If not in diff AND not in file → blocking.
+- On fix iteration, once FR is confirmed present in grep, check all 4 spec-promised SRS sub-sections (FR section, NFR, Appendix B, Appendix C) in the same grep output.
 
 ## Environment Quirks
 
@@ -38,3 +39,4 @@ type: feedback
 - Third session (issue #147, iteration 1): ~11 turns, FAIL verdict (FR-S32 missing from SRS)
 - Fourth session (issue #147, iteration 2): ~9 turns, PASS verdict (FR-S32 restored)
 - Fifth session (issue #148, iteration 1): ~8 turns, FAIL verdict (FR-S33 missing from SRS; PM agent never added it)
+- Sixth session (issue #148, iteration 2): ~7 turns, PASS verdict (FR-S33 restored + all SRS sub-sections + FR-S13 conflict resolved)
