@@ -30,6 +30,13 @@
 - `engine/config_test.ts`: +2 tests (FR-E36 parse-time cross-check)
 - `engine/loop_test.ts`: +3 tests (FR-E36 runtime presence check)
 
+- `documents/requirements-engine.md` — (iter 2) added §3.36 FR-E36: Loop
+  Condition Field Validation with parse-time + runtime acceptance criteria and
+  evidence references; added Appendix row.
+- `documents/requirements-sdlc.md` — (iter 2) added §3.37 FR-S37: Verify Node
+  Verdict Frontmatter Validation with pipeline.yaml acceptance criteria and
+  evidence references; added Appendix C row.
+
 ### `deno task check` Result
 
 PASS — 533 tests, 0 failures, all lint/fmt/pipeline-integrity checks passed.
