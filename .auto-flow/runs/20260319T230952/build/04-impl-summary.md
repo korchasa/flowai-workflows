@@ -13,6 +13,12 @@
 
 None — these are markdown prompt template files. No TS logic changed; no new tests applicable.
 
-### deno task check Result
+### deno task check Result (Iteration 2)
 
-PASS — all checks passed (format, lint, type check, CLI smoke test, pipeline integrity, HITL validation, AGENTS.md accuracy, comment scan).
+PASS — all checks passed (format, lint, type check, 533 tests, pipeline integrity, HITL validation, AGENTS.md accuracy, comment scan).
+
+---
+
+## Iteration 2 Fix
+
+- `documents/requirements-sdlc.md`: Added section 3.39 (FR-S39) + Appendix C row (PM-stage SRS persistence failure, 11th consecutive issue).
