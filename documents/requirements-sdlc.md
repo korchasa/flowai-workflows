@@ -702,6 +702,21 @@
   - [ ] New checks follow existing code style and `run()`/scan pattern.
   - [ ] `deno task check` passes after QA agent adds a new check.
 
+### 3.32 FR-S32: SDLC Artifact File Numbering Standard
+
+- **Description:** SDLC pipeline artifact filenames MUST use continuous sequential numeric prefixes (`01`, `02`, `03`, …) reflecting actual pipeline execution order. No gaps or ordering inversions permitted.
+- **Motivation:** Current sequence (`01-spec → 02-plan → 04-decision → 06-impl-summary → 05-qa-report → 08-review`) has gaps at 03 and 07, and a reversal (06-impl-summary is produced before 05-qa-report despite carrying a higher number). Gaps and inversions break alphabetical sort order and make pipeline stage sequence non-obvious.
+- **Acceptance criteria:**
+  - [ ] Artifact file prefixes form a gapless sequence with no skipped numbers.
+  - [ ] Numbering reflects actual pipeline execution order: earlier stage → lower prefix number.
+  - [ ] No two artifacts share the same numeric prefix.
+  - [ ] `.auto-flow/pipeline.yaml` artifact filename references updated to reflect new sequence.
+  - [ ] All agent `SKILL.md` prompts referencing artifact filenames updated.
+  - [ ] `documents/requirements-sdlc.md` Appendix A updated to reflect new filenames.
+  - [ ] `documents/design-sdlc.md` artifact filename references updated.
+  - [ ] Pipeline validation rules (e.g., `contains_section` in `pipeline.yaml`) updated.
+  - [ ] `deno task check` passes with no errors or warnings.
+
 ## 4. Non-functional requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -817,3 +832,4 @@ engine/                                # Deno/TypeScript pipeline engine
 | —      | FR-S29 | AGENTS.md Agent List Accuracy |
 | —      | FR-S30 | Stale Path Reference Cleanup in SDLC Artifacts |
 | —      | FR-S31 | QA Agent Check Suite Extension |
+| —      | FR-S32 | SDLC Artifact File Numbering Standard |
