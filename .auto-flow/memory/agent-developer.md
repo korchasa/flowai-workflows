@@ -52,6 +52,11 @@ type: feedback
 - **Edit tool session tracking**: Re-read files with offset/limit (small range) to satisfy "File has not
   been read yet" errors — happens when file was Read in a previous parallel batch
 
+## Self-Referential SKILL.md Deletions
+
+- When the task is pure markdown deletion from SKILL.md files (no TS logic), no tests are needed per "DO NOT test constants/templates".
+- All 6 edits can be issued in parallel in one turn for maximum efficiency.
+
 ## Baseline Metrics
 
 - Run 20260315T003418: ~14 turns, scope sdlc, issue #121 (FR-S29), 7 SKILL.md + 2 memory files — PASS
