@@ -15,6 +15,10 @@
   `hitlArtifactSource()` async function that loads pipeline config, calls
   validator, exits 1 on hardcoded path; wired into main after
   `pipelineIntegrity()`; updated `printUsage()` to list the new check
+- `documents/requirements-sdlc.md` — added §3.35 FR-S35 (HITL Artifact Source
+  Node Reference) with description, extends note, and 7 acceptance criteria
+  with evidence; added FR-S35 row to Appendix C cross-reference table
+  (iteration 2 fix: PM-stage SRS persistence failure)
 
 ### Tests Added / Modified
 
