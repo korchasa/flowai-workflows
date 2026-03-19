@@ -21,3 +21,4 @@ type: feedback
 - **SDS error message format:** SDS may describe error format intent rather than exact string — non-blocking if test assertions pass against actual implementation string.
 - **pipeline.yaml fix as necessary side-effect:** When engine adds a new validation rule that rejects a config pattern, pipeline.yaml must be fixed simultaneously. This is in-scope, not out-of-scope.
 - **Engine file touch in SDLC-scoped issue:** If decision explicitly lists `engine/hitl.ts` as a task file, touching it for generic template interpolation (no domain-specific logic) is in-scope — not a violation of engine domain-agnosticism.
+- **Integration-style tests via executePostPipeline:** FR-E34 tests use mocked `executeNode` + real `OutputManager` capture + explicit `pipelineSuccess` derivation loop pattern. This is the standard pattern for testing post-pipeline behavior — valid even when it doesn't call `engine.ts` directly.
