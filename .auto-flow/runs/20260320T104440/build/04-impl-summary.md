@@ -20,6 +20,9 @@
 None — all 4 tasks are doc-only SKILL.md additions. Per "DO NOT test
 constants/templates" rule, no new tests needed.
 
+- `documents/requirements-sdlc.md` — (iter 2 QA fix) added sections 3.43–3.45
+  and Appendix C rows for FR-S43, FR-S44, FR-S45.
+
 ### deno task check
 
 PASS — 569 tests, 0 failed, all checks passed.
