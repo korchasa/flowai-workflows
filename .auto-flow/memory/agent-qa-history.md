@@ -196,3 +196,15 @@
   - Parallel strategy (deno task check + git diff + gh issue view + grep FR-S41) confirmed PASS in one parallel turn — optimal fix-iteration pattern.
   - PM-stage SRS persistence failure for issue #159 resolved in iteration 2 — `requirements-sdlc.md` in diff with FR-S41 at all promised locations.
   - 15th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues unchanged.
+
+## 2026-03-20T45:XX — Issue #174 (iteration 2)
+
+- **Turns:** ~8
+- **Cost:** ~$0.14 (est)
+- **Verdict:** PASS
+- **Outcome:** All 8 acceptance criteria passed. 533 tests, 0 failures. FR-S42 present at line 972 (§3.42, all 8 ACs marked [x]) and Appendix C at line 1128 — blocking issue from iteration 1 resolved. `requirements-sdlc.md` IS in diff. pipeline.yaml: 6/6 nodes use `type: artifact`; `frontmatter_field` (spec: issue, scope; verify: verdict) and `custom_script` (build) preserved. Self-approval failed → used `gh issue comment` fallback on issue #174.
+- **Key learnings:**
+  - PM-stage SRS persistence failure for issue #174 resolved in iteration 2 — `requirements-sdlc.md` in diff with FR-S42 at lines 972 and 1128.
+  - Config-only changes (pipeline.yaml) with no TypeScript/test changes: test count stays at 533 — non-blocking.
+  - 16th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues unchanged.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-S42) confirmed PASS in one turn — optimal fix-iteration pattern.
