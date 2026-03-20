@@ -1,5 +1,5 @@
 ---
-verdict: FAIL
+verdict: PASS
 ---
 
 ## Check Results
@@ -22,7 +22,7 @@ verdict: FAIL
 Issue #159 title: "sdlc: pre_run reset script must preserve uncommitted changes via auto-stash"
 
 Issue requirements (5):
-1. Preserve uncommitted changes in recoverable location before destructive ops → FR-S41 AC#2 covers this.
+1. Preserve uncommitted changes in recoverable location before destructive ops → FR-S41 AC#2.
 2. Display branch name + diff stat before preserving → FR-S41 AC#1.
 3. Display confirmation of what was saved after preserving → FR-S41 AC#3.
 4. Clean tree proceeds without error/misleading output → FR-S41 AC#4.
@@ -30,7 +30,7 @@ Issue requirements (5):
 
 Spec's FR-S41 maps 1:1 to issue requirements. No spec drift.
 
-**SRS change promised:** FR-S41 section added to `documents/requirements-sdlc.md`. This change is **absent** — `requirements-sdlc.md` is not in `git diff main...HEAD --name-only` and `grep -n "FR-S41"` returns 0 matches. **Blocking.**
+**SRS change:** FR-S41 section present at `documents/requirements-sdlc.md:945` (§3.41) and Appendix C at line 1092. `requirements-sdlc.md` is in `git diff main...HEAD --name-only`. Blocking issue from iteration 1 resolved.
 
 ## Acceptance Criteria
 
@@ -41,21 +41,21 @@ From `01-spec.md` — FR-S41 (5 criteria):
 - [x] **AC#3:** Display confirmation + restore instructions — `reset-to-main.sh:18-19` prints `"Stashed: ..."` and `"To restore: git stash pop"`.
 - [x] **AC#4:** Clean tree proceeds silently — `if [ -n "$(git status --porcelain)" ]` guard; clean tree skips block entirely, no spurious output.
 - [x] **AC#5:** Post-stash reset behavior unchanged — `reset-to-main.sh:22-27`: `git fetch origin main`, `git checkout -f main`, `git reset --hard origin/main`, `git clean -fd` — identical to pre-change behavior.
-- [ ] **SRS AC:** FR-S41 section present in `documents/requirements-sdlc.md` — **ABSENT** (0 grep matches; file not in diff).
+- [x] **SRS AC:** FR-S41 section present in `documents/requirements-sdlc.md` at §3.41 (line 945) and Appendix C (line 1092). All 5 ACs marked [x].
 
-4/5 implementation criteria met. SRS update missing → **FAIL**.
+5/5 criteria met.
 
 ## Issues Found
 
-1. **FR-S41 missing from `documents/requirements-sdlc.md`**
-   - File: `documents/requirements-sdlc.md`
-   - Severity: **blocking**
-   - `grep -n "FR-S41" documents/requirements-sdlc.md` returns 0 matches. File is not in `git diff main...HEAD --name-only`. PM agent generated the spec with FR-S41 but never persisted section 3.41 (or Appendix C row) to the SRS file. This is the 14th consecutive PM-stage SRS persistence failure (#147–#159).
+No blocking issues.
+
+Non-blocking:
+1. **Shell test suite not in Deno count** — `reset-to-main_test.sh` is a bash test file; its 8 test cases are not counted in the 533 Deno tests. This is expected behavior — shell scripts tested via shell. Non-blocking.
 
 ## Verdict Details
 
-FAIL: 1 blocking issue. Implementation in `reset-to-main.sh` is correct and all 5 behavioral ACs are satisfied. Tests in `reset-to-main_test.sh` cover dirty-tree stash, clean-tree silence, and post-reset HEAD verification. `deno task check` passes (533 tests, 0 failures). Blocking issue is SRS-only: FR-S41 section 3.41 was never written to `documents/requirements-sdlc.md` by the PM agent.
+PASS: All 5 acceptance criteria met. `reset-to-main.sh:10-20` adds dirty-check guard with branch display, diff stat (HEAD + cached), untracked file listing, timestamped stash push with `--include-untracked`, and post-stash confirmation (stash ref + restore command). Clean tree skips block silently. Post-stash reset sequence unchanged (fetch, checkout -f, reset --hard, clean -fd). `reset-to-main_test.sh` covers all 3 FR-S41 test scenarios: clean-tree no-op, dirty-tree stash creation, post-reset HEAD verification. `deno task check` passes (533 tests, 0 failures). FR-S41 section §3.41 present in `requirements-sdlc.md` at line 945 with all ACs marked [x]; Appendix C row at line 1092.
 
 ## Summary
 
-FAIL — 4/5 implementation criteria passed (all behavioral ACs met), 1 blocking issue: FR-S41 section absent from `documents/requirements-sdlc.md`. PM-stage SRS persistence failure (14th consecutive: #147–#159). Developer must add FR-S41 section (§3.41) and Appendix C row to `requirements-sdlc.md`.
+PASS — 5/5 criteria passed, 0 blocking issues. Implementation: `reset-to-main.sh` auto-stash block + `reset-to-main_test.sh` (3 test scenarios). SRS: FR-S41 §3.41 + Appendix C present. Blocking issue from iteration 1 (PM-stage SRS persistence failure) resolved in iteration 2.
