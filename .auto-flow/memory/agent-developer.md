@@ -87,6 +87,15 @@ type: feedback
 - Loop body nodes automatically get the combined `[...allNodeIds, ...bodyNodeIds]` context via the existing `validInputIds` already passed to recursive `validateNode()` calls — no special-casing needed.
 - `env.*` and `args.*` are always accepted in validateTemplateVars (any suffix valid, resolved at runtime).
 
+## Artifact Fields Pattern (FR-E38)
+
+- `fields?: string[]` on `ValidationRule` — optional, presence-only check (not value constraint).
+- `validateValidationRule()` change: old "requires non-empty sections" → new "at least one of sections/fields".
+  Must update 2 existing tests that checked the old error message.
+- `checkArtifact()` field check placed after sections check. Uses `^key:\s*(.*)$` regex with `m` flag;
+  checks `!fieldMatch || !fieldMatch[1].trim()` to catch both absent and empty-valued fields.
+- No `assertRejects` needed — all sync config tests use `assertThrows`.
+
 ## Baseline Metrics
 
 - Run 20260315T003418: ~14 turns, scope sdlc, issue #121 (FR-S29), 7 SKILL.md + 2 memory files — PASS
