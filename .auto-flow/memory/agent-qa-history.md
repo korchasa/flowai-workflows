@@ -163,6 +163,17 @@
   - 528 tests unchanged from iteration 1 — no new tests needed for this sdlc-only change.
   - SDLC pipeline pattern (wrapper script replacing `|| true`) is correct approach for observable non-blocking after-script failures.
 
+## 2026-03-20T42:XX — Issue #159 (iteration 1)
+
+- **Turns:** ~5
+- **Cost:** ~$0.12 (est)
+- **Verdict:** FAIL
+- **Outcome:** 4/5 implementation criteria passed (all behavioral ACs met). 533 tests, 0 failures. Implementation correct: `reset-to-main.sh:10-20` adds dirty-check guard, branch display, `git diff --stat HEAD` + cached + untracked, `git stash push --include-untracked -m "auto-flow pre_run: <timestamp>"`, stash ref + restore cmd. `reset-to-main_test.sh` covers all 3 test scenarios (clean-tree, dirty-tree, post-reset). Blocking: `documents/requirements-sdlc.md` not in diff, 0 matches for FR-S41 — PM-stage SRS persistence failure (14th consecutive: #147–#159). Self-request-changes failed (author = reviewer) → used `gh issue comment` fallback on issue #159.
+- **Key learnings:**
+  - Shell test file (`reset-to-main_test.sh`) is NOT part of Deno test suite — `deno task check` count stays at 533 (same as #158). Behavioral ACs still verified by reading the script directly.
+  - PM-stage SRS persistence failure continues (14th consecutive). Grep for FR-S41 in requirements-sdlc.md returns 0 matches — same pattern as all prior issues.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-S41) confirmed FAIL in one parallel turn — optimal pattern.
+
 ## 2026-03-20T41:XX — Issue #158 (iteration 2)
 
 - **Turns:** ~6
