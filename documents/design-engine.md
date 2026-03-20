@@ -57,7 +57,11 @@ graph TD
   shell script orchestration with YAML-driven node graph.
 - **Modules:**
   - `types.ts` — type declarations (incl. `ValidationRule.type` union
-    (`"artifact"` added — FR-E33: composite rule with `sections?: string[]`),
+    (`"artifact"` added — FR-E33: composite rule with `sections?: string[]`;
+    `"scope_check"` added — FR-E37: internal-only, engine auto-injects when
+    `allowed_paths` present, not user-configured in YAML),
+    `NodeConfig.allowed_paths` (`string[]`, optional — FR-E37: glob patterns
+    defining allowed file modifications for scope-based detection),
     `NodeConfig.run_on` (`"always"|"success"|"failure"`), `NodeConfig.phase`,
     `NodeConfig.env`, `NodeConfig.model` (per-node Claude model override),
     `PipelineDefaults.model` (default model for all nodes),
@@ -87,6 +91,9 @@ graph TD
     checks file existence via `Deno.statSync()`. Skips paths containing `{{`
     (unresolvable at load time). Called from `mergeDefaults()` alongside
     `validatePromptPaths()`.
+    `validateAllowedPaths()` (FR-E37): when `allowed_paths` present on node,
+    validates array of non-empty strings. Invalid → config error at parse time.
+    Called from `validateNode()`.
     `validateValidationRule()` (FR-E33): `"artifact"` added to `validTypes`.
     When `type === "artifact"`: validates `sections` is present, is array,
     non-empty, all elements are strings. Missing/invalid → config error at
@@ -232,6 +239,23 @@ graph TD
   - `hitl.ts` — HITL detection (`detectHitlRequest`) and poll loop
     (`runHitlLoop`); injectable `scriptRunner`/`claudeRunner` for testing
   - `human.ts` — terminal user input, abort logic
+  - `scope-check.ts` — scope-based file modification detection (FR-E37).
+    Exports:
+    - `snapshotModifiedFiles(): Promise<Set<string>>` — runs
+      `git diff --name-only HEAD` + `git ls-files --others --exclude-standard`.
+      Returns combined set of modified/untracked files relative to repo root.
+    - `findViolations(before: Set<string>, after: Set<string>, allowedPaths: string[]): string[]`
+      — pure function. Computes `after − before` (new modifications since
+      snapshot), filters against `allowedPaths` globs. Returns violation paths
+      (empty = no violations). Glob matching via path prefix or pattern.
+    Integration: `agent.ts` calls `snapshotModifiedFiles()` before each
+    `invokeClaudeCli()` when `node.allowed_paths` exists. After invocation,
+    snapshots again, calls `findViolations()`. Violations → synthetic
+    `ValidationResult` (type `scope_check`, failed) injected into validation
+    results array. Shares `max_continuations` budget with artifact validation.
+    Skipped entirely when `allowed_paths` undefined on node (AC #1).
+    Pre-existing uncommitted changes excluded by before/after diff (AC #5).
+    Sub-second latency for ≤1000 tracked files (AC #6) — git index-based.
   - ~~`git.ts`~~ — **deleted** (FR-29: domain-specific git code removed from
     engine). Functions relocated to `.auto-flow/scripts/rollback-uncommitted.sh`.
     Failure handling replaced by configurable `on_failure_script` hook
@@ -492,9 +516,12 @@ graph TD
     `nodes[*].cost_usd`, recomputed by `updateRunCost()` on each node
     completion (FR-32)
   - NodeConfig: `{ ..., run_on?: "always"|"success"|"failure", phase?: string,
-    env?: Record<string, string>, model?: string }` — `run_on` for conditional
-    post-pipeline execution; `phase` for artifact directory grouping; `env` for
-    node-level env vars; `model` for per-node Claude model override (FR-27)
+    env?: Record<string, string>, model?: string,
+    allowed_paths?: string[] }` — `run_on` for conditional post-pipeline
+    execution; `phase` for artifact directory grouping; `env` for node-level
+    env vars; `model` for per-node Claude model override (FR-27);
+    `allowed_paths` for scope-based file modification detection (FR-E37) —
+    glob patterns defining permitted file modifications during agent invocation
 - **ERD:** N/A (file-based, no database).
 - **Migration:** N/A.
 
@@ -606,6 +633,22 @@ graph TD
        ID, and output path. Requires `loopId` threaded to function (closure
        capture or param). Catches misconfigs that slip past parse-time (e.g.,
        condition node with no validate block but agent omits field).
+  - **Scope-Based File Modification Detection (FR-E37):** In `runAgent()`,
+    when `node.allowed_paths` is defined:
+    1. Before first `invokeClaudeCli()`: `beforeSnapshot = await snapshotModifiedFiles()`.
+    2. After each invocation: `afterSnapshot = await snapshotModifiedFiles()`.
+    3. `violations = findViolations(beforeSnapshot, afterSnapshot, node.allowed_paths)`.
+    4. If violations non-empty: inject synthetic `ValidationResult`
+       `{ type: "scope_check", passed: false, message: "Out-of-scope modifications: <paths>" }`
+       into validation results array.
+    5. Continuation resume prompt includes both artifact and scope violations.
+    6. `beforeSnapshot` updated to `afterSnapshot` for next iteration
+       (incremental — only new changes detected per invocation).
+    7. Shares `max_continuations` budget (AC #7).
+    When `allowed_paths` undefined: skip snapshot entirely (zero overhead).
+    `findViolations()` algorithm: `newMods = after − before` (set difference),
+    for each path in `newMods`: match against `allowedPaths` globs; if no
+    match → violation. Pure function — unit-testable without I/O.
   - **Post-Pipeline Node Collection & Ordering**: `collectPostPipelineNodes()`
     collects nodes where `run_on !== undefined` (replaces `run_always`-based
     collection). `sortPostPipelineNodes()` sorts them topologically using

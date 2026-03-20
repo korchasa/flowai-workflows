@@ -197,6 +197,30 @@
   - PM-stage SRS persistence failure for issue #159 resolved in iteration 2 — `requirements-sdlc.md` in diff with FR-S41 at all promised locations.
   - 15th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues unchanged.
 
+## 2026-03-20T47:XX — Issue #175 (iteration 2)
+
+- **Turns:** ~8
+- **Cost:** ~$0.14 (est)
+- **Verdict:** PASS
+- **Outcome:** All 15 criteria passed. 549 tests, 0 failures. FR-E37 present at line 793 (§3.37, all ACs marked [x]). FR-E1 §3.1 updated at line 54. Appendix row at line 893. `requirements-engine.md` IS in diff. Implementation confirmed: `scope-check.ts` (snapshotModifiedFiles + findViolations + globMatch), `types.ts` (allowed_paths? + scope_check union), `config.ts` (validateAllowedPaths), `agent.ts` (pre/post snapshot, shared continuation budget). Self-approval failed → used `gh issue comment` fallback on issue #175.
+- **Key learnings:**
+  - 17th consecutive PM-stage SRS persistence failure resolved on iter 2 — `requirements-engine.md` in diff with FR-E37 at all promised locations.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-E37) confirmed PASS in one parallel turn — optimal fix-iteration pattern.
+  - Continuation loop condition `while (validationRules.length > 0 || node.allowed_paths !== undefined)` ensures scope-check nodes enter loop even without artifact rules — important subtlety for AC #7 verification.
+  - 18th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues.
+
+## 2026-03-20T46:XX — Issue #175 (iteration 1)
+
+- **Turns:** ~7
+- **Cost:** ~$0.14 (est)
+- **Verdict:** FAIL
+- **Outcome:** 7/9 criteria passed. 549 tests, 0 failures. All 7 behavioral ACs implemented correctly: `engine/scope-check.ts` (snapshotModifiedFiles + findViolations), `engine/types.ts` (allowed_paths? + scope_check union), `engine/config.ts` (validateAllowedPaths), `engine/agent.ts` pre/post snapshot integration. 16 new tests (scope-check_test.ts: 11, agent_test.ts FR-E37 section: 4, config integration: indirect). Blocking: `documents/requirements-engine.md` not in diff, 0 matches for FR-E37 — PM-stage SRS persistence failure (17th consecutive: #147–#175). Self-request-changes failed (author = reviewer) → used `gh issue comment` fallback on issue #175.
+- **Key learnings:**
+  - 17th consecutive PM-stage SRS persistence failure. Same pattern: grep for FR-E37 in requirements-engine.md returns 0 immediately.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-E37) confirmed FAIL in one parallel turn — optimal pattern.
+  - scope-check.ts implementation is clean: pure `findViolations()` + git-based `snapshotModifiedFiles()`, pre-existing mods correctly excluded via set-difference algorithm.
+  - agent.ts integration uses snapshot before first invocation + post-invocation comparison each iteration + updates beforeSnapshot for next iteration (incremental detection).
+
 ## 2026-03-20T45:XX — Issue #174 (iteration 2)
 
 - **Turns:** ~8
