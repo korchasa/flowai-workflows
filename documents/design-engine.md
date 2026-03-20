@@ -341,7 +341,11 @@ graph TD
     Computes `streamLogPath = ${runDir}/logs/${nodeId}.jsonl` for each agent
     node; passes to `runAgent()`. For loop nodes: passes path pattern to
     loop executor for iteration-qualified derivation
-  - `cli.ts` — CLI entry point: argument parsing, .env loading
+  - `cli.ts` — CLI entry point: argument parsing, .env loading.
+    `VERSION` constant: `Deno.env.get("VERSION") ?? "dev"` — injected at
+    compile time via `deno compile --env VERSION=<tag>`. `--version` / `-V`
+    flag: prints `auto-flow <VERSION>` and exits (FR-E39). Added to
+    `parseArgs()` alongside existing `--help`
   - `mod.ts` — barrel re-export serving as `deno doc --lint` entry point
     (not a runtime public API; sole non-redundant consumer is
     `scripts/check.ts` JSDoc validation)
@@ -372,7 +376,8 @@ graph TD
   unit testing
 - **Interfaces:**
   - CLI: `deno task run [--prompt <text>] [--config <path>] [--resume <run-id>]
-    [--dry-run] [-v|-s|-q] [--env KEY=VAL] [--skip nodes] [--only nodes]`
+    [--dry-run] [-v|-s|-q] [--env KEY=VAL] [--skip nodes] [--only nodes]
+    [--version|-V]`
   - Config: `.auto-flow/pipeline.yaml` (YAML, version "1")
   - State: `.auto-flow/runs/<run-id>/state.json` (JSON)
 - **Node types:** `agent`, `merge`, `loop` (with inline `nodes` sub-object
@@ -488,7 +493,36 @@ graph TD
   isolation. `onShutdown` disposer pattern prevents callback accumulation
   when `Engine.run()` called in a loop (`self_runner.ts`).
 
-### 3.4 Shared Backoff Utility (`scripts/backoff.ts`) — FR-E28
+### 3.4 Binary Distribution (`scripts/compile.ts`) — FR-E39
+
+- **Status:** Pending.
+- **Purpose:** Cross-platform standalone binary compilation via `deno compile`.
+  Eliminates Deno prerequisite for end users.
+- **Compile Script** (`scripts/compile.ts`):
+  - Accepts `--target <triple>` for single-target or no args for all 4 targets.
+  - Targets: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
+    `x86_64-apple-darwin`, `aarch64-apple-darwin`.
+  - Output naming: `auto-flow-<os>-<arch>` (e.g., `auto-flow-linux-x86_64`).
+  - Invokes: `deno compile --target <t> --env VERSION=<v> --output <name>
+    engine/cli.ts` per target.
+  - `--version` flag value: reads `VERSION` env var, falls back to `"dev"`.
+- **deno.json task:** `"compile": "deno run -A scripts/compile.ts"`.
+- **GitHub Actions Workflow** (`.github/workflows/release.yml`):
+  - Trigger: `push` with `tags: ["v*"]`.
+  - Matrix strategy: 4 jobs (one per target triple).
+  - Each job: checkout → setup Deno → `deno task compile --target <triple>`
+    → upload artifact.
+  - Final `release` job (`needs: [build]`): download all artifacts → create
+    GitHub Release (`GITHUB_REF_NAME` as tag) → attach binaries.
+  - Version string: extracted from `GITHUB_REF_NAME` (strips `v` prefix),
+    passed via `VERSION` env to compile script.
+- **Deps:** Deno compile toolchain, GitHub Actions.
+- **Design rationale:** Compile script is both local-dev tool (`deno task
+  compile`) and CI building block. Matrix CI parallelizes builds (~1× instead
+  of 4× wall time). Version embedding via `--env` avoids code generation or
+  build-time file patching.
+
+### 3.5 Shared Backoff Utility (`scripts/backoff.ts`) — FR-E28
 
 - **Status:** Pending.
 - **Purpose:** Single authoritative source for exponential backoff logic used by
@@ -790,4 +824,6 @@ graph TD
 - **Simplified:** Pipeline runs sequentially (no parallel stages in v1).
 - **Deferred:** Multi-repo support. Parallel pipelines for multiple issues.
   Issue size/complexity limits. Cost budget limits and alerts (per-node cost
-  aggregation implemented in FR-32; budget enforcement deferred).
+  aggregation implemented in FR-32; budget enforcement deferred). Windows
+  binary target (FR-E39). Package manager distribution (brew, npm). Auto-update
+  mechanism. SHA256 checksums for release assets.
