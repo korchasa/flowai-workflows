@@ -209,6 +209,18 @@
   - Continuation loop condition `while (validationRules.length > 0 || node.allowed_paths !== undefined)` ensures scope-check nodes enter loop even without artifact rules — important subtlety for AC #7 verification.
   - 18th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues.
 
+## 2026-03-20T56:XX — Issue #183 (iteration 2)
+
+- **Turns:** ~8
+- **Cost:** ~$0.22 (est)
+- **Verdict:** FAIL
+- **Outcome:** 5/9 acceptance criteria passed. 578 tests, 0 failures. 4 blocking issues: (1) FR-E39 absent from `requirements-engine.md` (25th consecutive PM-stage SRS persistence failure); (2) `scripts/compile_test.ts` missing — Decision Task 2 not delivered, file does not exist; (3) platform naming deviation: `amd64`/`macos` instead of spec-required `x86_64`/`darwin` (3 of 4 binary names wrong); (4) double-v version string bug: `release.yml` passes `VERSION=${{ github.ref_name }}` = "v1.2.3", `getVersionString()` prepends another `v` → "auto-flow vv1.2.3". `deno.json` compile task registered, CI workflow structure correct, README install docs present, `design-engine.md` has FR-E39 section (with duplicate 3.5 numbering). Self-request-changes failed → used `gh issue comment` fallback on issue #183.
+- **Key learnings:**
+  - Decision deliverables can be entirely missing even on iter 2: compile_test.ts was listed as Task 2 but never created. Always verify ALL decision tasks present in diff.
+  - Double-v bug: always check if VERSION env var in CI already carries `v` prefix from git tag. `github.ref_name` for tag "v1.2.3" = "v1.2.3" (includes v). If getVersionString() also prepends v → double-v. Fix: strip leading `v` in compile.ts before embedding.
+  - Platform naming: spec/issue explicitly state `x86_64`/`darwin` — always verify implementation uses exact strings, not aliases (`amd64`/`macos`).
+  - 25th consecutive PM-stage SRS persistence failure. Pattern unchanged.
+
 ## 2026-03-20T55:XX — Issue #183 (iteration 1)
 
 - **Turns:** ~8
