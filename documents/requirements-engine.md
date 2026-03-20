@@ -858,6 +858,28 @@
     `engine/config_test.ts:1137,1148`; 576 tests pass, 0 failed.
   - [x] `deno task check` green: 576 tests, 0 failures. Evidence: run `20260320T213059`.
 
+### 3.39 FR-E39: Standalone Binary Distribution and CI/CD Release Pipeline
+
+- **Description:** The engine MUST be distributable as a standalone compiled binary
+  (no Deno required on the target machine), built for multiple platforms and published
+  as GitHub Release assets via an automated CI/CD pipeline triggered by version tags.
+- **Motivation:** Currently, running the engine requires cloning the full repository with
+  Deno and all source dependencies. A standalone binary enables adoption in other projects
+  by reducing installation to a single file download with no runtime prerequisites.
+- **Acceptance criteria:**
+  - [ ] AC1: `deno compile` produces a single self-contained executable (`auto-flow`) for
+    each target platform; no Deno installation required on the target machine.
+  - [ ] AC2: Release assets built for minimum: linux-x86_64, linux-arm64,
+    darwin-x86_64, darwin-arm64.
+  - [ ] AC3: Pushing a version tag (e.g., `v1.0.0`) triggers CI that builds all
+    platform binaries and publishes them as GitHub Release assets.
+  - [ ] AC4: Release asset filenames include OS and architecture (e.g.,
+    `auto-flow-linux-x86_64`); the installed binary is named `auto-flow`.
+  - [ ] AC5: README documents: binary download for user's platform, making it
+    executable, placing it in PATH, and running on a project with `.auto-flow/` directory.
+  - [ ] AC6: Binary operates from `--config <path>` only; makes no assumptions about
+    surrounding project structure beyond what the config references.
+
 ## 4. Non-Functional Requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -922,3 +944,4 @@
 | —      | FR-E36 | Loop Condition Field Validation |
 | —      | FR-E37 | Scope-Based File Modification Detection |
 | —      | FR-E38 | Artifact Rule Frontmatter Field Presence Checks |
+| —      | FR-E39 | Standalone Binary Distribution and CI/CD Release Pipeline |
