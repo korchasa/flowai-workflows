@@ -72,3 +72,4 @@ type: feedback
 - Twenty-sixth session (issue #159, iteration 1): ~5 turns, FAIL verdict (FR-S41 absent; 14th consecutive PM failure; implementation correct)
 - Twenty-seventh session (issue #159, iteration 2): ~5 turns, PASS verdict (FR-S41 at line 945 §3.41 + Appendix C line 1092; 533 tests, 5/5 ACs)
 - Thirtieth session (issue #175, iteration 1): ~7 turns, FAIL verdict (FR-E37 absent from requirements-engine.md; 17th consecutive PM failure; all 7 behavioral ACs correct: scope-check.ts module, types.ts, config.ts validation, agent.ts integration, 549 tests)
+- Thirty-first session (issue #175, iteration 2): ~8 turns, PASS verdict (FR-E37 at line 793 §3.37 + FR-E1 §3.1 cross-ref at line 54 + Appendix at line 893; requirements-engine.md in diff; 549 tests, 15/15 ACs)
