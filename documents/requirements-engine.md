@@ -831,6 +831,33 @@
     `engine/scope-check_test.ts`, `engine/agent_test.ts`; 549 tests pass, 0 failed.
   - [x] `deno task check` green: 549 tests, 0 failures. Evidence: run `20260320T094502`.
 
+### 3.38 FR-E38: Artifact Rule Frontmatter Field Presence Checks
+
+- **Description:** The `artifact` validation rule accepts an optional `fields?: string[]`
+  property listing required frontmatter field names. When present, the engine checks each
+  named field exists in the artifact's YAML frontmatter and has a non-empty value.
+  Missing or empty fields are aggregated into a single validation error. Skipped entirely
+  when `fields` is absent or empty — fully backward compatible.
+- **Motivation:** Without this feature, pipeline authors must declare one `frontmatter_field`
+  rule per required field, duplicating the artifact path and splitting one artifact contract
+  across multiple rule declarations. `fields` on `artifact` consolidates presence checks
+  alongside section checks in a single rule, reducing verbosity and error surface.
+- **Acceptance criteria:**
+  - [x] AC1: Optional `fields?: string[]` on `artifact` rule; skipped when absent/empty.
+    Evidence: `engine/types.ts:164`.
+  - [x] AC2: Fail-fast order: absent file → empty file → missing sections →
+    missing/empty fields. Evidence: `engine/validate.ts:261-337`.
+  - [x] AC3: Missing/empty fields aggregated into one validation error.
+    Evidence: `engine/validate.ts:314-332`.
+  - [x] AC4: Config-load rejects `artifact` rule with non-string or empty-string entries
+    in `fields`. Evidence: `engine/config.ts:452-460`.
+  - [x] AC5: `frontmatter_field` rule unchanged (covers value constraints; `artifact`
+    covers presence only). Evidence: `engine/validate.ts:187-251`.
+  - [x] AC6: Unit tests: no-fields (skip), all present, one missing, one empty-valued,
+    bad entry rejected. Evidence: `engine/validate_test.ts:469,485,508,533`,
+    `engine/config_test.ts:1137,1148`; 576 tests pass, 0 failed.
+  - [x] `deno task check` green: 576 tests, 0 failures. Evidence: run `20260320T213059`.
+
 ## 4. Non-Functional Requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one pipeline at a time). Concurrent execution is not supported.
@@ -894,4 +921,4 @@
 | —      | FR-E35 | Loop Input Forwarding Validation |
 | —      | FR-E36 | Loop Condition Field Validation |
 | —      | FR-E37 | Scope-Based File Modification Detection |
-| —      | FR-E36 | Loop Condition Field Validation |
+| —      | FR-E38 | Artifact Rule Frontmatter Field Presence Checks |
