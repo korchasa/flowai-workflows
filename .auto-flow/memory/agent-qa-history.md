@@ -209,6 +209,18 @@
   - Continuation loop condition `while (validationRules.length > 0 || node.allowed_paths !== undefined)` ensures scope-check nodes enter loop even without artifact rules — important subtlety for AC #7 verification.
   - 18th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues.
 
+## 2026-03-20T49:XX — Issue #176 (iteration 2)
+
+- **Turns:** ~6
+- **Cost:** ~$0.12 (est)
+- **Verdict:** PASS
+- **Outcome:** All 5 acceptance criteria passed. 569 tests, 0 failures. FR-E7 4 detailed criteria at lines 137-140 all marked [x]; `requirements-engine.md` IS in diff — blocking issue from iteration 1 resolved. Implementation: `validateTemplateVars()` pure function in `engine/template.ts:121-181`; called from `engine/config.ts:324-344` in `validateNode()` for before/after hooks; error messages include hook type and node ID; 20 new tests (12 template_test.ts + 9 config_test.ts). Self-approval failed → used `gh issue comment` fallback on issue #176.
+- **Key learnings:**
+  - PM-stage SRS persistence failure for issue #176 resolved in iteration 2 — `requirements-engine.md` in diff with FR-E7 4 detailed criteria at lines 137-140.
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-E7) confirmed PASS in one parallel turn — optimal fix-iteration pattern.
+  - 20th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues unchanged.
+  - validateTemplateVars() design: pure function in template.ts returning error array — allows accumulation of multiple errors before throwing at config.ts level.
+
 ## 2026-03-20T48:XX — Issue #176 (iteration 1)
 
 - **Turns:** ~7
