@@ -209,6 +209,18 @@
   - Continuation loop condition `while (validationRules.length > 0 || node.allowed_paths !== undefined)` ensures scope-check nodes enter loop even without artifact rules — important subtlety for AC #7 verification.
   - 18th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues.
 
+## 2026-03-20T55:XX — Issue #183 (iteration 1)
+
+- **Turns:** ~8
+- **Cost:** ~$0.20 (est)
+- **Verdict:** FAIL
+- **Outcome:** 4/7 spec ACs passed. 578 tests, 0 failures. All 4 implementation tasks correct: `VERSION = Deno.env.get("VERSION") ?? "dev"` + `getVersionString()` + `--version`/`-V` in `engine/cli.ts`; `scripts/compile.ts` with 4 targets; `.github/workflows/release.yml` matrix CI; README Installation section. Blocking: `documents/requirements-engine.md` not in diff, 0 matches for FR-E39 — PM-stage SRS persistence failure (24th consecutive: #147–#183). Non-blocking: double-v version string bug (`github.ref_name="v1.2.3"` + `getVersionString()` prepends `v` → `auto-flow vv1.2.3`) [confidence: 96]; platform naming deviation (`amd64`/`macos` vs `x86_64`/`darwin` in spec) [confidence: 85]. Self-request-changes failed → used `gh issue comment` fallback on issue #183.
+- **Key learnings:**
+  - Double-v version string bug: always check if `VERSION` env var in CI already contains the `v` prefix (GitHub tag names do); `getVersionString()` prepends another `v`. Fix: strip leading `v` in compile.ts before embedding.
+  - Platform naming deviation (`amd64` vs `x86_64`, `macos` vs `darwin`): spec explicitly states platform strings; implementation uses more user-friendly but non-conformant names.
+  - `deno compile --env-file <tmpfile>` is a valid alternative to `--env` for embedding env vars — different from what the decision specified but functionally correct.
+  - 24th consecutive PM-stage SRS persistence failure. Pattern unchanged: grep for FR-E39 returns 0 immediately.
+
 ## 2026-03-20T54:XX — Issue #182 (iteration 2)
 
 - **Turns:** ~9
