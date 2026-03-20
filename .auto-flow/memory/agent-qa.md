@@ -30,6 +30,7 @@ type: feedback
 - On fix iteration, once FR is confirmed present in grep, check all spec-promised SRS sub-sections in the same grep output.
 - `pipeline.yaml` modification is expected and necessary when engine enforcement would break it — do not treat as out-of-scope.
 - For SKILL.md-only changes: verify each file individually by reading in parallel; the entire implementation IS the SKILL.md content changes.
+- Shell test files (`.sh`) are NOT part of Deno test suite — count stays the same. Behavioral ACs still verified by reading the script directly.
 
 ## Environment Quirks
 
@@ -66,3 +67,5 @@ type: feedback
 - Twenty-third session (issue #157, iteration 2): ~5 turns, PASS verdict (FR-S39 at line 881 §3.39 + Appendix C line 1028; requirements-sdlc.md in diff; all 6 SKILL.md files correct; 533 tests, 4/4 ACs)
 - Twenty-fourth session (issue #158, iteration 1): ~7 turns, FAIL verdict (FR-S40 absent; 13th consecutive PM failure; requirements-sdlc.md in diff but developer edits only)
 - Twenty-fifth session (issue #158, iteration 2): ~6 turns, PASS verdict (FR-S40 at line 904 §3.40 + Appendix C line 1064; requirements-sdlc.md in diff; all 4 required files in diff; 533 tests, 9/9 ACs)
+- Twenty-sixth session (issue #159, iteration 1): ~5 turns, FAIL verdict (FR-S41 absent; 14th consecutive PM failure; implementation correct)
+- Twenty-seventh session (issue #159, iteration 2): ~5 turns, PASS verdict (FR-S41 at line 945 §3.41 + Appendix C line 1092; 533 tests, 5/5 ACs)
