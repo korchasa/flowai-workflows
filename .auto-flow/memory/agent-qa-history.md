@@ -209,6 +209,19 @@
   - Continuation loop condition `while (validationRules.length > 0 || node.allowed_paths !== undefined)` ensures scope-check nodes enter loop even without artifact rules — important subtlety for AC #7 verification.
   - 18th consecutive pattern: PM stage fails on iter 1, dev restores on iter 2. Pattern continues.
 
+## 2026-03-20T50:XX — Issue #178 (iteration 1)
+
+- **Turns:** ~9
+- **Cost:** ~$0.20 (est)
+- **Verdict:** FAIL
+- **Outcome:** 9/10 acceptance criteria passed. 569 tests, 0 failures. SKILL.md implementations fully correct: `agent-architect/SKILL.md` has `## Codebase Exploration` section (2-3 parallel sub-agents: Prior art, Architecture layers, Integration points; Agent tool explicitly allowed; Responsibility #3 updated). `agent-qa/SKILL.md` has `## Confidence Scoring` (0-100, ≥80 threshold) and `## Multi-Focus Review` (2-3 parallel sub-agents; Agent tool explicitly allowed; Responsibility #4 delegates). Blocking: `documents/requirements-sdlc.md` not in diff, 0 matches for FR-S43/FR-S44/FR-S45 — PM-stage SRS persistence failure (21st consecutive: #147–#178). Self-request-changes failed (author = reviewer) → used `gh issue comment` fallback on issue #178.
+- **Key learnings:**
+  - 21st consecutive PM-stage SRS persistence failure. Same pattern: grep for FR numbers returns 0 immediately.
+  - This issue adds 3 FRs simultaneously (FR-S43/S44/S45) — none persisted to requirements-sdlc.md.
+  - Multi-focus review sub-agents work well; conventions sub-agent found all patterns correct (Agent tool allowance, section naming, additive scope adherence).
+  - SKILL.md-only changes with no TypeScript — test count unchanged at 569 from prior issue (#176).
+  - Parallel strategy (deno task check + git diff + gh issue view + grep FR-S43/S44/S45) confirmed FAIL in one parallel turn.
+
 ## 2026-03-20T49:XX — Issue #176 (iteration 2)
 
 - **Turns:** ~6
