@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { collectPromptPaths, loadConfig } from "./config.ts";
 
-const PIPELINE_PATH = ".auto-flow/pipeline.yaml";
+const PIPELINE_PATH = ".flowai-pipelines/pipeline.yaml";
 
 Deno.test(
   "pipeline.yaml — no agent node uses prompt: field (FR-S38 AC#3)",
@@ -24,7 +24,7 @@ Deno.test("collectPromptPaths — extracts from top-level and loop body nodes", 
       a: {
         type: "agent" as const,
         label: "A",
-        prompt: ".auto-flow/agents/agent-a/SKILL.md",
+        prompt: ".flowai-pipelines/agents/agent-a/SKILL.md",
       },
       b: { type: "agent" as const, label: "B", task_template: "no prompt" },
       loop: {
@@ -37,7 +37,7 @@ Deno.test("collectPromptPaths — extracts from top-level and loop body nodes", 
           c: {
             type: "agent" as const,
             label: "C",
-            prompt: ".auto-flow/agents/agent-c/SKILL.md",
+            prompt: ".flowai-pipelines/agents/agent-c/SKILL.md",
             task_template: "x",
           },
           d: { type: "agent" as const, label: "D", task_template: "y" },
@@ -48,7 +48,7 @@ Deno.test("collectPromptPaths — extracts from top-level and loop body nodes", 
 
   const paths = collectPromptPaths(config);
   assertEquals(paths, [
-    ".auto-flow/agents/agent-a/SKILL.md",
-    ".auto-flow/agents/agent-c/SKILL.md",
+    ".flowai-pipelines/agents/agent-a/SKILL.md",
+    ".flowai-pipelines/agents/agent-c/SKILL.md",
   ]);
 });

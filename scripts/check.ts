@@ -40,7 +40,8 @@ async function commentScan(): Promise<void> {
   for await (const entry of walkDir(".")) {
     if (!extensions.some((ext) => entry.endsWith(ext))) continue;
     if (
-      entry.includes("node_modules") || entry.includes(".auto-flow/pipeline") ||
+      entry.includes("node_modules") ||
+      entry.includes(".flowai-pipelines/pipeline") ||
       entry.endsWith("scripts/check.ts")
     ) {
       continue;
@@ -88,7 +89,7 @@ async function* walkDir(dir: string): AsyncGenerator<string> {
 
 async function pipelineIntegrity(): Promise<void> {
   console.log("\n--- Pipeline Integrity ---");
-  const pipelinePath = ".auto-flow/pipeline.yaml";
+  const pipelinePath = ".flowai-pipelines/pipeline.yaml";
 
   // 1. Load and validate pipeline config (schema + prompt paths + phases)
   const { loadConfig } = await import("../engine/config.ts");
@@ -119,7 +120,7 @@ export function validateHitlArtifactSource(
 
 async function hitlArtifactSource(): Promise<void> {
   console.log("\n--- HITL Artifact Source Validation ---");
-  const pipelinePath = ".auto-flow/pipeline.yaml";
+  const pipelinePath = ".flowai-pipelines/pipeline.yaml";
   const { loadConfig } = await import("../engine/config.ts");
   let config;
   try {
@@ -257,7 +258,7 @@ if (import.meta.main) {
     Deno.exit(argCheck.code);
   }
 
-  console.log("=== auto-flow: Full Check ===");
+  console.log("=== flowai-pipelines: Full Check ===");
 
   await run("deno", ["fmt"], "Formatting (auto-fix)");
   await run("deno", ["lint"], "Linting");
@@ -282,7 +283,7 @@ if (import.meta.main) {
 
   await run("gitleaks", ["detect", "--no-git"], "Secret Scan");
 
-  const testDirs = ["scripts", ".auto-flow", "engine"];
+  const testDirs = ["scripts", ".flowai-pipelines", "engine"];
   const testableDir = (await Promise.all(
     testDirs.map(async (d) => ({ d, has: await hasTestFiles(d) })),
   )).filter((x) => x.has).map((x) => x.d);

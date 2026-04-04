@@ -64,7 +64,7 @@ ONE Write call with complete updated content. Do NOT Write then re-read + Edit
 
 ## Git: Run Artifacts
 
-`.auto-flow/runs/` is gitignored. ALWAYS use `git add -f` for files in that
+`.flowai-pipelines/runs/` is gitignored. ALWAYS use `git add -f` for files in that
 directory. Without `-f`, git add silently skips them.
 
 ## Bash
@@ -80,7 +80,7 @@ Do NOT re-search files already in context via Bash.
 
 ## Reflection Memory
 
-Follow `.auto-flow/agents/reflection-protocol.md`. Memory + history paths are
+Follow `.flowai-pipelines/agents/reflection-protocol.md`. Memory + history paths are
 specified in each agent's SKILL.md.
 
 ## File Modification Scope

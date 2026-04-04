@@ -1,4 +1,4 @@
-# auto-flow
+# flowai-pipelines
 
 Universal DAG-based engine for orchestrating AI agents. Define agent workflows as YAML configs — the engine handles execution, inter-agent communication, validation, loops, and resume.
 
@@ -76,7 +76,7 @@ Options:
   --prompt <text>     Additional context passed to first agent
   --resume <run-id>   Resume a previous run (skip completed nodes)
   --dry-run           Validate config and show DAG without executing
-  --config <path>     Custom pipeline config (default: .auto-flow/pipeline.yaml)
+  --config <path>     Custom pipeline config (default: .flowai-pipelines/pipeline.yaml)
   --skip <nodes>      Comma-separated node IDs to skip
   --only <nodes>      Run only specified nodes
   --env KEY=VAL       Set environment variable for the run
@@ -124,7 +124,7 @@ graph TD
     verify -- "verdict: PASS" --> review
 ```
 
-Pipeline config: `.auto-flow/pipeline.yaml`
+Pipeline config: `.flowai-pipelines/pipeline.yaml`
 
 | Node | Phase | Role | Output |
 |------|-------|------|--------|
@@ -134,7 +134,7 @@ Pipeline config: `.auto-flow/pipeline.yaml`
 | `implementation` | impl | Developer+QA loop (max 3 iterations) | implementation + `05-qa-report.md` |
 | `tech-lead-review` | report | Tech Lead Review — Final Review + Merge (run_on: always) | `06-review.md` |
 
-All 7 pipeline agents are also available as Claude Code slash commands via `.auto-flow/agents/agent-<name>/SKILL.md`:
+All 7 pipeline agents are also available as Claude Code slash commands via `.flowai-pipelines/agents/agent-<name>/SKILL.md`:
 
 - `/agent-pm` — Project Manager (specification)
 - `/agent-architect` — Architect (design-solution plan)
@@ -148,7 +148,7 @@ All 7 pipeline agents are also available as Claude Code slash commands via `.aut
 
 ```
 engine/                          # DAG executor engine (Deno/TypeScript)
-.auto-flow/
+.flowai-pipelines/
   pipeline.yaml                  # SDLC pipeline config (example)
   agents/                        # Agent prompts (symlinked from .claude/skills/)
     agent-pm/SKILL.md
@@ -175,18 +175,18 @@ Download a pre-built binary from the [latest release](../../releases/latest) —
 
 ```bash
 # Linux x86_64
-gh release download --repo <owner>/auto-flow --pattern auto-flow-linux-x86_64
-chmod +x auto-flow-linux-x86_64 && mv auto-flow-linux-x86_64 auto-flow
+gh release download --repo <owner>/flowai-pipelines --pattern flowai-pipelines-linux-x86_64
+chmod +x flowai-pipelines-linux-x86_64 && mv flowai-pipelines-linux-x86_64 flowai-pipelines
 
 # macOS Apple Silicon
-gh release download --repo <owner>/auto-flow --pattern auto-flow-darwin-arm64
-chmod +x auto-flow-darwin-arm64 && mv auto-flow-darwin-arm64 auto-flow
+gh release download --repo <owner>/flowai-pipelines --pattern flowai-pipelines-darwin-arm64
+chmod +x flowai-pipelines-darwin-arm64 && mv flowai-pipelines-darwin-arm64 flowai-pipelines
 
 # Verify
-./auto-flow --version
+./flowai-pipelines --version
 
 # Run a pipeline
-./auto-flow --config .auto-flow/pipeline.yaml
+./flowai-pipelines --config .flowai-pipelines/pipeline.yaml
 ```
 
 Alternatively, run directly with Deno (see Prerequisites below).

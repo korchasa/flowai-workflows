@@ -21,7 +21,7 @@ Current state: each agent node has two text channels to Claude CLI:
 - `task_template` → interpolated at runtime → `-p` (user message)
 
 Shared-rules are referenced via a manual instruction at the top of each
-SKILL.md: "Read `.auto-flow/agents/shared-rules.md`". Agents may skip this
+SKILL.md: "Read `.flowai-pipelines/agents/shared-rules.md`". Agents may skip this
 read, wasting a turn or ignoring rules entirely.
 
 With `file()` already supported in `task_template`, both SKILL.md content and
@@ -69,9 +69,9 @@ existing system prompt (CLAUDE.md), and SKILL.md content is task instructions
 
 - [ ] No node in pipeline.yaml uses the `prompt` field
 - [ ] Every agent node's `task_template` inlines shared-rules via
-      `{{file(".auto-flow/agents/shared-rules.md")}}`
+      `{{file(".flowai-pipelines/agents/shared-rules.md")}}`
 - [ ] Every agent node's `task_template` inlines its SKILL.md via
-      `{{file(".auto-flow/agents/<agent-name>/SKILL.md")}}`
+      `{{file(".flowai-pipelines/agents/<agent-name>/SKILL.md")}}`
 - [ ] No SKILL.md contains the "read shared-rules" instruction
 - [ ] `deno task check` passes
 - [ ] Pipeline runs without errors (manual verification)
@@ -89,7 +89,7 @@ Rewrite each agent node in pipeline.yaml: remove `prompt` field, prepend
 
 ### Scope
 
-- `.auto-flow/pipeline.yaml`
+- `.flowai-pipelines/pipeline.yaml`
 
 ### Tasks
 
@@ -98,9 +98,9 @@ Rewrite each agent node in pipeline.yaml: remove `prompt` field, prepend
    lines to `task_template`:
    ```yaml
    task_template: |
-     {{file(".auto-flow/agents/shared-rules.md")}}
+     {{file(".flowai-pipelines/agents/shared-rules.md")}}
      ---
-     {{file(".auto-flow/agents/<agent-name>/SKILL.md")}}
+     {{file(".flowai-pipelines/agents/<agent-name>/SKILL.md")}}
      ---
      <existing task_template content>
    ```
@@ -108,7 +108,7 @@ Rewrite each agent node in pipeline.yaml: remove `prompt` field, prepend
 
 ### Verification
 
-- [ ] `grep -c 'prompt:' .auto-flow/pipeline.yaml` returns 0 (no prompt fields)
+- [ ] `grep -c 'prompt:' .flowai-pipelines/pipeline.yaml` returns 0 (no prompt fields)
 - [ ] All 6 agent nodes contain `{{file("...shared-rules.md")}}`
 - [ ] All 6 agent nodes contain `{{file("...SKILL.md")}}`
 - [ ] `deno task check` passes
@@ -132,12 +132,12 @@ files, since shared-rules are inlined automatically via `file()`.
 
 ### Scope
 
-- `.auto-flow/agents/agent-pm/SKILL.md`
-- `.auto-flow/agents/agent-architect/SKILL.md`
-- `.auto-flow/agents/agent-tech-lead/SKILL.md`
-- `.auto-flow/agents/agent-developer/SKILL.md`
-- `.auto-flow/agents/agent-qa/SKILL.md`
-- `.auto-flow/agents/agent-tech-lead-review/SKILL.md`
+- `.flowai-pipelines/agents/agent-pm/SKILL.md`
+- `.flowai-pipelines/agents/agent-architect/SKILL.md`
+- `.flowai-pipelines/agents/agent-tech-lead/SKILL.md`
+- `.flowai-pipelines/agents/agent-developer/SKILL.md`
+- `.flowai-pipelines/agents/agent-qa/SKILL.md`
+- `.flowai-pipelines/agents/agent-tech-lead-review/SKILL.md`
 
 ### Tasks
 
@@ -147,7 +147,7 @@ files, since shared-rules are inlined automatically via `file()`.
 
 ### Verification
 
-- [ ] `grep -r 'shared-rules' .auto-flow/agents/agent-*/SKILL.md` returns empty
+- [ ] `grep -r 'shared-rules' .flowai-pipelines/agents/agent-*/SKILL.md` returns empty
 - [ ] `deno task check` passes
 
 ### Notes

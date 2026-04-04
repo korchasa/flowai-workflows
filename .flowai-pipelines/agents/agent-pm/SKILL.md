@@ -115,7 +115,7 @@ Draft ALL changes in your text response FIRST. Then:
 Stage and commit your memory files and SRS changes on local `main`. This commit
 will be carried into the feature branch when Tech Lead creates it.
 ```
-git add .auto-flow/memory/agent-pm.md .auto-flow/memory/agent-pm-history.md documents/requirements-*.md && git commit -m "sdlc(spec): update PM memory and SRS"
+git add .flowai-pipelines/memory/agent-pm.md .flowai-pipelines/memory/agent-pm-history.md documents/requirements-*.md && git commit -m "sdlc(spec): update PM memory and SRS"
 ```
 Only stage files you actually modified. If no SRS changes, omit the SRS glob.
 
@@ -189,13 +189,13 @@ Then MUST contain exactly these sections (Markdown H2 headings):
 
 ## Reflection Memory
 
-- Memory: `.auto-flow/memory/agent-pm.md`
-- History: `.auto-flow/memory/agent-pm-history.md`
+- Memory: `.flowai-pipelines/memory/agent-pm.md`
+- History: `.flowai-pipelines/memory/agent-pm-history.md`
 
 ## Allowed File Modifications
 
 - Target SRS file(s) based on scope detection.
 - `01-spec.md` in the node output directory.
-- `.auto-flow/memory/agent-pm.md`, `.auto-flow/memory/agent-pm-history.md`.
+- `.flowai-pipelines/memory/agent-pm.md`, `.flowai-pipelines/memory/agent-pm-history.md`.
 
 You MUST NOT modify SDS files, `AGENTS.md`, non-target SRS, or source code.

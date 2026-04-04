@@ -5,7 +5,7 @@ operative knowledge across runs.
 
 ## Layer 1: MEMORY (Edit-in-place)
 
-**Path:** `.auto-flow/memory/<agent>.md`
+**Path:** `.flowai-pipelines/memory/<agent>.md`
 **Format:** Full-snapshot rewrite. ≤50 lines. Categories:
 
 - **Anti-patterns:** recurring mistakes encountered this run.
@@ -21,7 +21,7 @@ operative knowledge across runs.
 
 ## Layer 2: HISTORY (Append-only log)
 
-**Path:** `.auto-flow/memory/<agent>-history.md`
+**Path:** `.flowai-pipelines/memory/<agent>-history.md`
 **Format:** One entry per run appended at session end:
 
 ```

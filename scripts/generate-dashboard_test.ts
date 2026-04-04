@@ -38,7 +38,7 @@ Deno.test("readRunState — parses valid state.json", async () => {
   try {
     const state: RunState = {
       run_id: "test-123",
-      config_path: ".auto-flow/pipeline.yaml",
+      config_path: ".flowai-pipelines/pipeline.yaml",
       started_at: "2024-01-01T00:00:00.000Z",
       status: "completed",
       args: {},
@@ -279,7 +279,7 @@ Deno.test("renderCard — logContent is HTML-escaped", () => {
 Deno.test("renderHtml — contains all node cards", () => {
   const state: RunState = {
     run_id: "run-xyz",
-    config_path: ".auto-flow/pipeline.yaml",
+    config_path: ".flowai-pipelines/pipeline.yaml",
     started_at: "2024-01-01T00:00:00Z",
     status: "completed",
     args: {},
@@ -979,7 +979,10 @@ Deno.test("checkArgs — unknown flag returns error string with code 1", () => {
 });
 
 Deno.test("checkArgs — valid --run-dir arg returns null (ok)", () => {
-  const result = checkArgs(["--run-dir", ".auto-flow/runs/20260101T120000"]);
+  const result = checkArgs([
+    "--run-dir",
+    ".flowai-pipelines/runs/20260101T120000",
+  ]);
   assertEquals(result, null);
 });
 

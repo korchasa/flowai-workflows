@@ -34,7 +34,7 @@ type: feedback
 - For nested multi-arg calls, count indentation level carefully
 - For extraction refactors (no behavioral change): existing tests are the acceptance gate — no new tests needed
 - When removing imports: trace each symbol to confirm it is truly unused after extraction before deleting
-- **Self-referential safety for prompt deletions:** Don't delete `.auto-flow/agents/agent-*/SKILL.md` files
+- **Self-referential safety for prompt deletions:** Don't delete `.flowai-pipelines/agents/agent-*/SKILL.md` files
   during a pipeline run — the engine may still need them for later nodes in the current run
 
 ## Environment Quirks
@@ -42,8 +42,8 @@ type: feedback
 - `deno fmt` checks ALL `.md` files in the repo, not just TypeScript
 - Memory files require blank lines between `##` headings and first list item (deno fmt rule)
 - deno task check output >50KB persisted to temp file — no `<error>` wrapper = PASS; check tail for "All checks passed!"
-- **CRITICAL**: `scripts/self_runner.ts` runs as background process. When `.auto-flow/lock.json` is absent,
-  self_runner starts a new pipeline run → calls `.auto-flow/scripts/reset-to-main.sh` →
+- **CRITICAL**: `scripts/self_runner.ts` runs as background process. When `.flowai-pipelines/lock.json` is absent,
+  self_runner starts a new pipeline run → calls `.flowai-pipelines/scripts/reset-to-main.sh` →
   `git checkout -f main && git reset --hard origin/main && git clean -fd`. DESTROYS all uncommitted changes.
 - TypeScript `.some((e) => ...)` callbacks need explicit `: string` type annotation to avoid TS7006
 - "File has been modified since read" appears due to background resets — always re-read before writing

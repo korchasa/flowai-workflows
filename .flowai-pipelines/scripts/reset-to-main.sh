@@ -14,7 +14,7 @@ if [ -n "$(git status --porcelain)" ]; then
   git diff --stat --cached
   git status --porcelain | awk '/^\?\?/ { print "Untracked: " $2 }'
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  git stash push --include-untracked -m "auto-flow pre_run: ${timestamp}"
+  git stash push --include-untracked -m "flowai-pipelines pre_run: ${timestamp}"
   echo "Stashed: $(git stash list -1)"
   echo "To restore: git stash pop"
 fi

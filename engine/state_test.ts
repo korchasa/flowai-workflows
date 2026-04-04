@@ -54,14 +54,14 @@ Deno.test("generateRunId — empty label ignored", () => {
 Deno.test("createRunState — initializes all nodes as pending", () => {
   const state = createRunState(
     "20260308T143022",
-    ".auto-flow/pipeline.yaml",
+    ".flowai-pipelines/pipeline.yaml",
     ["spec", "plan", "developer"],
     { issue: "42" },
     { API_KEY: "test" },
   );
 
   assertEquals(state.run_id, "20260308T143022");
-  assertEquals(state.config_path, ".auto-flow/pipeline.yaml");
+  assertEquals(state.config_path, ".flowai-pipelines/pipeline.yaml");
   assertEquals(state.status, "running");
   assertEquals(state.args, { issue: "42" });
   assertEquals(state.env, { API_KEY: "test" });
@@ -72,14 +72,17 @@ Deno.test("createRunState — initializes all nodes as pending", () => {
 });
 
 Deno.test("getRunDir / getNodeDir / getStatePath", () => {
-  assertEquals(getRunDir("20260308T143022"), ".auto-flow/runs/20260308T143022");
+  assertEquals(
+    getRunDir("20260308T143022"),
+    ".flowai-pipelines/runs/20260308T143022",
+  );
   assertEquals(
     getNodeDir("20260308T143022", "spec"),
-    ".auto-flow/runs/20260308T143022/spec",
+    ".flowai-pipelines/runs/20260308T143022/spec",
   );
   assertEquals(
     getStatePath("20260308T143022"),
-    ".auto-flow/runs/20260308T143022/state.json",
+    ".flowai-pipelines/runs/20260308T143022/state.json",
   );
 });
 
@@ -362,7 +365,7 @@ Deno.test("getNodeDir — flat path when no phase registry", () => {
   clearPhaseRegistry();
   assertEquals(
     getNodeDir("20260308T143022", "spec"),
-    ".auto-flow/runs/20260308T143022/spec",
+    ".flowai-pipelines/runs/20260308T143022/spec",
   );
 });
 
@@ -372,11 +375,11 @@ Deno.test("getNodeDir — phase-aware path when node has phase in registry", () 
   setPhaseRegistry(config);
   assertEquals(
     getNodeDir("run-1", "spec"),
-    ".auto-flow/runs/run-1/plan/spec",
+    ".flowai-pipelines/runs/run-1/plan/spec",
   );
   assertEquals(
     getNodeDir("run-1", "design"),
-    ".auto-flow/runs/run-1/plan/design",
+    ".flowai-pipelines/runs/run-1/plan/design",
   );
   clearPhaseRegistry();
 });
@@ -387,7 +390,7 @@ Deno.test("getNodeDir — flat path for node not in registry", () => {
   setPhaseRegistry(config);
   assertEquals(
     getNodeDir("run-1", "other"),
-    ".auto-flow/runs/run-1/other",
+    ".flowai-pipelines/runs/run-1/other",
   );
   clearPhaseRegistry();
 });

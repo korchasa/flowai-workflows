@@ -5,34 +5,34 @@ Deno.test("TARGETS — has exactly 4 platform targets", () => {
   assertEquals(TARGETS.length, 4);
 });
 
-Deno.test("TARGETS — linux x86_64 maps to auto-flow-linux-x86_64", () => {
+Deno.test("TARGETS — linux x86_64 maps to flowai-pipelines-linux-x86_64", () => {
   const t = TARGETS.find((t) => t.triple === "x86_64-unknown-linux-gnu");
-  assertEquals(t?.name, "auto-flow-linux-x86_64");
+  assertEquals(t?.name, "flowai-pipelines-linux-x86_64");
 });
 
-Deno.test("TARGETS — linux arm64 maps to auto-flow-linux-arm64", () => {
+Deno.test("TARGETS — linux arm64 maps to flowai-pipelines-linux-arm64", () => {
   const t = TARGETS.find((t) => t.triple === "aarch64-unknown-linux-gnu");
-  assertEquals(t?.name, "auto-flow-linux-arm64");
+  assertEquals(t?.name, "flowai-pipelines-linux-arm64");
 });
 
-Deno.test("TARGETS — darwin x86_64 maps to auto-flow-darwin-x86_64", () => {
+Deno.test("TARGETS — darwin x86_64 maps to flowai-pipelines-darwin-x86_64", () => {
   const t = TARGETS.find((t) => t.triple === "x86_64-apple-darwin");
-  assertEquals(t?.name, "auto-flow-darwin-x86_64");
+  assertEquals(t?.name, "flowai-pipelines-darwin-x86_64");
 });
 
-Deno.test("TARGETS — darwin arm64 maps to auto-flow-darwin-arm64", () => {
+Deno.test("TARGETS — darwin arm64 maps to flowai-pipelines-darwin-arm64", () => {
   const t = TARGETS.find((t) => t.triple === "aarch64-apple-darwin");
-  assertEquals(t?.name, "auto-flow-darwin-arm64");
+  assertEquals(t?.name, "flowai-pipelines-darwin-arm64");
 });
 
-Deno.test("TARGETS — all names follow auto-flow-<os>-<arch> naming convention", () => {
+Deno.test("TARGETS — all names follow flowai-pipelines-<os>-<arch> naming convention", () => {
   for (const { name } of TARGETS) {
     assertEquals(
-      name.startsWith("auto-flow-"),
+      name.startsWith("flowai-pipelines-"),
       true,
-      `${name} does not start with auto-flow-`,
+      `${name} does not start with flowai-pipelines-`,
     );
-    const suffix = name.slice("auto-flow-".length);
+    const suffix = name.slice("flowai-pipelines-".length);
     assertEquals(
       suffix.includes("-"),
       true,

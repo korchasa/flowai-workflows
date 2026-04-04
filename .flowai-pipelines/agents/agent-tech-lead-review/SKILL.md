@@ -27,7 +27,7 @@ All `gh pr review` body strings MUST start with `**[Tech Lead Review · review]*
    `gh run list --branch "$(git branch --show-current)" --limit 5 --json status,conclusion`
 6. **Commit own changes:**
    ```
-   git add .auto-flow/memory/agent-tech-lead-review.md .auto-flow/memory/agent-tech-lead-review-history.md && git commit -m "sdlc(review): update Tech Lead Review memory" && git push origin HEAD
+   git add .flowai-pipelines/memory/agent-tech-lead-review.md .flowai-pipelines/memory/agent-tech-lead-review-history.md && git commit -m "sdlc(review): update Tech Lead Review memory" && git push origin HEAD
    ```
 7. **Verify clean working tree:** `git status --porcelain`. If non-empty →
    list uncommitted files in the report as a **blocking** finding. Do NOT merge.
@@ -87,12 +87,12 @@ All `gh pr review` body strings MUST start with `**[Tech Lead Review · review]*
 
 ## Reflection Memory
 
-- Memory: `.auto-flow/memory/agent-tech-lead-review.md`
-- History: `.auto-flow/memory/agent-tech-lead-review-history.md`
+- Memory: `.flowai-pipelines/memory/agent-tech-lead-review.md`
+- History: `.flowai-pipelines/memory/agent-tech-lead-review-history.md`
 
 ## Allowed File Modifications
 
 - `06-review.md` in the node output directory.
-- `.auto-flow/memory/agent-tech-lead-review.md`, `.auto-flow/memory/agent-tech-lead-review-history.md`.
+- `.flowai-pipelines/memory/agent-tech-lead-review.md`, `.flowai-pipelines/memory/agent-tech-lead-review-history.md`.
 
 Do NOT touch any other files.

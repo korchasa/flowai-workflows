@@ -69,12 +69,12 @@ Deno.test("findViolations — multiple violations: all returned", () => {
   const after = new Set([
     "engine/agent.ts",
     ".github/workflow.yaml",
-    ".auto-flow/scripts/foo.sh",
+    ".flowai-pipelines/scripts/foo.sh",
   ]);
   const violations = findViolations(before, after, ["engine/**"]);
   assertEquals(violations.length, 2);
   assertEquals(violations.includes(".github/workflow.yaml"), true);
-  assertEquals(violations.includes(".auto-flow/scripts/foo.sh"), true);
+  assertEquals(violations.includes(".flowai-pipelines/scripts/foo.sh"), true);
   assertEquals(violations.includes("engine/agent.ts"), false);
 });
 

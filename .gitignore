@@ -1,6 +1,6 @@
 .DS_Store
 .env
-.auto-flow/runs/
+.flowai-pipelines/runs/
 documents/whiteboard.md
 tmp/
 documents/visualization/

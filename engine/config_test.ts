@@ -8,7 +8,7 @@ nodes:
   spec:
     type: agent
     label: "Write spec"
-    prompt: ".auto-flow/agents/agent-pm/SKILL.md"
+    prompt: ".flowai-pipelines/agents/agent-pm/SKILL.md"
     task_template: "Write a spec for issue #{{args.issue}}"
 `;
 
@@ -874,12 +874,17 @@ nodes:
 
 Deno.test("parseConfig — existing prompt file passes without error", () => {
   const config = parseConfig(MINIMAL_AGENT);
-  assertEquals(config.nodes.spec.prompt, ".auto-flow/agents/agent-pm/SKILL.md");
+  assertEquals(
+    config.nodes.spec.prompt,
+    ".flowai-pipelines/agents/agent-pm/SKILL.md",
+  );
 });
 
 Deno.test("parseConfig — existing prompt file has prompt_content populated", () => {
   const config = parseConfig(MINIMAL_AGENT);
-  const content = Deno.readTextFileSync(".auto-flow/agents/agent-pm/SKILL.md");
+  const content = Deno.readTextFileSync(
+    ".flowai-pipelines/agents/agent-pm/SKILL.md",
+  );
   assertEquals(config.nodes.spec.prompt_content, content);
 });
 
@@ -912,7 +917,7 @@ nodes:
       developer:
         type: agent
         label: Developer
-        prompt: .auto-flow/agents/agent-pm/SKILL.md
+        prompt: .flowai-pipelines/agents/agent-pm/SKILL.md
       qa:
         type: agent
         label: QA
@@ -920,7 +925,9 @@ nodes:
         inputs: [developer]
 `;
   const config = parseConfig(yaml);
-  const content = Deno.readTextFileSync(".auto-flow/agents/agent-pm/SKILL.md");
+  const content = Deno.readTextFileSync(
+    ".flowai-pipelines/agents/agent-pm/SKILL.md",
+  );
   assertEquals(
     config.nodes["impl-loop"].nodes!.developer.prompt_content,
     content,

@@ -30,7 +30,7 @@ All `gh issue comment` body strings MUST start with `**[Architect · plan]**`.
    directory (path from task message). Create directory if it doesn't exist.
 5. **Commit own changes:**
    ```
-   git add .auto-flow/memory/agent-architect.md .auto-flow/memory/agent-architect-history.md && git commit -m "sdlc(design): update Architect memory"
+   git add .flowai-pipelines/memory/agent-architect.md .flowai-pipelines/memory/agent-architect-history.md && git commit -m "sdlc(design): update Architect memory"
    ```
 
 ## Codebase Exploration
@@ -124,12 +124,12 @@ variant count, key trade-off, recommended direction.
 
 ## Reflection Memory
 
-- Memory: `.auto-flow/memory/agent-architect.md`
-- History: `.auto-flow/memory/agent-architect-history.md`
+- Memory: `.flowai-pipelines/memory/agent-architect.md`
+- History: `.flowai-pipelines/memory/agent-architect-history.md`
 
 ## Allowed File Modifications
 
 - `02-plan.md` in the node output directory.
-- `.auto-flow/memory/agent-architect.md`, `.auto-flow/memory/agent-architect-history.md`.
+- `.flowai-pipelines/memory/agent-architect.md`, `.flowai-pipelines/memory/agent-architect-history.md`.
 
 Do NOT touch any other files.

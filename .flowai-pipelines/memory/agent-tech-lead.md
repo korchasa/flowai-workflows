@@ -20,7 +20,7 @@
 
 ## Environment Quirks
 
-- `.auto-flow/runs/` is gitignored — `git add -f` mandatory for all files there.
+- `.flowai-pipelines/runs/` is gitignored — `git add -f` mandatory for all files there.
 - Scope field in spec frontmatter determines which SRS/SDS to read.
 - Draft PR body must include `Closes #<N>` on its own line.
 - SRS file exceeds 25k token limit — must read in two parts (offset 0 + offset 500).

@@ -1,5 +1,5 @@
 {
-  "name": "auto-flow",
+  "name": "flowai-pipelines",
   "build": {
     "dockerfile": "Dockerfile"
   },

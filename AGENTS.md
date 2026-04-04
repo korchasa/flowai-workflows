@@ -33,7 +33,7 @@
 
 ## Project Information
 
-- Project Name: auto-flow
+- Project Name: flowai-pipelines
 
 ## Project Vision
 
@@ -73,8 +73,8 @@ example of engine usage.
   completed nodes skipped based on `state.json`
 - **Observability:** 3 verbosity levels (`-q`/default/`-v`); status lines with
   timestamps; final summary
-- **SDLC pipeline (example):** `.auto-flow/pipeline.yaml` — 6 agents automating
-  full development lifecycle. Agent prompts in `.auto-flow/agents/agent-*/SKILL.md`
+- **SDLC pipeline (example):** `.flowai-pipelines/pipeline.yaml` — 6 agents automating
+  full development lifecycle. Agent prompts in `.flowai-pipelines/agents/agent-*/SKILL.md`
 - **Docker image:** Single image with claude CLI, deno, git, gh
 
 ## Scope Separation

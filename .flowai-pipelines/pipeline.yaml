@@ -3,9 +3,9 @@
 #      ; tech-lead-review(run_on:always)
 # See: documents/requirements-sdlc.md for stage specifications.
 
-name: "auto-flow-sdlc"
+name: "flowai-pipelines-sdlc"
 version: "1"
-pre_run: ".auto-flow/scripts/reset-to-main.sh"
+pre_run: ".flowai-pipelines/scripts/reset-to-main.sh"
 
 defaults:
   max_parallel: 2
@@ -16,10 +16,10 @@ defaults:
   model: claude-sonnet-4-6
   claude_args:
     - "--dangerously-skip-permissions"
-  on_failure_script: .auto-flow/scripts/rollback-uncommitted.sh
+  on_failure_script: .flowai-pipelines/scripts/rollback-uncommitted.sh
   hitl:
-    ask_script: .auto-flow/scripts/hitl-ask.sh
-    check_script: .auto-flow/scripts/hitl-check.sh
+    ask_script: .flowai-pipelines/scripts/hitl-ask.sh
+    check_script: .flowai-pipelines/scripts/hitl-check.sh
     artifact_source: "{{input.specification}}/01-spec.md"
     poll_interval: 60
     timeout: 7200
@@ -36,11 +36,11 @@ nodes:
     type: agent
     label: "Project Manager — Specification"
     task_template: |
-      {{file(".auto-flow/agents/shared-rules.md")}}
+      {{file(".flowai-pipelines/agents/shared-rules.md")}}
       ---
-      {{file(".auto-flow/agents/agent-pm/SKILL.md")}}
+      {{file(".flowai-pipelines/agents/agent-pm/SKILL.md")}}
       ---
-      Read reflection memory at .auto-flow/memory/agent-pm.md and history at .auto-flow/memory/agent-pm-history.md before starting. Update both when done.
+      Read reflection memory at .flowai-pipelines/memory/agent-pm.md and history at .flowai-pipelines/memory/agent-pm-history.md before starting. Update both when done.
       Triage open GitHub issues: check health (no merged PRs, no needs-triage label), select best candidate by priority.
       Output:
         - {{node_dir}}/01-spec.md (YAML frontmatter with `issue: <N>` and `scope: <engine|sdlc|engine+sdlc>`,
@@ -64,11 +64,11 @@ nodes:
     model: claude-opus-4-6
     inputs: [specification]
     task_template: |
-      {{file(".auto-flow/agents/shared-rules.md")}}
+      {{file(".flowai-pipelines/agents/shared-rules.md")}}
       ---
-      {{file(".auto-flow/agents/agent-architect/SKILL.md")}}
+      {{file(".flowai-pipelines/agents/agent-architect/SKILL.md")}}
       ---
-      Read reflection memory at .auto-flow/memory/agent-architect.md and history at .auto-flow/memory/agent-architect-history.md before starting. Update both when done.
+      Read reflection memory at .flowai-pipelines/memory/agent-architect.md and history at .flowai-pipelines/memory/agent-architect-history.md before starting. Update both when done.
       Read the specification at {{input.specification}}/01-spec.md.
       Read ONLY scope-relevant SRS/SDS docs (derive scope from spec frontmatter `scope:` field).
       Produce an implementation plan with 2-3 variants.
@@ -85,11 +85,11 @@ nodes:
     model: claude-opus-4-6
     inputs: [specification, design]
     task_template: |
-      {{file(".auto-flow/agents/shared-rules.md")}}
+      {{file(".flowai-pipelines/agents/shared-rules.md")}}
       ---
-      {{file(".auto-flow/agents/agent-tech-lead/SKILL.md")}}
+      {{file(".flowai-pipelines/agents/agent-tech-lead/SKILL.md")}}
       ---
-      Read reflection memory at .auto-flow/memory/agent-tech-lead.md and history at .auto-flow/memory/agent-tech-lead-history.md before starting. Update both when done.
+      Read reflection memory at .flowai-pipelines/memory/agent-tech-lead.md and history at .flowai-pipelines/memory/agent-tech-lead-history.md before starting. Update both when done.
       Read the plan at {{input.design}}/02-plan.md.
       Read the spec at {{input.specification}}/01-spec.md.
       Read ONLY scope-relevant SRS/SDS docs (derive scope from spec frontmatter `scope:` field), and AGENTS.md.
@@ -117,11 +117,11 @@ nodes:
         label: "Developer — Implementation"
         inputs: [decision]
         task_template: |
-          {{file(".auto-flow/agents/shared-rules.md")}}
+          {{file(".flowai-pipelines/agents/shared-rules.md")}}
           ---
-          {{file(".auto-flow/agents/agent-developer/SKILL.md")}}
+          {{file(".flowai-pipelines/agents/agent-developer/SKILL.md")}}
           ---
-          Read reflection memory at .auto-flow/memory/agent-developer.md and history at .auto-flow/memory/agent-developer-history.md before starting. Update both when done.
+          Read reflection memory at .flowai-pipelines/memory/agent-developer.md and history at .flowai-pipelines/memory/agent-developer-history.md before starting. Update both when done.
           Read the decision at {{input.decision}}/03-decision.md.
           Read ONLY scope-relevant SRS/SDS docs (derive scope from decision's spec reference or task context).
           Implement the changes following the task breakdown.
@@ -139,11 +139,11 @@ nodes:
         label: "QA — Verification"
         inputs: [specification, decision, build]
         task_template: |
-          {{file(".auto-flow/agents/shared-rules.md")}}
+          {{file(".flowai-pipelines/agents/shared-rules.md")}}
           ---
-          {{file(".auto-flow/agents/agent-qa/SKILL.md")}}
+          {{file(".flowai-pipelines/agents/agent-qa/SKILL.md")}}
           ---
-          Read reflection memory at .auto-flow/memory/agent-qa.md and history at .auto-flow/memory/agent-qa-history.md before starting. Update both when done.
+          Read reflection memory at .flowai-pipelines/memory/agent-qa.md and history at .flowai-pipelines/memory/agent-qa-history.md before starting. Update both when done.
           Verify the implementation against the spec at {{input.specification}}/01-spec.md.
           Check the decision at {{input.decision}}/03-decision.md.
           Run deno task check and verify all acceptance criteria.
@@ -164,18 +164,18 @@ nodes:
     label: "Tech Lead Review — Final Review + CI + Merge"
     inputs: [specification, decision]
     task_template: |
-      {{file(".auto-flow/agents/shared-rules.md")}}
+      {{file(".flowai-pipelines/agents/shared-rules.md")}}
       ---
-      {{file(".auto-flow/agents/agent-tech-lead-review/SKILL.md")}}
+      {{file(".flowai-pipelines/agents/agent-tech-lead-review/SKILL.md")}}
       ---
-      Read reflection memory at .auto-flow/memory/agent-tech-lead-review.md and history at .auto-flow/memory/agent-tech-lead-review-history.md before starting. Update both when done.
+      Read reflection memory at .flowai-pipelines/memory/agent-tech-lead-review.md and history at .flowai-pipelines/memory/agent-tech-lead-review-history.md before starting. Update both when done.
       Perform final code review of the PR.
       Read the spec at {{input.specification}}/01-spec.md for acceptance criteria.
       Read the decision at {{input.decision}}/03-decision.md for scope.
       Check CI status. Merge PR if all checks pass, or leave open with review comments.
       Output: {{node_dir}}/06-review.md
     run_on: always
-    after: ".auto-flow/scripts/run-dashboard.sh {{run_dir}}"
+    after: ".flowai-pipelines/scripts/run-dashboard.sh {{run_dir}}"
     settings:
       on_error: continue
     validate:

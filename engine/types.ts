@@ -284,7 +284,7 @@ export interface EngineOptions {
   skip_nodes?: string[];
   /** When set, only these node IDs execute; all others are skipped. */
   only_nodes?: string[];
-  /** Override lock file path (default: .auto-flow/runs/.lock). Used in tests. */
+  /** Override lock file path (default: .flowai-pipelines/runs/.lock). Used in tests. */
   lock_path?: string;
 }
 
