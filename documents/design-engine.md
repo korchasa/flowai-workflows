@@ -366,17 +366,8 @@ graph TD
   - `cli.ts` — CLI entry point: argument parsing, .env loading.
     `VERSION` constant: `Deno.env.get("VERSION") ?? "dev"` — injected at
     compile time via `deno compile --env VERSION=<tag>`. `--version` / `-V`
-    flag: prints version and checks GitHub Releases for updates (FR-E41).
-    `--update` flag: self-updates binary from GitHub Releases.
-    `--skip-update-check` flag: suppresses update check (for CI).
-    `parseArgs()` is async (handles `--version`/`--update` network calls)
-  - `update.ts` — Auto-update module (FR-E41). `compareSemver()`: minimal
-    3-part numeric comparison (no `@std/semver` dependency). `detectPlatform()`:
-    maps `Deno.build` to binary name suffix. `checkForUpdate()`: queries
-    GitHub Releases API with timeout and optional `GITHUB_TOKEN` auth. Fail-open
-    design — returns `null` on any error. `runUpdate()`: downloads binary to
-    same dir as current executable, chmod +x, atomic rename. Permission check
-    with `sudo` hint on EPERM
+    flag: prints version and exits.
+    `parseArgs()` is synchronous
   - `mod.ts` — barrel re-export serving as `deno doc --lint` entry point
     (not a runtime public API; sole non-redundant consumer is
     `scripts/check.ts` JSDoc validation)

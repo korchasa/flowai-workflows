@@ -28,12 +28,6 @@ chmod +x flowai-workflow
 sudo mv flowai-workflow /usr/local/bin/
 ```
 
-Update to the latest version:
-
-```bash
-flowai-workflow --update
-```
-
 ## Engine Architecture
 
 ```mermaid
