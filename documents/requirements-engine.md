@@ -599,8 +599,8 @@
   - [x] `agent.ts:executeClaudeProcess()` registers/unregisters process in try/finally. Evidence: `engine/agent.ts:430-574`
   - [x] `cli.ts` calls `installSignalHandlers()` at startup. Evidence: `engine/cli.ts:139`
   - [x] `engine.ts` registers shutdown callbacks for lock release and state save after lock acquisition; disposes in finally. Evidence: `engine/engine.ts:139-153`
-  - [x] `self_runner.ts` calls `Engine.run()` directly (no subprocess), `installSignalHandlers()` at startup. Evidence: `scripts/self_runner.ts:5-7,57-64,135`
-  - [x] `loop_in_claude.ts` registers/unregisters claude child, `installSignalHandlers()` at startup. Evidence: `scripts/loop_in_claude.ts:7-11,80,100,106,152`
+  - [x] `self-runner.ts` calls `Engine.run()` directly (no subprocess), `installSignalHandlers()` at startup. Evidence: `scripts/self-runner.ts:5-7,57-64,135`
+  - [x] `loop-in-claude.ts` registers/unregisters claude child, `installSignalHandlers()` at startup. Evidence: `scripts/loop-in-claude.ts:7-11,80,100,106,152`
   - [x] 9 unit tests cover registry operations, killAll, shutdown callbacks, error resilience. Evidence: `engine/process-registry_test.ts`
   - [x] All 474 existing tests pass. Evidence: `deno task check` output
 
@@ -624,12 +624,12 @@
 
 ### 3.28 FR-E28: Shared Backoff Utility (`nextPause()`)
 
-- **Description:** `nextPause()` function is duplicated in `scripts/self_runner.ts` and `scripts/loop_in_claude.ts`. Extract into a shared `scripts/backoff.ts` module to eliminate duplication.
+- **Description:** `nextPause()` function is duplicated in `scripts/self-runner.ts` and `scripts/loop-in-claude.ts`. Extract into a shared `scripts/backoff.ts` module to eliminate duplication.
 - **Motivation:** DRY violation — backoff logic changes must be applied in multiple places; shared module ensures consistency.
 - **Acceptance criteria:**
   - [ ] `scripts/backoff.ts` exists and exports `nextPause()`. Evidence: `scripts/backoff.ts`.
-  - [ ] `scripts/self_runner.ts` imports `nextPause` from `scripts/backoff.ts`; no local `nextPause` definition remains. Evidence: `scripts/self_runner.ts`.
-  - [ ] `scripts/loop_in_claude.ts` imports `nextPause` from `scripts/backoff.ts`; no local `nextPause` definition remains. Evidence: `scripts/loop_in_claude.ts`.
+  - [ ] `scripts/self-runner.ts` imports `nextPause` from `scripts/backoff.ts`; no local `nextPause` definition remains. Evidence: `scripts/self-runner.ts`.
+  - [ ] `scripts/loop-in-claude.ts` imports `nextPause` from `scripts/backoff.ts`; no local `nextPause` definition remains. Evidence: `scripts/loop-in-claude.ts`.
   - [ ] All tests pass. Evidence: `deno task check` PASS.
 
 ### 3.29 FR-E29: Legacy Test Task Removal
