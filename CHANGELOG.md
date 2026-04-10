@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.7](https://github.com/korchasa/flowai-workflows/compare/v0.1.6...v0.1.7) (2026-04-10)
+
+
+### Features
+
+* **setup:** add comprehensive setup guide for flowai-workflow engine ([e73191a](https://github.com/korchasa/flowai-workflows/commit/e73191aac8ac83c5417ba2a08e277ff37a1d8bc0))
+
+
+### Code Refactoring
+
+* **cli:** remove self-update functionality ([d984280](https://github.com/korchasa/flowai-workflows/commit/d984280169715858449af20f5bd4435fc3a7314d))
+
 ### [0.1.6](https://github.com/korchasa/flowai-workflows/compare/v0.1.5...v0.1.6) (2026-04-10)
 
 
