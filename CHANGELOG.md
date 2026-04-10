@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.10](https://github.com/korchasa/flowai-workflow/compare/v0.1.9...v0.1.10) (2026-04-10)
+
+
+### Code Refactoring
+
+* **ci:** split release into publish-github and publish-jsr ([#193](https://github.com/korchasa/flowai-workflow/issues/193)) ([624b19a](https://github.com/korchasa/flowai-workflow/commit/624b19a6dc76fe9bb651b95e35829fcf852c6bfe))
+
 ### [0.1.9](https://github.com/korchasa/flowai-workflow/compare/v0.1.8...v0.1.9) (2026-04-10)
 
 
