@@ -8,7 +8,7 @@
  */
 
 import type {
-  ClaudeCliOutput,
+  CliRunOutput,
   ErrorCategory,
   HitlConfig,
   NodeConfig,
@@ -19,9 +19,10 @@ import type {
   ValidationRule,
   Verbosity,
 } from "./types.ts";
-import type { RuntimeAdapter } from "./runtime/types.ts";
+import type { RuntimeAdapter } from "@korchasa/ai-ide-cli/runtime/types";
 import { interpolate } from "./template.ts";
-import { getRuntimeAdapter } from "./runtime/index.ts";
+import { getRuntimeAdapter } from "@korchasa/ai-ide-cli/runtime";
+import { buildEngineHitlMcpCommand } from "./hitl-mcp-command.ts";
 import {
   allPassed,
   formatFailures,
@@ -65,7 +66,7 @@ export interface AgentResult {
   /** Claude CLI session ID for potential --resume continuation. */
   session_id?: string;
   /** Parsed CLI output including cost, duration, and result text. */
-  output?: ClaudeCliOutput;
+  output?: CliRunOutput;
   /** Number of validation-failure continuations performed. */
   continuations: number;
   /** Human-readable error message if execution failed. */
@@ -186,6 +187,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
     permissionMode,
     model,
     hitlConfig,
+    hitlMcpCommandBuilder: buildEngineHitlMcpCommand,
     timeoutSeconds: settings.timeout_seconds,
     maxRetries: settings.max_retries,
     retryDelaySeconds: settings.retry_delay_seconds,
@@ -292,6 +294,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
       permissionMode,
       model,
       hitlConfig,
+      hitlMcpCommandBuilder: buildEngineHitlMcpCommand,
       timeoutSeconds: settings.timeout_seconds,
       maxRetries: settings.max_retries,
       retryDelaySeconds: settings.retry_delay_seconds,

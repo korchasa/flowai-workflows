@@ -1,6 +1,9 @@
 import { assertEquals } from "@std/assert";
 import { runAgent } from "./agent.ts";
-import type { RuntimeAdapter, RuntimeInvokeOptions } from "./runtime/types.ts";
+import type {
+  RuntimeAdapter,
+  RuntimeInvokeOptions,
+} from "@korchasa/ai-ide-cli/runtime/types";
 import type { NodeConfig, NodeSettings, TemplateContext } from "./types.ts";
 
 function makeSettings(): Required<NodeSettings> {

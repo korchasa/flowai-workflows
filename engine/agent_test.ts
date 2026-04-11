@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import type { AgentRunOptions } from "./agent.ts";
-import { buildClaudeArgs } from "./claude-process.ts";
-import type { InvokeOptions } from "./claude-process.ts";
+import { buildClaudeArgs } from "@korchasa/ai-ide-cli/claude/process";
+import type { ClaudeInvokeOptions } from "@korchasa/ai-ide-cli/claude/process";
 import { OutputManager } from "./output.ts";
 import {
   extractClaudeOutput,
@@ -11,8 +11,8 @@ import {
   processStreamEvent,
   stampLines,
   tsPrefix,
-} from "./stream.ts";
-import type { StreamProcessorState } from "./stream.ts";
+} from "@korchasa/ai-ide-cli/claude/stream";
+import type { StreamProcessorState } from "@korchasa/ai-ide-cli/claude/stream";
 import type {
   NodeConfig,
   NodeSettings,
@@ -124,8 +124,8 @@ Deno.test("AgentRunOptions — loop context available", () => {
 });
 
 function makeInvokeOpts(
-  overrides?: Partial<InvokeOptions>,
-): InvokeOptions {
+  overrides?: Partial<ClaudeInvokeOptions>,
+): ClaudeInvokeOptions {
   return {
     taskPrompt: "do something",
     timeoutSeconds: 60,

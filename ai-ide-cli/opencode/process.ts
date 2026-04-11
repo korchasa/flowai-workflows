@@ -6,23 +6,21 @@
  * Entry point: {@link invokeOpenCodeCli}.
  */
 
-import { basename, fromFileUrl } from "@std/path";
-import type { ClaudeCliOutput, Verbosity } from "./types.ts";
+import type { CliRunOutput, Verbosity } from "../types.ts";
 import type {
   HitlConfig,
   HumanInputOption,
   HumanInputRequest,
-} from "./types.ts";
+} from "../types.ts";
 import {
-  INTERNAL_OPENCODE_HITL_MCP_ARG,
   OPENCODE_HITL_MCP_SERVER_NAME,
   OPENCODE_HITL_MCP_TOOL_NAME,
-} from "./opencode-hitl-mcp.ts";
-import { register, unregister } from "./process-registry.ts";
+} from "./hitl-mcp.ts";
+import { register, unregister } from "../process-registry.ts";
 import type {
   RuntimeInvokeOptions,
   RuntimeInvokeResult,
-} from "./runtime/types.ts";
+} from "../runtime/types.ts";
 
 /** Build CLI arguments for the opencode command. Exported for testing. */
 export function buildOpenCodeArgs(opts: RuntimeInvokeOptions): string[] {
@@ -89,7 +87,7 @@ export function formatOpenCodeEventForOutput(
 }
 
 /** Extract normalized output from OpenCode JSON event lines. Exported for testing. */
-export function extractOpenCodeOutput(lines: string[]): ClaudeCliOutput {
+export function extractOpenCodeOutput(lines: string[]): CliRunOutput {
   // deno-lint-ignore no-explicit-any
   const events = lines.map((line) => JSON.parse(line) as Record<string, any>);
   const textParts: string[] = [];
@@ -154,11 +152,19 @@ export function buildOpenCodeConfigContent(
     return undefined;
   }
 
+  if (!opts.hitlMcpCommandBuilder) {
+    throw new Error(
+      "OpenCode HITL requires hitlMcpCommandBuilder — consumer must supply " +
+        "a sub-process entry point for the HITL MCP server. See " +
+        "RuntimeInvokeOptions.hitlMcpCommandBuilder JSDoc.",
+    );
+  }
+
   return JSON.stringify({
     mcp: {
       [OPENCODE_HITL_MCP_SERVER_NAME]: {
         type: "local",
-        command: buildOpenCodeHitlMcpCommand(),
+        command: opts.hitlMcpCommandBuilder(),
         enabled: true,
       },
     },
@@ -223,7 +229,7 @@ async function executeOpenCodeProcess(
   verbosity?: Verbosity,
   cwd?: string,
   configContent?: string,
-): Promise<ClaudeCliOutput> {
+): Promise<CliRunOutput> {
   const cmd = new Deno.Command("opencode", {
     args,
     stdin: "null",
@@ -465,23 +471,6 @@ function normalizeHumanInputOption(
 
 function hasConfiguredHitl(config?: HitlConfig): config is HitlConfig {
   return Boolean(config?.ask_script && config?.check_script);
-}
-
-function buildOpenCodeHitlMcpCommand(): string[] {
-  const execPath = Deno.execPath();
-  const execName = basename(execPath).toLowerCase();
-
-  if (execName === "deno" || execName.startsWith("deno.")) {
-    return [
-      execPath,
-      "run",
-      "-A",
-      fromFileUrl(new URL("./cli.ts", import.meta.url)),
-      INTERNAL_OPENCODE_HITL_MCP_ARG,
-    ];
-  }
-
-  return [execPath, INTERNAL_OPENCODE_HITL_MCP_ARG];
 }
 
 function decodeChunks(chunks: Uint8Array[]): string {

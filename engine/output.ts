@@ -6,7 +6,7 @@
  * check verbosity themselves.
  */
 
-import type { ClaudeCliOutput, Verbosity } from "./types.ts";
+import type { CliRunOutput, Verbosity } from "./types.ts";
 
 /** Input artifact descriptor for verbose output. */
 export interface VerboseInput {
@@ -183,7 +183,7 @@ export class OutputManager {
    *     <each non-empty line of output.result indented 2 spaces>
    *     cost=$0.0050 | duration=3s | turns=N
    */
-  nodeResult(nodeId: string, output: ClaudeCliOutput): void {
+  nodeResult(nodeId: string, output: CliRunOutput): void {
     if (this.verbosity === "quiet") return;
     const time = this.timestamp();
     const paddedId = nodeId.padEnd(16);

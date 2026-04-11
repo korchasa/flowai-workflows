@@ -7,7 +7,7 @@
  */
 
 import { parse as parseYaml } from "@std/yaml";
-import { resolveRuntimeConfig } from "./runtime/index.ts";
+import { resolveRuntimeConfig } from "@korchasa/ai-ide-cli/runtime";
 import { validateTemplateVars } from "./template.ts";
 import { VALID_PERMISSION_MODES, VALID_RUNTIME_IDS } from "./types.ts";
 import type {

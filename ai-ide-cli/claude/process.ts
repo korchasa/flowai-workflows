@@ -2,13 +2,14 @@
  * @module
  * Claude CLI process management: builds CLI arguments, spawns the claude
  * subprocess with stream-json output, processes NDJSON events in real-time,
- * and returns normalized {@link ClaudeCliOutput}. Includes retry logic with
+ * and returns normalized {@link CliRunOutput}. Includes retry logic with
  * exponential backoff.
  * Entry point: {@link invokeClaudeCli}.
  */
 
-import type { ClaudeCliOutput, Verbosity } from "./types.ts";
-import { register, unregister } from "./process-registry.ts";
+import type { CliRunOutput, Verbosity } from "../types.ts";
+import type { RuntimeInvokeResult } from "../runtime/types.ts";
+import { register, unregister } from "../process-registry.ts";
 import {
   FileReadTracker,
   processStreamEvent,
@@ -16,7 +17,7 @@ import {
 } from "./stream.ts";
 
 /** Low-level options for a single claude CLI invocation (initial or resume). */
-export interface InvokeOptions {
+export interface ClaudeInvokeOptions {
   /** Name of Claude Code agent (without .md) passed via --agent flag. Skipped on resume. */
   agent?: string;
   /** System context passed via --append-system-prompt. Skipped on resume. */
@@ -47,15 +48,10 @@ export interface InvokeOptions {
   cwd?: string;
 }
 
-interface InvokeResult {
-  output?: ClaudeCliOutput;
-  error?: string;
-}
-
 /** Invoke claude CLI with retry logic. */
 export async function invokeClaudeCli(
-  opts: InvokeOptions,
-): Promise<InvokeResult> {
+  opts: ClaudeInvokeOptions,
+): Promise<RuntimeInvokeResult> {
   const args = buildClaudeArgs(opts);
   let lastError = "";
 
@@ -95,7 +91,7 @@ export async function invokeClaudeCli(
 }
 
 /** Build CLI arguments for the claude command. Exported for testing. */
-export function buildClaudeArgs(opts: InvokeOptions): string[] {
+export function buildClaudeArgs(opts: ClaudeInvokeOptions): string[] {
   const args: string[] = [];
 
   // Permission mode (first-class field, maps to --permission-mode)
@@ -134,7 +130,7 @@ export function buildClaudeArgs(opts: InvokeOptions): string[] {
  * Execute the claude CLI process with stream-json output.
  * Processes NDJSON events in real-time: writes readable formatted summaries
  * to streamLogPath (full, unfiltered), forwards filtered summaries to onOutput
- * (tool_use suppressed when verbosity=semi-verbose), and extracts ClaudeCliOutput
+ * (tool_use suppressed when verbosity=semi-verbose), and extracts CliRunOutput
  * from the final "result" event.
  */
 async function executeClaudeProcess(
@@ -144,7 +140,7 @@ async function executeClaudeProcess(
   streamLogPath?: string,
   verbosity?: Verbosity,
   cwd?: string,
-): Promise<ClaudeCliOutput> {
+): Promise<CliRunOutput> {
   // Unset CLAUDECODE to allow nested claude CLI invocations.
   // Claude Code checks this variable and refuses to launch inside another session.
   // Deno.Command merges env with parent, so setting empty string overrides it.

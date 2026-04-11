@@ -182,26 +182,46 @@ graph TD
     `markNodeCompleted()` when optional `costUsd` param provided, FR-E17).
     `markNodeCompleted()` also accepts optional `result?: string` param
     (FR-E22) — persists excerpt to `NodeState.result` in `state.json`
-  - `runtime/` — runtime adapters and capability metadata.
-    `runtime/index.ts` resolves effective runtime config with node > parent >
-    defaults precedence and returns the adapter for `claude` or `opencode`.
-    Effective args: Claude gets `claude_args + runtime_args`; OpenCode gets
-    only `runtime_args`. `runtime/claude-adapter.ts` wraps the existing Claude
-    low-level runner and advertises `permissionMode=true`, `hitl=true`,
-    `transcript=true`. `runtime/opencode-adapter.ts` wraps
-    `opencode-process.ts` and advertises `permissionMode=false`,
-    `hitl=true`, `transcript=false`.
+  - **IDE CLI wrapper layer (FR-E44)** — extracted to
+    `@korchasa/ai-ide-cli` (sibling workspace member `ai-ide-cli/`, published
+    separately on JSR). Runtime adapters, low-level Claude/OpenCode
+    runners, Claude stream parser, OpenCode HITL MCP helper, and pure
+    process registry all live in that package. Engine imports via
+    sub-path specifiers (e.g. `@korchasa/ai-ide-cli/runtime`,
+    `@korchasa/ai-ide-cli/claude/process`) and owns only workflow-level
+    concerns. Library has zero imports from engine (one-way dependency
+    invariant — guarded by `rg` in Step 11 of the migration plan).
+  - `@korchasa/ai-ide-cli/runtime` — runtime adapters and capability
+    metadata. `runtime/index.ts` exposes `getRuntimeAdapter(id)` and
+    `resolveRuntimeConfig({defaults, node, parent})` (node > parent >
+    defaults precedence). `resolveRuntimeConfig` takes a library-local
+    `RuntimeConfigSource` shape so engine's `NodeConfig` /
+    `WorkflowDefaults` structurally satisfy it without the library
+    depending on workflow types. `runtime/claude-adapter.ts` wraps
+    `claude/process.ts` (`permissionMode=true`, `hitl=true`,
+    `transcript=true`). `runtime/opencode-adapter.ts` wraps
+    `opencode/process.ts` (`permissionMode=true`, `hitl=true`,
+    `transcript=false`). Normalized output shape `CliRunOutput`
+    (runtime-neutral rename of former `ClaudeCliOutput`) carries
+    `result`, `session_id`, `total_cost_usd`, `duration_ms`,
+    `duration_api_ms`, `num_turns`, `is_error`, optional
+    `permission_denials`, `hitl_request`, `runtime`.
   - `agent.ts` — runtime-agnostic agent invocation, continuation loop, retry.
     Agent context injected via `--agent` + `--append-system-prompt` (native
     Claude Code subagents in `.claude/agents/*.md`). Pipeline-specific context
     via `task_template` `{{file(...)}}` (FR-S38). Base system prompt preserved.
-    Runtime resolution is centralized in `runtime/index.ts`; `runAgent()`
-    resolves the adapter once and keeps continuation semantics unchanged across
-    runtimes. `AgentRunOptions.model`: optional string for per-node model
-    selection. For Claude, `buildClaudeArgs()` emits `--model <value>` only on
+    Runtime resolution is centralized in `@korchasa/ai-ide-cli/runtime`;
+    `runAgent()` resolves the adapter once and keeps continuation semantics
+    unchanged across runtimes. `AgentRunOptions.model`: optional string for
+    per-node model selection. For Claude, `buildClaudeArgs()` (from
+    `@korchasa/ai-ide-cli/claude/process`) emits `--model <value>` only on
     fresh invocations (resume inherits model from session). For OpenCode,
-    `opencode-process.ts` emits `run --model <provider/model>` on fresh
-    invocations and resumes sessions with `run --session <id>`.
+    the runner at `@korchasa/ai-ide-cli/opencode/process` emits
+    `run --model <provider/model>` on fresh invocations and resumes
+    sessions with `run --session <id>`. `runAgent()` wires
+    `hitlMcpCommandBuilder` from `engine/hitl-mcp-command.ts` so the
+    OpenCode runner can self-spawn the engine binary for the stdio MCP
+    HITL helper.
     **Permission mode (FR-E40):** `PermissionMode` union type in `types.ts`
     with 6 values matching Claude CLI `--permission-mode` flag. Optional field
     on `WorkflowDefaults` and `NodeConfig`. Resolution cascade:
@@ -214,7 +234,7 @@ graph TD
     `claude_args` contains `--dangerously-skip-permissions` or
     `--permission-mode` while `permission_mode` field is also set. Effective
     `opencode` agent nodes reject `permission_mode` at config-load time.
-    Threaded through: `AgentRunOptions`, `InvokeOptions`, `HitlBaseParams`,
+    Threaded through: `AgentRunOptions`, `ClaudeInvokeOptions`, `HitlBaseParams`,
     `HitlRunOptions` — all accept optional `permissionMode?: string`.
     `executeClaudeProcess()` uses `--output-format stream-json` and reads
     stdout line-by-line. Each JSON line appended to `streamLogPath` file
@@ -223,7 +243,7 @@ graph TD
     wall-clock prefix; `stampLines()` prepends it to each non-empty line (empty
     lines pass through). Applied to log file writes only — terminal output via
     `onOutput` callback receives raw text without timestamps.
-    On `result` event: extracts `ClaudeCliOutput` fields (`result`,
+    On `result` event: extracts `CliRunOutput` fields (`result`,
     `session_id`, `is_error`, `total_cost_usd`, `duration_ms`,
     `duration_api_ms`, `num_turns`, `permission_denials`). `is_error` derived
     from `subtype !== "success"`. No `result` event → throws descriptive error.
@@ -231,18 +251,26 @@ graph TD
     Append semantics: multiple invocations (continuation) with same path
     produce concatenated JSONL. `--verbose` flag removed from
     `buildClaudeArgs()` (unrelated to streaming, changes stderr globally).
-  - `opencode-process.ts` — low-level `opencode run --format json` runner.
-    Parses NDJSON events (`step_start`, `text`, `step_finish`, `error`),
-    normalizes them into `ClaudeCliOutput`-compatible shape, and supports
-    generic runtime extension flags via `runtime_args` (for example
-    `--variant high`). OpenCode has no dedicated system-prompt flag, so the
-    adapter prepends `system_prompt` content to the task prompt before
-    invocation. When `defaults.hitl` is configured, the runner also injects a
-    per-invocation local MCP server through `OPENCODE_CONFIG_CONTENT`; that
-    server exposes `request_human_input`, which surfaces in stream events as
-    `hitl_request_human_input`. The parsed stream is normalized into the same
-    output shape consumed elsewhere by state, continuation, and log code
-    (`ClaudeCliOutput` + optional `hitl_request`).
+  - `@korchasa/ai-ide-cli/opencode/process` — low-level
+    `opencode run --format json` runner (formerly
+    `engine/opencode-process.ts`). Parses NDJSON events (`step_start`,
+    `text`, `step_finish`, `error`), normalizes them into
+    `CliRunOutput`-compatible shape, and supports generic runtime
+    extension flags via `runtime_args` (for example `--variant high`).
+    OpenCode has no dedicated system-prompt flag, so the adapter prepends
+    `system_prompt` content to the task prompt before invocation. When
+    `hitlConfig` is set, the runner injects a per-invocation local MCP
+    server through `OPENCODE_CONFIG_CONTENT`; the MCP sub-process `argv`
+    comes from the consumer-provided
+    `RuntimeInvokeOptions.hitlMcpCommandBuilder` callback — the library
+    ships no binary and throws a clear error if `hitlConfig` is set
+    without a builder. The engine supplies the builder via
+    `engine/hitl-mcp-command.ts`, pointing at engine's own `cli.ts`
+    (`--internal-opencode-hitl-mcp`). The injected server exposes
+    `request_human_input`, surfaced in stream events as
+    `hitl_request_human_input`. The parsed stream is normalized into the
+    same output shape consumed elsewhere by state, continuation, and log
+    code (`CliRunOutput` + optional `hitl_request`).
     **Repeated file read warning (FR-E20):** `FileReadTracker` class in
     `agent.ts`. `track(path): string | null` — maintains `Map<string, number>`,
     returns `[WARN] repeated file read: <path> (<N> times)` when count >
@@ -256,7 +284,7 @@ graph TD
     increments counter, writes `--- turn N ---` line to `logFile` via
     `stampLines()` (timestamped, consistent with existing log writes). After
     `result` event extraction: writes `--- end ---` + one-line summary via
-    `formatFooter(output: ClaudeCliOutput): string`. Footer format:
+    `formatFooter(output: CliRunOutput): string`. Footer format:
     `status=<ok|error> duration=<X>s cost=$<Y> turns=<N>`. Both separators and
     footer are log-file-only (terminal `onOutput` callback unchanged).
     `formatFooter()` is a pure function — unit-testable without CLI.
@@ -341,7 +369,7 @@ graph TD
     `dryRunPlan(levels, labels, postWorkflowNodeIds?, runOnMap?)`: renders
     regular DAG levels, then optional "Post-workflow" section listing `run_on`
     nodes with their conditions (FR-E13).
-    `nodeResult(nodeId, output: ClaudeCliOutput)`: multi-line agent result
+    `nodeResult(nodeId, output: CliRunOutput)`: multi-line agent result
     display (FR-E15). Guarded by `verbosity !== "quiet"`. Format:
     line 1: `[HH:MM:SS] <nodeId padded>  RESULT:` (header),
     lines 2..N: each non-empty line of `output.result` indented 2 spaces,
@@ -351,7 +379,7 @@ graph TD
     `RunSummary.nodeResults?: Record<string, string>` (FR-E22): optional
     per-node result excerpts. `summary()` renders per-node result lines after
     "Nodes:" when `nodeResults` present: `  <nodeId padded>  <excerpt>`.
-    Imports `ClaudeCliOutput` from `types.ts`
+    Imports `CliRunOutput` from `types.ts`
   - `node-dispatch.ts` — node-type executor dispatch module (FR-E30).
     Exports `EngineContext` interface (parameter bag: `config`, `state`,
     `output`, `options`, `userInput`, `buildContext()`, `saveState()`) and
@@ -657,7 +685,7 @@ graph TD
     via topo-sort (>1 entry requires at least one `inputs` reference to
     prevent disconnected graph with arbitrary order).
   - NodeState: `{ ..., cost_usd?: number, result?: string }` — per-node cost
-    from `ClaudeCliOutput.total_cost_usd` and result excerpt (≤400 chars) from
+    from `CliRunOutput.total_cost_usd` and result excerpt (≤400 chars) from
     inline excerpt logic (filter empty → take 3 → join ` | ` → truncate 400),
     both set at completion via `markNodeCompleted()` optional params (FR-E17,
     FR-E22)
@@ -849,7 +877,7 @@ graph TD
     8. On `timeout` exceeded: node marked `failed`.
   - **Runtime-Normalized Logging**:
     Agent outputs are persisted as runtime-agnostic JSON logs using the
-    normalized `ClaudeCliOutput` shape. Transcript copying is capability-based:
+    normalized `CliRunOutput` shape. Transcript copying is capability-based:
     Claude copies external JSONL transcripts from `~/.claude/projects/...`;
     OpenCode writes only the engine-managed JSON log because the current
     integration does not expose a copyable external transcript file.

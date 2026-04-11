@@ -13,7 +13,7 @@ import type { UserInput } from "./human.ts";
 import { saveAgentLog } from "./log.ts";
 import { runLoop } from "./loop.ts";
 import type { OutputManager } from "./output.ts";
-import { resolveRuntimeConfig } from "./runtime/index.ts";
+import { resolveRuntimeConfig } from "@korchasa/ai-ide-cli/runtime";
 import {
   getNodeDir,
   getRunDir,

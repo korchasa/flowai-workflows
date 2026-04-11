@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { saveAgentLog } from "./log.ts";
-import type { ClaudeCliOutput } from "./types.ts";
+import type { CliRunOutput } from "./types.ts";
 
 /** Create a temp directory structure simulating a run. */
 async function withTempRunDir(
@@ -14,7 +14,7 @@ async function withTempRunDir(
   }
 }
 
-function makeSampleOutput(): ClaudeCliOutput {
+function makeSampleOutput(): CliRunOutput {
   return {
     result: "Task completed successfully.",
     session_id: "abc-123-def",
@@ -33,7 +33,7 @@ Deno.test("saveAgentLog — writes JSON log file", async () => {
 
     const jsonPath = `${runDir}/logs/pm.json`;
     const content = await Deno.readTextFile(jsonPath);
-    const parsed = JSON.parse(content) as ClaudeCliOutput;
+    const parsed = JSON.parse(content) as CliRunOutput;
 
     assertEquals(parsed.session_id, "abc-123-def");
     assertEquals(parsed.result, "Task completed successfully.");

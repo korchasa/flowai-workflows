@@ -8,7 +8,7 @@
  */
 
 import type {
-  ClaudeCliOutput,
+  CliRunOutput,
   HitlConfig,
   HumanInputRequest,
   NodeConfig,
@@ -18,8 +18,12 @@ import type {
 } from "./types.ts";
 import { interpolate } from "./template.ts";
 import type { AgentResult } from "./agent.ts";
-import { getRuntimeAdapter } from "./runtime/index.ts";
-import type { RuntimeAdapter, RuntimeInvokeOptions } from "./runtime/types.ts";
+import { getRuntimeAdapter } from "@korchasa/ai-ide-cli/runtime";
+import type {
+  RuntimeAdapter,
+  RuntimeInvokeOptions,
+} from "@korchasa/ai-ide-cli/runtime/types";
+import { buildEngineHitlMcpCommand } from "./hitl-mcp-command.ts";
 import type { OutputManager } from "./output.ts";
 
 /** Structured question extracted from a runtime-native HITL request. */
@@ -39,7 +43,7 @@ export type ScriptRunner = (
 /** Claude CLI runner function signature (injectable for testing). */
 export type ClaudeRunner = (
   opts: RuntimeInvokeOptions,
-) => Promise<{ output?: ClaudeCliOutput; error?: string }>;
+) => Promise<{ output?: CliRunOutput; error?: string }>;
 
 /** Options for running the HITL poll loop. */
 export interface HitlRunOptions {
@@ -88,7 +92,7 @@ export interface HitlRunOptions {
  * Returns the extracted HitlQuestion or null if none found.
  */
 export function detectHitlRequest(
-  output: ClaudeCliOutput,
+  output: CliRunOutput,
 ): HitlQuestion | null {
   if (output.hitl_request) {
     return output.hitl_request;
@@ -244,6 +248,7 @@ export async function runHitlLoop(
         permissionMode: opts.permissionMode,
         model: opts.model,
         hitlConfig: config,
+        hitlMcpCommandBuilder: buildEngineHitlMcpCommand,
         timeoutSeconds: settings.timeout_seconds,
         maxRetries: settings.max_retries,
         retryDelaySeconds: settings.retry_delay_seconds,

@@ -330,7 +330,7 @@ graph LR
 - **Functions:**
   - `readRunState(runDir)` — parse `state.json` → `RunState`
   - `readNodeLog(runDir, nodeId)` — parse `logs/<nodeId>.json` →
-    `ClaudeCliOutput`
+    `CliRunOutput`
   - `groupNodesByPhase(nodeIds, phases?)` — extract phase-grouping logic into
     standalone exported function (FR-S26). Signature:
     `groupNodesByPhase(nodeIds: string[], phases?: Record<string, string[]>): Array<{ label: string; ids: string[] }>`.
@@ -417,8 +417,9 @@ graph LR
   - CLI: `deno task dashboard --run-dir <path>`
   - Hook: `after:` on `tech-lead-review` node via `run-dashboard.sh` wrapper
     (FR-S36 — replaces `|| true` with explicit warning logging)
-- **Deps:** `engine/types.ts` (imports `RunState`, `ClaudeCliOutput` types
-  for parsing). No runtime engine dependency — reads JSON files directly.
+- **Deps:** `engine/types.ts` (imports `RunState` and `CliRunOutput` — the
+  latter re-exported from `@korchasa/ai-ide-cli/types`). No runtime engine
+  dependency — reads JSON files directly.
 
 ### 3.8 Pipeline Config Validation (FR-S24)
 

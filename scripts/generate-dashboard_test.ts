@@ -16,7 +16,7 @@ import {
   renderHtml,
   renderTimeline,
 } from "./generate-dashboard.ts";
-import type { ClaudeCliOutput, NodeState, RunState } from "../engine/types.ts";
+import type { CliRunOutput, NodeState, RunState } from "../engine/types.ts";
 
 // --- escHtml ---
 
@@ -70,7 +70,7 @@ Deno.test("readNodeLog — parses valid log JSON", async () => {
   const dir = await Deno.makeTempDir();
   try {
     await Deno.mkdir(`${dir}/logs`);
-    const log: ClaudeCliOutput = {
+    const log: CliRunOutput = {
       result: "done",
       session_id: "sess-1",
       total_cost_usd: 0.01,
@@ -162,7 +162,7 @@ Deno.test("readStreamLog — returns empty string for missing file", async () =>
 
 Deno.test("renderCard — contains <details> for multi-line result", () => {
   const state: NodeState = { status: "completed", duration_ms: 2000 };
-  const log: ClaudeCliOutput = {
+  const log: CliRunOutput = {
     result: "line1\nline2\nline3\nline4",
     session_id: "",
     total_cost_usd: 0.05,
@@ -178,7 +178,7 @@ Deno.test("renderCard — contains <details> for multi-line result", () => {
 
 Deno.test("renderCard — no <details> for single-line result", () => {
   const state: NodeState = { status: "completed" };
-  const log: ClaudeCliOutput = {
+  const log: CliRunOutput = {
     result: "All checks passed",
     session_id: "",
     total_cost_usd: 0.01,
@@ -201,7 +201,7 @@ Deno.test("renderCard — status badge present", () => {
 
 Deno.test("renderCard — displays cost from log", () => {
   const state: NodeState = { status: "completed" };
-  const log: ClaudeCliOutput = {
+  const log: CliRunOutput = {
     result: "ok",
     session_id: "",
     total_cost_usd: 0.1234,
@@ -223,7 +223,7 @@ Deno.test("renderCard — no <details> and no crash for empty/undefined result",
 
 Deno.test("renderCard — 3-line preview in summary, full text in details body", () => {
   const state: NodeState = { status: "completed" };
-  const log: ClaudeCliOutput = {
+  const log: CliRunOutput = {
     result: "A\nB\nC\nD\nE",
     session_id: "",
     total_cost_usd: 0,
@@ -289,7 +289,7 @@ Deno.test("renderHtml — contains all node cards", () => {
       build: { status: "completed" },
     },
   };
-  const logs: Record<string, ClaudeCliOutput | null> = {
+  const logs: Record<string, CliRunOutput | null> = {
     spec: null,
     build: null,
   };

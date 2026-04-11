@@ -1,6 +1,9 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { parseConfig } from "./config.ts";
-import { getRuntimeAdapter, resolveRuntimeConfig } from "./runtime/index.ts";
+import {
+  getRuntimeAdapter,
+  resolveRuntimeConfig,
+} from "@korchasa/ai-ide-cli/runtime";
 import type { NodeConfig, WorkflowDefaults } from "./types.ts";
 
 Deno.test("parseConfig — defaults.runtime opencode accepts permission_mode bypassPermissions", () => {

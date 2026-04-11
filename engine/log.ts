@@ -5,7 +5,7 @@
  * Entry point: {@link saveAgentLog}.
  */
 
-import type { ClaudeCliOutput, RuntimeId } from "./types.ts";
+import type { CliRunOutput, RuntimeId } from "./types.ts";
 
 /** Default path where Claude Code stores project session transcripts. */
 const DEFAULT_CLAUDE_PROJECTS_DIR = `${
@@ -16,7 +16,7 @@ const DEFAULT_CLAUDE_PROJECTS_DIR = `${
  * Save agent log files after a successful node execution.
  *
  * Writes two files to `<runDir>/logs/`:
- * 1. `<nodeId>.json`  — full ClaudeCliOutput JSON
+ * 1. `<nodeId>.json`  — full CliRunOutput JSON
  * 2. `<nodeId>.jsonl` — JSONL session transcript (if found)
  *
  * If the JSONL transcript cannot be located, a warning is logged
@@ -25,7 +25,7 @@ const DEFAULT_CLAUDE_PROJECTS_DIR = `${
 export async function saveAgentLog(
   runDir: string,
   nodeId: string,
-  output: ClaudeCliOutput,
+  output: CliRunOutput,
   runtimeOrProjectsDir?: RuntimeId | string,
   claudeProjectsDir: string = DEFAULT_CLAUDE_PROJECTS_DIR,
 ): Promise<void> {

@@ -1,93 +1,42 @@
 /**
  * @module
- * Global process registry for graceful shutdown.
- * Tracks spawned child processes and shutdown callbacks.
- * On SIGINT/SIGTERM: kills all registered processes, runs callbacks, exits.
+ * Signal-handler wiring for the engine. Delegates process tracking and
+ * shutdown callback management to `@korchasa/ai-ide-cli/process-registry`;
+ * owns only the OS-level SIGINT/SIGTERM plumbing that translates signals
+ * into a graceful `killAll()` + `Deno.exit(130|143)` sequence.
  */
 
-const processes = new Set<Deno.ChildProcess>();
-const shutdownCallbacks: Array<() => Promise<void> | void> = [];
+import {
+  _getProcesses,
+  _getShutdownCallbacks,
+  _reset as _resetLib,
+  killAll,
+  onShutdown,
+  register,
+  unregister,
+} from "@korchasa/ai-ide-cli/process-registry";
+
+// Re-export the pure library API so existing engine callers keep working
+// through `engine/process-registry.ts`.
+export {
+  _getProcesses,
+  _getShutdownCallbacks,
+  killAll,
+  onShutdown,
+  register,
+  unregister,
+};
+
+// Signal-listener state is engine-local because installation/removal of
+// OS signal listeners is a host-process concern the library doesn't own.
+let sigintListener: (() => void) | null = null;
+let sigtermListener: (() => void) | null = null;
 let handlersInstalled = false;
 let shuttingDown = false;
 
-// Store listener references for cleanup in tests
-let sigintListener: (() => void) | null = null;
-let sigtermListener: (() => void) | null = null;
-
-/** Register a child process for tracking. Idempotent. */
-export function register(p: Deno.ChildProcess): void {
-  processes.add(p);
-}
-
-/** Unregister a child process (e.g. after it exits normally). */
-export function unregister(p: Deno.ChildProcess): void {
-  processes.delete(p);
-}
-
-/** Register a callback to run during shutdown (lock release, state save).
- * Returns a disposer function that removes the callback. */
-export function onShutdown(cb: () => Promise<void> | void): () => void {
-  shutdownCallbacks.push(cb);
-  return () => {
-    const idx = shutdownCallbacks.indexOf(cb);
-    if (idx !== -1) shutdownCallbacks.splice(idx, 1);
-  };
-}
-
-/** Kill all registered processes and run shutdown callbacks. */
-export async function killAll(): Promise<void> {
-  // Send SIGTERM to all tracked processes
-  const waitPromises: Promise<unknown>[] = [];
-  for (const p of processes) {
-    try {
-      p.kill("SIGTERM");
-    } catch {
-      // Process may have already exited
-    }
-    waitPromises.push(
-      p.status.catch(() => {
-        /* ignore */
-      }),
-    );
-  }
-
-  // Wait up to 5s for processes to exit, then clear timer
-  if (waitPromises.length > 0) {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<void>((r) => {
-      timeoutId = setTimeout(r, 5000);
-    });
-    await Promise.race([
-      Promise.allSettled(waitPromises),
-      timeoutPromise,
-    ]);
-    clearTimeout(timeoutId);
-  }
-
-  // SIGKILL survivors
-  for (const p of processes) {
-    try {
-      p.kill("SIGKILL");
-    } catch {
-      // Already exited
-    }
-  }
-  processes.clear();
-
-  // Run shutdown callbacks
-  for (const cb of shutdownCallbacks) {
-    try {
-      await cb();
-    } catch {
-      // Best-effort cleanup
-    }
-  }
-  shutdownCallbacks.length = 0;
-}
-
 /**
  * Install SIGINT + SIGTERM handlers. Idempotent — only installs once.
- * On signal: calls killAll(), then Deno.exit(130 for SIGINT, 143 for SIGTERM).
+ * On signal: calls {@link killAll}, then `Deno.exit(130 for SIGINT, 143 for SIGTERM)`.
  */
 export function installSignalHandlers(): void {
   if (handlersInstalled) return;
@@ -121,9 +70,7 @@ export function installSignalHandlers(): void {
 
 /** Reset all state including signal listeners. For test isolation only. */
 export function _reset(): void {
-  processes.clear();
-  shutdownCallbacks.length = 0;
-  // Remove installed signal listeners to prevent test leaks
+  _resetLib();
   if (sigintListener) {
     try {
       Deno.removeSignalListener("SIGINT", sigintListener);
@@ -138,14 +85,4 @@ export function _reset(): void {
   }
   handlersInstalled = false;
   shuttingDown = false;
-}
-
-/** Get process set reference. For test assertions only. */
-export function _getProcesses(): Set<Deno.ChildProcess> {
-  return processes;
-}
-
-/** Get shutdown callbacks array reference. For test assertions only. */
-export function _getShutdownCallbacks(): Array<() => Promise<void> | void> {
-  return shutdownCallbacks;
 }

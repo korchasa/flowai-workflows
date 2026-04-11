@@ -3,7 +3,7 @@ import { extractConditionValue, extractFrontmatterField } from "./loop.ts";
 import type { LoopRunOptions } from "./loop.ts";
 import { OutputManager } from "./output.ts";
 import type {
-  ClaudeCliOutput,
+  CliRunOutput,
   NodeConfig,
   TemplateContext,
   WorkflowConfig,
@@ -167,8 +167,8 @@ Deno.test("loop body node — markNodeCompleted with cost from AgentResult.outpu
 });
 
 Deno.test("loop body node — AgentResult output exposes total_cost_usd", () => {
-  // Verify ClaudeCliOutput.total_cost_usd is accessible (type contract)
-  const mockOutput: ClaudeCliOutput = {
+  // Verify CliRunOutput.total_cost_usd is accessible (type contract)
+  const mockOutput: CliRunOutput = {
     result: "Iteration done",
     session_id: "s-loop-123",
     total_cost_usd: 0.0055,

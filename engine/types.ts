@@ -2,37 +2,38 @@
  * @module
  * Type declarations for the configurable node-based workflow engine.
  * No logic — pure type definitions.
+ *
+ * Runtime-neutral agent-CLI types (runtime identifiers, permission modes,
+ * verbosity, HITL request shapes, normalized CLI output, HITL config) are
+ * defined in `@korchasa/ai-ide-cli/types` and re-exported here so existing
+ * engine-internal imports continue to resolve through `./types.ts`.
  */
 
-// --- Permission Mode ---
+import type {
+  CliRunOutput,
+  HitlConfig,
+  HumanInputOption,
+  HumanInputRequest,
+  PermissionDenial,
+  PermissionMode,
+  RuntimeId,
+  Verbosity,
+} from "@korchasa/ai-ide-cli/types";
 
-/** Claude Code permission mode values (maps to --permission-mode CLI flag). */
-export type PermissionMode =
-  | "acceptEdits"
-  | "bypassPermissions"
-  | "default"
-  | "dontAsk"
-  | "plan"
-  | "auto";
-
-/** All valid permission mode values, used for config validation. */
-export const VALID_PERMISSION_MODES: readonly string[] = [
-  "acceptEdits",
-  "bypassPermissions",
-  "default",
-  "dontAsk",
-  "plan",
-  "auto",
-];
-
-/** Supported agent runtime IDs. */
-export type RuntimeId = "claude" | "opencode";
-
-/** All valid runtime IDs, used for config validation. */
-export const VALID_RUNTIME_IDS: readonly RuntimeId[] = [
-  "claude",
-  "opencode",
-];
+export type {
+  CliRunOutput,
+  HitlConfig,
+  HumanInputOption,
+  HumanInputRequest,
+  PermissionDenial,
+  PermissionMode,
+  RuntimeId,
+  Verbosity,
+};
+export {
+  VALID_PERMISSION_MODES,
+  VALID_RUNTIME_IDS,
+} from "@korchasa/ai-ide-cli/types";
 
 // --- Workflow Configuration (parsed from YAML) ---
 
@@ -252,7 +253,7 @@ export interface NodeState {
   session_id?: string;
   /** Serialized HitlQuestion JSON; populated when status is "waiting". */
   question_json?: string;
-  /** Per-node cost from ClaudeCliOutput.total_cost_usd (FR-E17). */
+  /** Per-node cost from CliRunOutput.total_cost_usd (FR-E17). */
   cost_usd?: number;
   /** Excerpt of agent result text, persisted for summary display (FR-E15, FR-E22). */
   result?: string;
@@ -305,9 +306,6 @@ export interface TemplateContext {
 
 // --- Engine Options ---
 
-/** Verbosity level for terminal output. */
-export type Verbosity = "quiet" | "normal" | "semi-verbose" | "verbose";
-
 /** CLI options passed to the engine. */
 export interface EngineOptions {
   /** Path to the YAML workflow config file. */
@@ -330,76 +328,4 @@ export interface EngineOptions {
   only_nodes?: string[];
   /** Override lock file path (default: .flowai-workflow/runs/.lock). Used in tests. */
   lock_path?: string;
-}
-
-// --- Claude CLI Output ---
-
-/** A single permission denial from Claude CLI JSON output. */
-export interface PermissionDenial {
-  /** Name of the tool that was denied (e.g. "Bash", "Edit"). */
-  tool_name: string;
-  /** Arguments passed to the denied tool invocation. */
-  tool_input: Record<string, unknown>;
-}
-
-/** One selectable answer option in a human-input request. */
-export interface HumanInputOption {
-  /** User-visible option label. */
-  label: string;
-  /** Optional explanatory text shown alongside the label. */
-  description?: string;
-}
-
-/** Runtime-normalized human-input request emitted by Claude or OpenCode. */
-export interface HumanInputRequest {
-  /** Main question text to present to the operator. */
-  question: string;
-  /** Optional heading displayed above the question. */
-  header?: string;
-  /** Optional list of predefined answer choices. */
-  options?: HumanInputOption[];
-  /** Whether multiple options may be selected. */
-  multiSelect?: boolean;
-}
-
-/** JSON output from `claude -p ... --output-format json`. */
-export interface ClaudeCliOutput {
-  /** Runtime that produced this output. Optional for backward-compatible tests. */
-  runtime?: RuntimeId;
-  /** Agent's final text response. */
-  result: string;
-  /** Session ID for continuation and log correlation. */
-  session_id: string;
-  /** Total API cost in USD for this invocation. */
-  total_cost_usd: number;
-  /** Wall-clock duration of the entire CLI run in milliseconds. */
-  duration_ms: number;
-  /** Time spent waiting for API responses in milliseconds. */
-  duration_api_ms: number;
-  /** Number of conversational turns in this session. */
-  num_turns: number;
-  /** Whether the CLI exited with an error condition. */
-  is_error: boolean;
-  /** Tools the agent tried to use but was denied permission for. */
-  permission_denials?: PermissionDenial[];
-  /** Runtime-normalized human-input request captured from a structured tool call. */
-  hitl_request?: HumanInputRequest;
-}
-
-// --- HITL Configuration ---
-
-/** Human-in-the-loop configuration for workflow defaults. */
-export interface HitlConfig {
-  /** Script invoked to post a question to the human operator. */
-  ask_script: string;
-  /** Script polled to check if the human has responded. */
-  check_script: string;
-  /** Relative path from run_dir to artifact containing issue frontmatter. */
-  artifact_source?: string;
-  /** Seconds between consecutive polls of check_script (default 60). */
-  poll_interval: number;
-  /** Maximum seconds to wait for a human response before timing out (default 7200). */
-  timeout: number;
-  /** Login name to exclude from HITL responses (e.g. bot's own login). */
-  exclude_login?: string;
 }

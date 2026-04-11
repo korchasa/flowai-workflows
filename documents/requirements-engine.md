@@ -64,7 +64,7 @@
 - **Description:** Every agent's full session transcript is stored for analysis and prompt improvement.
 - **Log sources:**
   - **JSON output:** Claude CLI with `--output-format json` returns a structured JSON object with `result`, `session_id`, `total_cost_usd`, `duration_ms`, `duration_api_ms`, `num_turns`, `is_error`. This is captured by the stage script or engine.
-  - **Normalized runtime output:** OpenCode JSON stream is normalized by the engine into the same `ClaudeCliOutput`-compatible shape (`result`, `session_id`, `total_cost_usd`, `duration_ms`, `num_turns`, `is_error`, optional `hitl_request`) so downstream state, summary, continuation, and logging logic stay runtime-agnostic.
+  - **Normalized runtime output:** OpenCode JSON stream is normalized by the engine into the same `CliRunOutput`-compatible shape (`result`, `session_id`, `total_cost_usd`, `duration_ms`, `num_turns`, `is_error`, optional `hitl_request`) so downstream state, summary, continuation, and logging logic stay runtime-agnostic.
   - **JSONL transcript:** Claude CLI automatically stores full session transcripts as JSONL files in `~/.claude/projects/`. Each line is a JSON event (messages, tool calls, responses).
 - **Acceptance criteria (legacy shell script path):**
   - Each stage script saves two log files:
@@ -74,12 +74,12 @@
   - Stage script locates the JSONL transcript by session ID extracted from the JSON output.
 - **Acceptance criteria (Deno engine path):**
   - [x] After each non-loop agent node completes successfully, the engine saves a JSON log to `.flowai-workflow/runs/<run-id>/logs/` and, for Claude runtime only, copies the JSONL transcript:
-    - `<node-id>.json` — full `ClaudeCliOutput` JSON object (`result`, `session_id`, `total_cost_usd`, `duration_ms`, `duration_api_ms`, `num_turns`, `is_error`).
+    - `<node-id>.json` — full `CliRunOutput` JSON object (`result`, `session_id`, `total_cost_usd`, `duration_ms`, `duration_api_ms`, `num_turns`, `is_error`).
     - `<node-id>.jsonl` — Claude-only copy of the JSONL session transcript from `~/.claude/projects/<project-hash>/`, located by matching `session_id` in filenames.
     - Evidence: `engine/engine.ts:266-270`, `engine/log.ts`
   - [x] If the Claude JSONL transcript file is not found: engine logs a warning and continues — workflow does NOT fail. Evidence: `engine/log.ts`
   - [x] Loop body nodes (developer, qa) must have logs saved after each iteration. Log files use iteration-qualified names: `<node-id>-iter-<N>.json` and `<node-id>-iter-<N>.jsonl`. `runLoop()` calls `saveAgentLog()` for each body node after successful completion. Evidence: `engine/engine.ts:574-582` (onNodeComplete callback in executeLoopNode saves logs using `${id}-iter-${iteration}` node ID)
-  - [x] `LoopResult` includes per-iteration `AgentResult` references (with `ClaudeCliOutput`) to enable log extraction by the engine. Evidence: `engine/loop.ts:18-26` (`LoopResult.bodyResults: AgentResult[]`), `engine/loop.ts:69,99` (initialized, pushed per body node per iteration)
+  - [x] `LoopResult` includes per-iteration `AgentResult` references (with `CliRunOutput`) to enable log extraction by the engine. Evidence: `engine/loop.ts:18-26` (`LoopResult.bodyResults: AgentResult[]`), `engine/loop.ts:69,99` (initialized, pushed per body node per iteration)
   - [x] Log-saving logic has unit tests covering: successful save, JSONL-not-found warning path. Evidence: `engine/log_test.ts:29-124` (5 tests)
 
 ### 3.3 FR-E3: Artifact Versioning
@@ -420,7 +420,7 @@
 - **Description:** Workflow engine persists per-node cost and workflow-level total
   cost in `state.json`, eliminating the need to read N+1 separate log files to
   build a cost summary. Per-node `cost_usd` is sourced from
-  `ClaudeCliOutput.total_cost_usd`; top-level `total_cost_usd` is the sum across
+  `CliRunOutput.total_cost_usd`; top-level `total_cost_usd` is the sum across
   all completed nodes.
 - **Motivation:** Dashboards and external tooling currently must open one log file
   per node to compute cost. A single `state.json` read is sufficient with this
@@ -533,7 +533,7 @@
   each agent produced."
 - **Acceptance criteria:**
   - [ ] `NodeState` in `types.ts` gains `result?: string` field — first 400
-    chars of agent `ClaudeCliOutput.result` text, persisted to `state.json`
+    chars of agent `CliRunOutput.result` text, persisted to `state.json`
     at node completion.
   - [ ] `markNodeCompleted()` in `state.ts` accepts optional `result?: string`
     param; writes it to `NodeState.result` when provided.
@@ -1030,6 +1030,67 @@
   - [ ] AC5: Unit tests: flag emission, skip on resume, validation
     (fallback without model), absence (no flag).
   - [ ] AC6: `deno task check` passes.
+
+### 3.44 FR-E44: IDE CLI Wrapper Library Split
+
+- **Description:** The engine no longer owns the agent-CLI wrapper code
+  (Claude/OpenCode low-level runners, NDJSON stream parser, runtime
+  adapter interface, HITL MCP helper, process registry). This layer is
+  extracted to a standalone JSR package `@korchasa/ai-ide-cli`, developed in
+  a Deno workspace alongside the engine. Engine depends on the library
+  one-way; library has zero imports from engine. The workspace lets
+  contributors iterate atomically across both packages while keeping the
+  scope boundary explicit.
+- **Motivation:** Other projects (CLI tools, agent hosts, MCP proxies)
+  need Claude/OpenCode subprocess management without pulling the full
+  DAG workflow engine. Independent package versioning also lets the
+  engine upgrade on its own cadence as IDE CLI surfaces evolve.
+- **Scope:** Files moved from `engine/` to `ai-ide-cli/`:
+  `claude-process.ts` → `ai-ide-cli/claude/process.ts`;
+  `stream.ts` → `ai-ide-cli/claude/stream.ts`;
+  `opencode-process.ts` → `ai-ide-cli/opencode/process.ts`;
+  `opencode-hitl-mcp.ts` → `ai-ide-cli/opencode/hitl-mcp.ts`;
+  `runtime/{types,index,claude-adapter,opencode-adapter}.ts` →
+  `ai-ide-cli/runtime/`. Pure-tracker portion of `process-registry.ts`
+  moved to `ai-ide-cli/process-registry.ts`; engine retains
+  `installSignalHandlers()` + `_reset()` wrapping it. Normalized
+  runtime output `ClaudeCliOutput` renamed to `CliRunOutput` — hard
+  rename, no alias (Step 0 audit confirmed zero external JSR
+  consumers of the symbol).
+- **Acceptance:**
+  - [x] `ai-ide-cli/` exists as a workspace member with its own
+    `deno.json`, `mod.ts`, and sub-path exports for `types`,
+    `process-registry`, `runtime`, `runtime/types`, `claude/process`,
+    `claude/stream`, `opencode/process`, `opencode/hitl-mcp`.
+    Evidence: `ai-ide-cli/deno.json`, `ai-ide-cli/mod.ts`.
+  - [x] Library has zero imports from `engine/` or
+    `@korchasa/flowai-workflow`. Evidence:
+    `rg -n "from \"\.\./engine|from \"@korchasa/flowai-workflow" ai-ide-cli/`
+    returns no matches.
+  - [x] Engine has no imports from deleted paths
+    (`./claude-process`, `./opencode-process`, `./stream`,
+    `./opencode-hitl-mcp`, `./runtime/`). Evidence:
+    `rg -n "from \"\./claude-process|..." engine/` returns no matches.
+  - [x] OpenCode runner's HITL MCP self-spawn is a consumer-provided
+    callback (`RuntimeInvokeOptions.hitlMcpCommandBuilder`). Engine's
+    `hitl-mcp-command.ts` supplies a builder pointing at engine's own
+    `cli.ts`. Runner throws a clear error if a consumer sets
+    `hitlConfig` without a builder. Evidence:
+    `ai-ide-cli/opencode/process.ts` (`buildOpenCodeConfigContent`),
+    `engine/hitl-mcp-command.ts`, `engine/agent.ts:179-196,290-307`,
+    `engine/hitl.ts:243-256`.
+  - [x] `ClaudeCliOutput` renamed to `CliRunOutput` in code (docs
+    updated to match); no compatibility alias is exported.
+  - [x] `@korchasa/flowai-workflow` publishes from `engine/deno.json`;
+    `@korchasa/ai-ide-cli` publishes from `ai-ide-cli/deno.json`. Both
+    `deno publish --dry-run` pass. Evidence: workspace root
+    `deno.json` with `workspace: ["./engine", "./ai-ide-cli"]`.
+  - [x] `deno compile engine/cli.ts` produces a working binary that
+    resolves the workspace dependency inline.
+  - [x] Full `deno task check` passes: fmt, lint, type-check
+    (engine + ai-ide-cli), CLI smoke test, tests (including moved
+    `ai-ide-cli/opencode/process_test.ts`), doc lint, workflow integrity,
+    agent list accuracy, comment scan.
 
 ## 4. Non-Functional Requirements
 

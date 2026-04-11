@@ -1,12 +1,12 @@
 import { assertEquals } from "@std/assert";
-import type { ClaudeCliOutput, HitlConfig } from "./types.ts";
+import type { CliRunOutput, HitlConfig } from "./types.ts";
 import { detectHitlRequest, runHitlLoop } from "./hitl.ts";
 import type { HitlRunOptions } from "./hitl.ts";
 
 // --- detectHitlRequest tests ---
 
 Deno.test("detectHitlRequest — returns null when no permission_denials", () => {
-  const output: ClaudeCliOutput = {
+  const output: CliRunOutput = {
     result: "done",
     session_id: "sess-1",
     total_cost_usd: 0.05,
@@ -19,7 +19,7 @@ Deno.test("detectHitlRequest — returns null when no permission_denials", () =>
 });
 
 Deno.test("detectHitlRequest — returns null when permission_denials has no AskUserQuestion", () => {
-  const output: ClaudeCliOutput = {
+  const output: CliRunOutput = {
     result: "done",
     session_id: "sess-1",
     total_cost_usd: 0.05,
@@ -35,7 +35,7 @@ Deno.test("detectHitlRequest — returns null when permission_denials has no Ask
 });
 
 Deno.test("detectHitlRequest — returns HitlQuestion when AskUserQuestion present", () => {
-  const output: ClaudeCliOutput = {
+  const output: CliRunOutput = {
     result: "done",
     session_id: "sess-1",
     total_cost_usd: 0.05,
@@ -69,7 +69,7 @@ Deno.test("detectHitlRequest — returns HitlQuestion when AskUserQuestion prese
 });
 
 Deno.test("detectHitlRequest — handles flat tool_input (no questions wrapper)", () => {
-  const output: ClaudeCliOutput = {
+  const output: CliRunOutput = {
     result: "done",
     session_id: "sess-1",
     total_cost_usd: 0.05,
@@ -92,7 +92,7 @@ Deno.test("detectHitlRequest — handles flat tool_input (no questions wrapper)"
 });
 
 Deno.test("detectHitlRequest — returns runtime-normalized hitl_request directly", () => {
-  const output: ClaudeCliOutput = {
+  const output: CliRunOutput = {
     runtime: "opencode",
     result: "",
     session_id: "sess-1",

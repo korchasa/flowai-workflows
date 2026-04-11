@@ -1,0 +1,15 @@
+{
+  "name": "@korchasa/flowai-workflow",
+  "version": "0.1.10",
+  "license": "MIT",
+  "exports": "./cli.ts",
+  "publish": {
+    "include": [
+      "./",
+      "./deno.json"
+    ],
+    "exclude": [
+      "**/*_test.ts"
+    ]
+  }
+}

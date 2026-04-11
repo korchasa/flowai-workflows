@@ -14,7 +14,7 @@ import type {
   RuntimeId,
   TemplateContext,
 } from "./types.ts";
-import type { RuntimeAdapter } from "./runtime/types.ts";
+import type { RuntimeAdapter } from "@korchasa/ai-ide-cli/runtime/types";
 import type { AgentResult } from "./agent.ts";
 import type { HitlQuestion } from "./hitl.ts";
 import { runHitlLoop } from "./hitl.ts";

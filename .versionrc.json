@@ -13,6 +13,9 @@
   "commitUrlFormat": "{{host}}/{{owner}}/{{repository}}/commit/{{hash}}",
   "compareUrlFormat": "{{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}",
   "issueUrlFormat": "{{host}}/{{owner}}/{{repository}}/issues/{{id}}",
-  "bumpFiles": [{ "filename": "deno.json", "type": "json" }],
-  "packageFiles": [{ "filename": "deno.json", "type": "json" }]
+  "bumpFiles": [
+    { "filename": "engine/deno.json", "type": "json" },
+    { "filename": "ai-ide-cli/deno.json", "type": "json" }
+  ],
+  "packageFiles": [{ "filename": "engine/deno.json", "type": "json" }]
 }

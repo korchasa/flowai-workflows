@@ -6,7 +6,7 @@
  * cost chart. Entry point: {@link renderHtml}.
  * CLI: deno task dashboard --run-dir <path>
  */
-import type { ClaudeCliOutput, NodeState, RunState } from "../engine/types.ts";
+import type { CliRunOutput, NodeState, RunState } from "../engine/types.ts";
 import { parse as parseYaml } from "@std/yaml";
 
 /** Escape HTML special chars to prevent XSS. */
@@ -32,10 +32,10 @@ export async function readRunState(runDir: string): Promise<RunState> {
 export async function readNodeLog(
   runDir: string,
   nodeId: string,
-): Promise<ClaudeCliOutput | null> {
+): Promise<CliRunOutput | null> {
   try {
     const content = await Deno.readTextFile(`${runDir}/logs/${nodeId}.json`);
-    return JSON.parse(content) as ClaudeCliOutput;
+    return JSON.parse(content) as CliRunOutput;
   } catch {
     return null;
   }
@@ -137,7 +137,7 @@ const PREVIEW_LINES = 3;
 export function renderCard(
   nodeId: string,
   state: NodeState,
-  log: ClaudeCliOutput | null,
+  log: CliRunOutput | null,
   streamLogHref?: string,
   logContent?: string,
 ): string {
@@ -342,7 +342,7 @@ export function renderCostChart(bars: CostBar[], totalCost: number): string {
  * Per-phase status badges computed via computePhaseStatus() using alwaysNodes set.
  *
  * @param state - Parsed run state (provides run_id, timestamps, node statuses)
- * @param logs  - Map of nodeId → ClaudeCliOutput (or null if log unavailable)
+ * @param logs  - Map of nodeId → CliRunOutput (or null if log unavailable)
  * @param phases - Optional phase grouping from workflow config
  * @param streamLogHrefs - Optional map of nodeId → relative href to stream.log
  * @param streamLogContents - Optional map of nodeId → truncated stream.log text
@@ -350,7 +350,7 @@ export function renderCostChart(bars: CostBar[], totalCost: number): string {
  */
 export function renderHtml(
   state: RunState,
-  logs: Record<string, ClaudeCliOutput | null>,
+  logs: Record<string, CliRunOutput | null>,
   phases?: Record<string, string[]>,
   streamLogHrefs?: Record<string, string>,
   streamLogContents?: Record<string, string>,
@@ -587,7 +587,7 @@ if (import.meta.main) {
   }
 
   // Read all node logs
-  const logs: Record<string, ClaudeCliOutput | null> = {};
+  const logs: Record<string, CliRunOutput | null> = {};
   for (const nodeId of Object.keys(state.nodes)) {
     logs[nodeId] = await readNodeLog(runDir, nodeId);
   }

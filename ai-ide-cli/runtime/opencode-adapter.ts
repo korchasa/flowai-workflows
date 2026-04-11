@@ -1,4 +1,4 @@
-import { invokeOpenCodeCli } from "../opencode-process.ts";
+import { invokeOpenCodeCli } from "../opencode/process.ts";
 import type { RuntimeAdapter } from "./types.ts";
 
 export const opencodeRuntimeAdapter: RuntimeAdapter = {

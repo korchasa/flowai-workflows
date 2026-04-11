@@ -1,6 +1,9 @@
-import type { NodeConfig, WorkflowDefaults } from "../types.ts";
 import type { RuntimeId } from "../types.ts";
-import type { ResolvedRuntimeConfig, RuntimeAdapter } from "./types.ts";
+import type {
+  ResolvedRuntimeConfig,
+  RuntimeAdapter,
+  RuntimeConfigSource,
+} from "./types.ts";
 import { claudeRuntimeAdapter } from "./claude-adapter.ts";
 import { opencodeRuntimeAdapter } from "./opencode-adapter.ts";
 
@@ -17,12 +20,16 @@ export function getRuntimeAdapter(runtime: RuntimeId): RuntimeAdapter {
 /**
  * Resolve runtime, args, and runtime-scoped options using
  * node > parent > defaults precedence.
+ *
+ * Consumer types with matching field names (e.g. engine's `NodeConfig` and
+ * `WorkflowDefaults`) structurally satisfy {@link RuntimeConfigSource} and
+ * can be passed directly.
  */
 export function resolveRuntimeConfig(
   opts: {
-    defaults?: WorkflowDefaults;
-    node: NodeConfig;
-    parent?: NodeConfig;
+    defaults?: RuntimeConfigSource;
+    node: RuntimeConfigSource;
+    parent?: RuntimeConfigSource;
   },
 ): ResolvedRuntimeConfig {
   const runtime = opts.node.runtime ?? opts.parent?.runtime ??

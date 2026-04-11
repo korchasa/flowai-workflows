@@ -13,11 +13,26 @@
  * request to the runtime.
  */
 
-import type { HumanInputRequest } from "./types.ts";
+import type { HumanInputRequest } from "../types.ts";
 
-export const INTERNAL_OPENCODE_HITL_MCP_ARG = "--internal-opencode-hitl-mcp";
-export const OPENCODE_HITL_MCP_SERVER_NAME = "hitl";
-export const OPENCODE_HITL_MCP_TOOL_NAME =
+/**
+ * CLI flag consumers pass to their own binary to dispatch into
+ * {@link runOpenCodeHitlMcpServer}. Single source of truth — both the
+ * dispatcher and the spawn command builder must reference this constant
+ * so the two sides of the sub-process handshake stay in sync.
+ */
+export const INTERNAL_OPENCODE_HITL_MCP_ARG: string =
+  "--internal-opencode-hitl-mcp";
+
+/** MCP server name advertised in OpenCode's `mcp` config block. */
+export const OPENCODE_HITL_MCP_SERVER_NAME: string = "hitl";
+
+/**
+ * Fully-qualified name of the `request_human_input` tool as it appears
+ * in OpenCode stream events (`<server>_request_human_input`). Used by
+ * the OpenCode runner to pattern-match HITL tool invocations.
+ */
+export const OPENCODE_HITL_MCP_TOOL_NAME: string =
   `${OPENCODE_HITL_MCP_SERVER_NAME}_request_human_input`;
 
 const REQUEST_HUMAN_INPUT_TOOL = {

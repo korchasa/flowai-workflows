@@ -1,5 +1,5 @@
 import type {
-  ClaudeCliOutput,
+  CliRunOutput,
   HitlConfig,
   RuntimeId,
   Verbosity,
@@ -45,6 +45,28 @@ export interface RuntimeInvokeOptions {
   verbosity?: Verbosity;
   /** Workflow HITL configuration used by runtimes that need extra tool wiring. */
   hitlConfig?: HitlConfig;
+  /**
+   * HITL MCP sub-process command builder for runtimes that host an auxiliary
+   * stdio MCP server (currently only OpenCode).
+   *
+   * Consumer (engine) supplies a zero-argument function that returns an
+   * `argv` array the runtime spawns to run the MCP HITL server. The spawned
+   * process MUST call
+   * {@link import("./opencode/hitl-mcp").runOpenCodeHitlMcpServer}.
+   *
+   * Example:
+   * ```ts
+   * hitlMcpCommandBuilder: () => [
+   *   Deno.execPath(), "run", "-A",
+   *   import.meta.resolve("./cli.ts"),
+   *   "--internal-opencode-hitl-mcp",
+   * ]
+   * ```
+   *
+   * Fail-fast: if omitted and {@link hitlConfig} is set for a runtime that
+   * needs the MCP helper, the runner throws with a clear error.
+   */
+  hitlMcpCommandBuilder?: () => string[];
   /** Working directory for the runtime subprocess. */
   cwd?: string;
 }
@@ -52,7 +74,7 @@ export interface RuntimeInvokeOptions {
 /** Result returned by a runtime adapter invocation. */
 export interface RuntimeInvokeResult {
   /** Normalized runtime output when invocation produced structured output. */
-  output?: ClaudeCliOutput;
+  output?: CliRunOutput;
   /** Human-readable error when the invocation failed. */
   error?: string;
 }
@@ -77,4 +99,25 @@ export interface ResolvedRuntimeConfig {
   model?: string;
   /** Effective permission mode after precedence resolution. */
   permissionMode?: string;
+}
+
+/**
+ * Minimal structural shape of a runtime-config carrier, used by
+ * {@link import("./index").resolveRuntimeConfig} to avoid depending on
+ * workflow-specific `NodeConfig` / `WorkflowDefaults` types.
+ *
+ * Consumer types (engine `NodeConfig`, `WorkflowDefaults`, etc.) that expose
+ * these fields structurally satisfy the interface and can be passed directly.
+ */
+export interface RuntimeConfigSource {
+  /** Runtime ID selected by this level of the config cascade. */
+  runtime?: RuntimeId;
+  /** Model identifier applied at this cascade level. */
+  model?: string;
+  /** Permission mode applied at this cascade level (runtime-specific). */
+  permission_mode?: string;
+  /** Generic extra CLI args forwarded to any runtime. */
+  runtime_args?: string[];
+  /** Claude-only legacy extra CLI args; ignored for non-claude runtimes. */
+  claude_args?: string[];
 }

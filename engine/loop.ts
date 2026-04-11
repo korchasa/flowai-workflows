@@ -22,7 +22,7 @@ import { runAgent } from "./agent.ts";
 import type { AgentResult } from "./agent.ts";
 import { markNodeCompleted, markNodeFailed, markNodeStarted } from "./state.ts";
 import type { OutputManager } from "./output.ts";
-import { resolveRuntimeConfig } from "./runtime/index.ts";
+import { resolveRuntimeConfig } from "@korchasa/ai-ide-cli/runtime";
 
 /** Result of a loop execution. */
 export interface LoopResult {

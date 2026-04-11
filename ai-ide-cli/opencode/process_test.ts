@@ -4,8 +4,8 @@ import {
   buildOpenCodeConfigContent,
   extractOpenCodeOutput,
   formatOpenCodeEventForOutput,
-} from "./opencode-process.ts";
-import type { RuntimeInvokeOptions } from "./runtime/types.ts";
+} from "./process.ts";
+import type { RuntimeInvokeOptions } from "../runtime/types.ts";
 
 function makeInvokeOpts(
   overrides?: Partial<RuntimeInvokeOptions>,
@@ -189,6 +189,7 @@ Deno.test("buildOpenCodeConfigContent — injects local MCP config when HITL con
         poll_interval: 60,
         timeout: 120,
       },
+      hitlMcpCommandBuilder: () => ["deno", "run", "-A", "./cli.ts", "--mcp"],
     }),
   );
   const config = JSON.parse(raw ?? "{}") as {
@@ -200,6 +201,39 @@ Deno.test("buildOpenCodeConfigContent — injects local MCP config when HITL con
 
   assertEquals(config.mcp?.hitl?.type, "local");
   assertEquals(config.mcp?.hitl?.enabled, true);
-  assertEquals(Array.isArray(config.mcp?.hitl?.command), true);
-  assertEquals((config.mcp?.hitl?.command?.length ?? 0) > 0, true);
+  assertEquals(config.mcp?.hitl?.command, [
+    "deno",
+    "run",
+    "-A",
+    "./cli.ts",
+    "--mcp",
+  ]);
+});
+
+Deno.test("buildOpenCodeConfigContent — throws when HITL is set but no hitlMcpCommandBuilder", () => {
+  let caught: Error | undefined;
+  try {
+    buildOpenCodeConfigContent(
+      makeInvokeOpts({
+        hitlConfig: {
+          ask_script: "ask.sh",
+          check_script: "check.sh",
+          poll_interval: 60,
+          timeout: 120,
+        },
+      }),
+    );
+  } catch (err) {
+    caught = err as Error;
+  }
+  assertEquals(caught !== undefined, true);
+  assertEquals(
+    caught?.message.includes("hitlMcpCommandBuilder"),
+    true,
+  );
+});
+
+Deno.test("buildOpenCodeConfigContent — returns undefined when HITL not configured", () => {
+  const raw = buildOpenCodeConfigContent(makeInvokeOpts());
+  assertEquals(raw, undefined);
 });

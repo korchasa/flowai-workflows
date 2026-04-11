@@ -25,7 +25,7 @@ import { Engine } from "./engine.ts";
 import {
   INTERNAL_OPENCODE_HITL_MCP_ARG,
   runOpenCodeHitlMcpServer,
-} from "./opencode-hitl-mcp.ts";
+} from "@korchasa/ai-ide-cli/opencode/hitl-mcp";
 import { installSignalHandlers } from "./process-registry.ts";
 import { checkForUpdate } from "./version.ts";
 

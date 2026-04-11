@@ -4,7 +4,7 @@
  */
 
 export type {
-  ClaudeCliOutput,
+  CliRunOutput,
   EngineOptions,
   ErrorCategory,
   HitlConfig,
@@ -50,15 +50,15 @@ export {
 } from "./state.ts";
 export { runAgent } from "./agent.ts";
 export type { AgentResult, AgentRunOptions } from "./agent.ts";
-export type { InvokeOptions } from "./claude-process.ts";
-export { getRuntimeAdapter, resolveRuntimeConfig } from "./runtime/index.ts";
+// Runtime adapter types re-exported from @korchasa/ai-ide-cli so engine's
+// public AgentRunOptions / HitlRunOptions / ClaudeRunner remain self-contained
+// from deno doc --lint's point of view.
 export type {
-  ResolvedRuntimeConfig,
   RuntimeAdapter,
   RuntimeCapabilities,
   RuntimeInvokeOptions,
   RuntimeInvokeResult,
-} from "./runtime/types.ts";
+} from "@korchasa/ai-ide-cli/runtime/types";
 export { detectHitlRequest, runHitlLoop } from "./hitl.ts";
 export type {
   ClaudeRunner,
@@ -70,12 +70,6 @@ export { markNodeWaiting } from "./state.ts";
 export { saveAgentLog } from "./log.ts";
 export { extractFrontmatterField, runLoop } from "./loop.ts";
 export type { LoopResult, LoopRunOptions } from "./loop.ts";
-export {
-  buildOpenCodeArgs,
-  extractOpenCodeOutput,
-  formatOpenCodeEventForOutput,
-  invokeOpenCodeCli,
-} from "./opencode-process.ts";
 export { runHuman } from "./human.ts";
 export type { HumanResult, UserInput } from "./human.ts";
 export { OutputManager } from "./output.ts";

@@ -1,4 +1,4 @@
-import { invokeClaudeCli } from "../claude-process.ts";
+import { invokeClaudeCli } from "../claude/process.ts";
 import type { RuntimeAdapter } from "./types.ts";
 
 export const claudeRuntimeAdapter: RuntimeAdapter = {

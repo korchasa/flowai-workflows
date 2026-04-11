@@ -1,12 +1,12 @@
 /**
  * @module
  * Claude CLI stream-json event processing: parses NDJSON events, extracts
- * {@link ClaudeCliOutput} from result events, formats one-line summaries
+ * {@link CliRunOutput} from result events, formats one-line summaries
  * for terminal and log output, and tracks repeated file reads.
  * Entry points: {@link processStreamEvent}, {@link extractClaudeOutput}.
  */
 
-import type { ClaudeCliOutput, Verbosity } from "./types.ts";
+import type { CliRunOutput, Verbosity } from "../types.ts";
 
 /**
  * Tracks per-path file read counts within a single agent invocation.
@@ -42,7 +42,7 @@ export interface StreamProcessorState {
   /** Count of assistant turns seen so far (increments on each assistant event). */
   turnCount: number;
   /** Extracted result event; populated when a "result" event is processed. */
-  resultEvent: ClaudeCliOutput | undefined;
+  resultEvent: CliRunOutput | undefined;
   /** Tracks per-path file read counts to detect repeated reads. */
   tracker: FileReadTracker;
   /** Open log file handle for writing formatted summaries (undefined = no log). */
@@ -111,11 +111,11 @@ export async function processStreamEvent(
   }
 }
 
-/** Extract ClaudeCliOutput fields from a stream-json result event. */
+/** Extract CliRunOutput fields from a stream-json result event. */
 export function extractClaudeOutput(
   // deno-lint-ignore no-explicit-any
   event: Record<string, any>,
-): ClaudeCliOutput {
+): CliRunOutput {
   return {
     runtime: "claude",
     result: event.result ?? "",
@@ -224,7 +224,7 @@ export function formatEventForOutput(
  * Pure function — unit-testable without CLI.
  * Format: `status=<ok|error> duration=<X>s cost=$<Y> turns=<N>`
  */
-export function formatFooter(output: ClaudeCliOutput): string {
+export function formatFooter(output: CliRunOutput): string {
   const status = output.is_error ? "error" : "ok";
   const duration = (output.duration_ms / 1000).toFixed(1);
   const cost = output.total_cost_usd.toFixed(4);
