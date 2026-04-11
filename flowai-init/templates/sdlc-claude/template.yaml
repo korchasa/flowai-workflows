@@ -15,9 +15,6 @@ version: "1"
 description: "6-agent SDLC workflow for Claude Code (PM -> Arch -> TL -> Dev/QA -> TLR)"
 
 requires:
-  - { kind: binary, name: "git" }
-  - { kind: binary, name: "gh" }
-  - { kind: binary, name: "claude" }
   - { kind: git_remote, host: "github.com" }
 
 # Wizard questions. Each `detect:` key maps to a handler in

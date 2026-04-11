@@ -74,24 +74,17 @@ function validateRequirement(
 ): TemplateRequirement {
   assertRecord(raw, path);
   assertString(raw.kind, `${path}.kind`);
-  if (raw.kind !== "binary" && raw.kind !== "git_remote") {
+  if (raw.kind !== "git_remote") {
     throw new Error(
-      `${path}.kind: must be "binary" or "git_remote", got "${raw.kind}"`,
+      `${path}.kind: must be "git_remote", got "${raw.kind}"`,
     );
   }
   const result: TemplateRequirement = { kind: raw.kind };
-  if (raw.name !== undefined) {
-    assertString(raw.name, `${path}.name`);
-    result.name = raw.name;
-  }
   if (raw.host !== undefined) {
     assertString(raw.host, `${path}.host`);
     result.host = raw.host;
   }
-  if (result.kind === "binary" && !result.name) {
-    throw new Error(`${path}: binary requirement must set \`name\``);
-  }
-  if (result.kind === "git_remote" && !result.host) {
+  if (!result.host) {
     throw new Error(`${path}: git_remote requirement must set \`host\``);
   }
   return result;

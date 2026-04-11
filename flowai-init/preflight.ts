@@ -1,11 +1,10 @@
 /**
  * @module
  * Environment precondition checks for `flowai-workflow init`. All checks are
- * collected up-front, so one run surfaces every missing binary or misconfig
- * instead of failing one at a time.
+ * collected up-front, so one run surfaces every misconfig instead of failing
+ * one at a time.
  *
  * Checks performed:
- * - Required binaries are on PATH (`git`, `gh`, `claude` by default).
  * - Current working directory is inside a git worktree.
  * - A git remote named `origin` exists and points to a `github.com` URL.
  * - The target `.flowai-workflow/` directory does not already exist.
@@ -24,8 +23,6 @@ export interface PreflightResult {
 export interface PreflightOptions {
   /** Project root directory (usually `Deno.cwd()`). */
   cwd: string;
-  /** Binaries that must be present on PATH. */
-  requiredBinaries: string[];
   /** Path that MUST NOT exist (usually `<cwd>/.flowai-workflow`). */
   targetDir: string;
   /** When true, skip the clean-git-tree check. */
@@ -100,19 +97,6 @@ export function summarizeFailures(failures: string[]): string {
 // Internal helpers — small subprocess wrappers.
 // ---------------------------------------------------------------------------
 
-async function checkBinary(name: string): Promise<boolean> {
-  try {
-    const { success } = await new Deno.Command(name, {
-      args: ["--version"],
-      stdout: "null",
-      stderr: "null",
-    }).output();
-    return success;
-  } catch {
-    return false;
-  }
-}
-
 async function gitOutput(
   cwd: string,
   args: string[],
@@ -182,52 +166,43 @@ export async function runPreflight(
   const failures: string[] = [];
   let githubSlug: string | undefined;
 
-  // Binary presence.
-  for (const bin of opts.requiredBinaries) {
-    if (!await checkBinary(bin)) {
+  // Git repo check. If git itself is missing, gitOutput catches the
+  // spawn failure and isGitRepo returns false — surfacing as "not a
+  // git repo" which is still actionable.
+  if (!await isGitRepo(opts.cwd)) {
+    failures.push(
+      `${opts.cwd} is not a git repo — run \`git init\` first`,
+    );
+  } else {
+    // Remote + origin host check.
+    const originUrl = await getGitRemoteOrigin(opts.cwd);
+    if (!originUrl) {
       failures.push(
-        `${bin} binary not found in PATH — install it and try again`,
-      );
-    }
-  }
-
-  // Git repo check (only meaningful when git is present).
-  if (!failures.some((f) => f.startsWith("git binary"))) {
-    if (!await isGitRepo(opts.cwd)) {
-      failures.push(
-        `${opts.cwd} is not a git repo — run \`git init\` first`,
+        "git remote `origin` is not configured — the SDLC template " +
+          "requires a GitHub remote",
       );
     } else {
-      // Remote + origin host check.
-      const originUrl = await getGitRemoteOrigin(opts.cwd);
-      if (!originUrl) {
+      const parsed = parseGithubRemote(originUrl);
+      if (!parsed) {
         failures.push(
-          "git remote `origin` is not configured — the SDLC template " +
-            "requires a GitHub remote",
+          `git remote origin (${originUrl}) could not be parsed`,
+        );
+      } else if (parsed.host !== "github.com") {
+        failures.push(
+          `git remote origin points to ${parsed.host}; the SDLC template ` +
+            "requires github.com",
         );
       } else {
-        const parsed = parseGithubRemote(originUrl);
-        if (!parsed) {
-          failures.push(
-            `git remote origin (${originUrl}) could not be parsed`,
-          );
-        } else if (parsed.host !== "github.com") {
-          failures.push(
-            `git remote origin points to ${parsed.host}; the SDLC template ` +
-              "requires github.com",
-          );
-        } else {
-          githubSlug = parsed.slug;
-        }
+        githubSlug = parsed.slug;
       }
+    }
 
-      // Clean-tree check (skipped with --allow-dirty).
-      if (!opts.allowDirty && !await isGitTreeClean(opts.cwd)) {
-        failures.push(
-          "git working tree has uncommitted changes — commit, stash, or " +
-            "pass --allow-dirty",
-        );
-      }
+    // Clean-tree check (skipped with --allow-dirty).
+    if (!opts.allowDirty && !await isGitTreeClean(opts.cwd)) {
+      failures.push(
+        "git working tree has uncommitted changes — commit, stash, or " +
+          "pass --allow-dirty",
+      );
     }
   }
 

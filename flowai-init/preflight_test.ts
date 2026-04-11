@@ -63,14 +63,14 @@ Deno.test("parseGithubRemote — unparseable returns undefined", () => {
 
 Deno.test("summarizeFailures — joins error messages as a bullet list", () => {
   const msg = summarizeFailures([
-    "git binary not found in PATH",
-    "not a git repository",
+    "not a git repo",
+    "origin points to gitlab.com",
   ]);
   // Message must contain both failures verbatim.
-  if (!msg.includes("git binary not found in PATH")) {
+  if (!msg.includes("not a git repo")) {
     throw new Error(`summary missing first failure: ${msg}`);
   }
-  if (!msg.includes("not a git repository")) {
+  if (!msg.includes("origin points to gitlab.com")) {
     throw new Error(`summary missing second failure: ${msg}`);
   }
 });
@@ -123,8 +123,7 @@ Deno.test("runPreflight — clean git repo with github origin passes base check"
     await initGitRepo(root);
     const result = await runPreflight({
       cwd: root,
-      allowDirty: true, // skip binary-existence dependent flag below
-      requiredBinaries: ["git"],
+      allowDirty: true,
       targetDir: join(root, ".flowai-workflow"),
     });
     assertEquals(result.failures, []);
@@ -143,7 +142,6 @@ Deno.test("runPreflight — fails when .flowai-workflow already exists", async (
     const result = await runPreflight({
       cwd: root,
       allowDirty: true,
-      requiredBinaries: ["git"],
       targetDir: join(root, ".flowai-workflow"),
     });
     const joined = result.failures.join("\n");
@@ -178,7 +176,6 @@ Deno.test("runPreflight — fails when origin is not github.com", async () => {
     const result = await runPreflight({
       cwd: root,
       allowDirty: true,
-      requiredBinaries: ["git"],
       targetDir: join(root, ".flowai-workflow"),
     });
     const joined = result.failures.join("\n");
@@ -197,33 +194,11 @@ Deno.test("runPreflight — fails when cwd is not a git repo", async () => {
     const result = await runPreflight({
       cwd: root,
       allowDirty: true,
-      requiredBinaries: ["git"],
       targetDir: join(root, ".flowai-workflow"),
     });
     const joined = result.failures.join("\n");
     if (!joined.toLowerCase().includes("git repo")) {
       throw new Error(`expected 'git repo' in failures: ${joined}`);
-    }
-  } finally {
-    await Deno.remove(root, { recursive: true });
-  }
-});
-
-Deno.test("runPreflight — reports missing binary by name", async () => {
-  if (!await haveBinary("git")) return;
-  const root = await Deno.makeTempDir();
-  try {
-    await initGitRepo(root);
-    const result = await runPreflight({
-      cwd: root,
-      allowDirty: true,
-      // Intentionally nonexistent binary name.
-      requiredBinaries: ["definitely-not-a-real-binary-xyz"],
-      targetDir: join(root, ".flowai-workflow"),
-    });
-    const joined = result.failures.join("\n");
-    if (!joined.includes("definitely-not-a-real-binary-xyz")) {
-      throw new Error(`expected binary name in failures: ${joined}`);
     }
   } finally {
     await Deno.remove(root, { recursive: true });

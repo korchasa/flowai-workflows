@@ -533,11 +533,14 @@ graph LR
     inspect `deno.json`, `package.json`, `go.mod`, `pyproject.toml`,
     `Cargo.toml` in priority order + read-only git plumbing
     (`git symbolic-ref`, `git remote get-url`). Never execute build tools.
-  - `preflight.ts` — environment checks: binary presence (git/gh/claude),
-    `git rev-parse --is-inside-work-tree`, origin remote host validation
-    via `parseGithubRemote` (supports HTTPS, SCP-SSH, URL-SSH forms),
+  - `preflight.ts` — environment checks: `git rev-parse
+    --is-inside-work-tree`, origin remote host validation via
+    `parseGithubRemote` (supports HTTPS, SCP-SSH, URL-SSH forms),
     `.flowai-workflow/` absence, clean-tree check (skippable with
     `--allow-dirty`). All failures collected into a single summary.
+    Rationale: binary-presence checks removed — git commands themselves
+    surface missing-binary errors naturally; `claude` is a workflow-runtime
+    dep not needed at `init` time, so pre-validating it just broke CI.
   - `manifest.ts` — YAML parser + structural validator for `template.yaml`
     with path-aware error messages (e.g. `questions[2].detect: unknown
     handler`).

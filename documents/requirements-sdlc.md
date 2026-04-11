@@ -1081,17 +1081,17 @@
     `flowai-init/templates/sdlc-claude/files/.flowai-workflow/`.
   - [x] Template manifest `template.yaml` declares 4 wizard questions
     (`PROJECT_NAME`, `DEFAULT_BRANCH`, `TEST_CMD`, `LINT_CMD`), hard
-    requirements (`git`, `gh`, `claude`, github.com remote), and file copy
-    rules. Evidence: `flowai-init/templates/sdlc-claude/template.yaml:1-49`.
+    requirements (github.com remote), and file copy rules. Evidence:
+    `flowai-init/templates/sdlc-claude/template.yaml:1-46`.
   - [x] `scaffold.ts` implements placeholder substitution, tracked file copy,
     unwind-on-error, and `.template.json` metadata write. Evidence:
     `flowai-init/scaffold.ts:1-180`.
   - [x] `autodetect.ts` implements per-language handlers (deno/npm/cargo/go/
     pyproject) with priority dispatch. Evidence:
     `flowai-init/autodetect.ts:1-210`.
-  - [x] `preflight.ts` checks binary presence (git/gh/claude), git repo
-    status, `.flowai-workflow/` absence, clean-tree, and parses 3 git remote
-    forms (HTTPS, SCP-SSH, URL-SSH). Evidence: `flowai-init/preflight.ts:1-220`.
+  - [x] `preflight.ts` checks git repo status, `.flowai-workflow/` absence,
+    clean-tree, and parses 3 git remote forms (HTTPS, SCP-SSH, URL-SSH).
+    Evidence: `flowai-init/preflight.ts:1-220`.
   - [x] `manifest.ts` validates `template.yaml` shape with path-aware errors
     (e.g. `questions[2].detect: unknown handler`). Evidence:
     `flowai-init/manifest.ts:1-200`.
@@ -1106,7 +1106,7 @@
     scaffolder via dynamic import, passing `VERSION` as `engineVersion`.
     Evidence: `engine/cli.ts:197-215`.
   - [x] Unit tests cover scaffold, autodetect, preflight, manifest, wizard,
-    and flag parsing (80+ tests). Integration tests stand up a tmp git repo,
+    and flag parsing (79+ tests). Integration tests stand up a tmp git repo,
     run the full `runInit` path in `--answers` mode, and assert on resulting
     file tree, placeholder substitution, and self-containment invariant
     (no files outside `.flowai-workflow/`). Evidence:

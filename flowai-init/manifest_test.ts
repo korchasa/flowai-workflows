@@ -11,7 +11,6 @@ name: "test-template"
 version: "1"
 description: "Test"
 requires:
-  - { kind: binary, name: "git" }
   - { kind: git_remote, host: "github.com" }
 questions:
   - key: PROJECT_NAME
@@ -41,11 +40,9 @@ Deno.test("parseTemplateManifest — parses a valid YAML document", () => {
   assertEquals(manifest.name, "test-template");
   assertEquals(manifest.version, "1");
   assertEquals(manifest.description, "Test");
-  assertEquals(manifest.requires.length, 2);
-  assertEquals(manifest.requires[0].kind, "binary");
-  assertEquals(manifest.requires[0].name, "git");
-  assertEquals(manifest.requires[1].kind, "git_remote");
-  assertEquals(manifest.requires[1].host, "github.com");
+  assertEquals(manifest.requires.length, 1);
+  assertEquals(manifest.requires[0].kind, "git_remote");
+  assertEquals(manifest.requires[0].host, "github.com");
   assertEquals(manifest.questions.length, 4);
   assertEquals(manifest.questions[0].key, "PROJECT_NAME");
   assertEquals(manifest.questions[0].required, true);

@@ -50,10 +50,8 @@ export interface CopyRule {
 
 /** Dependency precondition enforced by preflight. */
 export interface TemplateRequirement {
-  /** Check category: binary presence or git-remote host. */
-  kind: "binary" | "git_remote";
-  /** Binary name (when `kind: binary`). */
-  name?: string;
+  /** Check category. Currently only `git_remote` is supported. */
+  kind: "git_remote";
   /** Expected host (when `kind: git_remote`, e.g., `github.com`). */
   host?: string;
 }

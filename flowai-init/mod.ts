@@ -195,7 +195,6 @@ export async function runInit(
   // --- Preflight ---------------------------------------------------------
   const preflight = await runPreflight({
     cwd,
-    requiredBinaries: requiredBinariesFromManifest(manifest),
     targetDir,
     allowDirty: parsed.allowDirty,
   });
@@ -307,19 +306,6 @@ function fromFileUrlCompat(url: URL): string {
     );
   }
   return fromFileUrl(url);
-}
-
-/** Reshape manifest.requires[] into the binary list preflight expects. */
-function requiredBinariesFromManifest(
-  manifest: TemplateManifest,
-): string[] {
-  const binaries: string[] = [];
-  for (const req of manifest.requires) {
-    if (req.kind === "binary" && req.name) {
-      binaries.push(req.name);
-    }
-  }
-  return binaries;
 }
 
 /**
