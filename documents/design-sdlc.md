@@ -508,17 +508,18 @@ graph LR
   `scripts/check.ts` main sequence. No separate CLI entry point.
 - **Deps:** None (reads `AGENTS.md` directly, no engine dependency).
 
-### 3.12 Project Init Scaffolder (`flowai-init/`, FR-S46)
+### 3.12 Project Init Scaffolder (`engine/init/`, FR-S46)
 
 - **Purpose:** Scaffold a self-contained `.flowai-workflow/` directory in a
   target project. Pure deterministic file copy with placeholder substitution
   — no AI calls, no network. Invoked via `flowai-workflow init`. Dispatched
   from `engine/cli.ts` via dynamic import to preserve engine purity
   (FR-E14 / engine MUST NOT contain domain-specific code).
-- **Package:** `@korchasa/flowai-workflow-init`. Separate workspace member
-  under `flowai-init/` with its own `deno.json`, `scripts/check.ts`, and JSR
-  publish config. Templates and scaffold logic ship together as one JSR
-  artifact.
+- **Packaging:** Ships as an internal subdirectory of `@korchasa/flowai-workflow`
+  (`engine/init/`). Not a separate JSR package — the init subcommand, its
+  templates, and its tests are all part of the engine artifact. Lazy dynamic
+  import still keeps the init module graph off the hot path for non-`init`
+  subcommands.
 - **Module layout:**
   - `mod.ts` — public entry `runInit(argv, opts)`, flag parser
     (`parseInitArgs`), help text, and orchestration of all phases.
@@ -550,7 +551,7 @@ graph LR
     (`parseAnswersYaml`, `mergeAnswers`, `resolveFinalAnswers`) are
     factored out for unit-testing; `runWizard` is the only function that
     touches stdin.
-- **Template layout (`flowai-init/templates/sdlc-claude/`):**
+- **Template layout (`engine/init/templates/sdlc-claude/`):**
   - `template.yaml` — manifest (wizard questions, requirements, file copy
     rules).
   - `README.md` — placeholder list, usage notes, hard dependencies.
@@ -574,10 +575,10 @@ graph LR
     - `tasks/.gitkeep` — placeholder for `.flowai-workflow/tasks/`.
 - **Engine dispatch:** `engine/cli.ts` adds an early branch inside its
   `if (import.meta.main)` block: when `Deno.args[0] === "init"`, it
-  dynamically `import("@korchasa/flowai-workflow-init")` and delegates
-  with `{ engineVersion: VERSION }`. Dynamic import keeps the init code
-  and bundled templates out of the engine module graph when a user runs
-  any other subcommand.
+  dynamically `import("./init/mod.ts")` and delegates with
+  `{ engineVersion: VERSION }`. Dynamic import keeps the init code and
+  bundled templates out of the engine module graph when a user runs any
+  other subcommand.
 - **Wizard flow:**
   1. Preflight — collect all failures up-front (single pass).
   2. Load manifest from `./templates/<name>/template.yaml` relative to the
@@ -603,14 +604,14 @@ graph LR
   - Flag parse error → exit 3.
 - **Exit codes:** 0 (success / help / dry-run), 1 (preflight / scaffold
   failure), 3 (invalid CLI argument).
-- **Root check delegation:** `scripts/check.ts` delegates to
-  `flowai-init/scripts/check.ts` via `deno task check` with `cwd=flowai-init`,
-  following the `ai-ide-cli` pattern. Each workspace member owns its own
-  fmt/lint/type-check/tests/doc-lint/publish-dry-run pipeline.
-- **Deps:** `@std/yaml` (manifest parser), `@std/path`. Engine module
-  dispatcher imports `@korchasa/flowai-workflow-init` via workspace package
-  name (no static coupling — dynamic `await import()` lazy-loads only on
-  `init` subcommand).
+- **Checks:** `engine/init/` participates in the engine's own `deno task
+  check` pipeline — formatting, linting, type-check, tests, doc-lint, and
+  engine publish dry-run all cover it natively. No separate per-package
+  check script. Templates are fmt/lint-excluded (placeholder syntax, shell
+  scripts) via the root `deno.json`.
+- **Deps:** `@std/yaml` (manifest parser), `@std/path`. Engine dispatch
+  uses a relative dynamic import (`./init/mod.ts`) — no JSR dependency
+  boundary between engine and init.
 
 ## 4. Data
 

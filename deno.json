@@ -1,8 +1,7 @@
 {
   "workspace": [
     "./engine",
-    "./ai-ide-cli",
-    "./flowai-init"
+    "./ai-ide-cli"
   ],
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.19",
@@ -30,14 +29,14 @@
     "exclude": [
       "**/*.md",
       ".*/**/*.md",
-      "flowai-init/templates/"
+      "engine/init/templates/"
     ]
   },
   "lint": {
     "exclude": [
       ".claude/",
       ".flowai-workflow/agents/",
-      "flowai-init/templates/"
+      "engine/init/templates/"
     ]
   }
 }

@@ -201,12 +201,12 @@ if (import.meta.main) {
     Deno.exit(0);
   }
 
-  // Dispatch `flowai-workflow init` to the scaffolder package. Dynamic
+  // Dispatch `flowai-workflow init` to the scaffolder module. Dynamic
   // import keeps the init code and its bundled templates out of the
   // engine module graph when the user invokes any other subcommand —
   // the engine remains domain-agnostic (FR-E14).
   if (Deno.args[0] === "init") {
-    const { runInit } = await import("@korchasa/flowai-workflow-init");
+    const { runInit } = await import("./init/mod.ts");
     const exitCode = await runInit(Deno.args.slice(1), {
       engineVersion: VERSION,
     });
