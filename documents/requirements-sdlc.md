@@ -1041,6 +1041,99 @@
   - [x] QA Responsibility #4 updated to delegate to sub-agents with per-focus
     consolidation. Evidence: `.flowai-workflow/agents/agent-qa/SKILL.md`.
 
+### 3.46 FR-S46: Project Init CLI (`flowai-workflow init`)
+
+- **Description:** New CLI subcommand `flowai-workflow init` scaffolds a
+  ready-to-run `.flowai-workflow/` directory in a target project. Pure
+  deterministic file copy with placeholder substitution — no AI calls, no
+  network, no post-init magic. A short interactive wizard collects project-
+  specific values (name, default branch, test/lint commands), autodetected
+  defaults are pre-filled from `deno.json` / `package.json` / `go.mod` /
+  `pyproject.toml` / `Cargo.toml`. A non-interactive `--answers <file.yaml>`
+  mode supports CI-driven provisioning. The bundled template (`sdlc-claude`)
+  is framework-independent: generic agent prompts, zero references to
+  `FR-E/FR-S` numbering, `scope: engine|sdlc` logic, or flowai-workflow
+  internals. Init writes ONLY inside `.flowai-workflow/` — no `.claude/agents/`
+  writes, no top-level `.gitignore` append, no files outside the target
+  directory (self-containment invariant).
+- **Rationale:** Before FR-S46, onboarding required manually creating
+  `workflow.yaml`, copying agent prompts, wiring scripts, and editing
+  placeholder values. High barrier and error-prone. A one-command scaffolder
+  lowers the adoption bar from hours to seconds, and keeps the template
+  shippable via JSR alongside the engine.
+- **Scope separation:** Init implementation lives in a separate workspace
+  member `flowai-init/` (package `@korchasa/flowai-workflow-init`) outside
+  `engine/`. Engine adds only a thin dispatcher: when `argv[0] === "init"`,
+  it dynamically imports the init module and delegates. FR-E14 (engine
+  domain-agnosticism) is preserved — no scaffolding logic or templates live
+  inside `engine/`.
+- **Dep:** Engine workspace layout (separate deno.json per workspace member),
+  FR-S26 (`.flowai-workflow/` asset directory), FR-E14 (engine purity).
+- **Acceptance criteria:**
+  - [x] New workspace member `flowai-init/` with self-contained `deno.json`,
+    `scripts/check.ts`, and JSR package metadata. Evidence:
+    `flowai-init/deno.json:1-25`, `flowai-init/scripts/check.ts:1-84`.
+  - [x] `flowai-init/templates/sdlc-claude/` ships a framework-independent
+    SDLC template: all files live under `.flowai-workflow/` (agents at
+    `agents/agent-*.md`, not `.claude/agents/`). Grep for `FR-E`, `FR-S`,
+    `scope: engine`, `scope: sdlc`, `deno task` in `flowai-init/templates/`
+    returns zero matches. Evidence:
+    `flowai-init/templates/sdlc-claude/files/.flowai-workflow/`.
+  - [x] Template manifest `template.yaml` declares 4 wizard questions
+    (`PROJECT_NAME`, `DEFAULT_BRANCH`, `TEST_CMD`, `LINT_CMD`), hard
+    requirements (`git`, `gh`, `claude`, github.com remote), and file copy
+    rules. Evidence: `flowai-init/templates/sdlc-claude/template.yaml:1-49`.
+  - [x] `scaffold.ts` implements placeholder substitution, tracked file copy,
+    unwind-on-error, and `.template.json` metadata write. Evidence:
+    `flowai-init/scaffold.ts:1-180`.
+  - [x] `autodetect.ts` implements per-language handlers (deno/npm/cargo/go/
+    pyproject) with priority dispatch. Evidence:
+    `flowai-init/autodetect.ts:1-210`.
+  - [x] `preflight.ts` checks binary presence (git/gh/claude), git repo
+    status, `.flowai-workflow/` absence, clean-tree, and parses 3 git remote
+    forms (HTTPS, SCP-SSH, URL-SSH). Evidence: `flowai-init/preflight.ts:1-220`.
+  - [x] `manifest.ts` validates `template.yaml` shape with path-aware errors
+    (e.g. `questions[2].detect: unknown handler`). Evidence:
+    `flowai-init/manifest.ts:1-200`.
+  - [x] `wizard.ts` supports both non-interactive (`--answers`) and
+    interactive (stdin prompts) paths with `resolveFinalAnswers` fallback
+    chain: detected → file → question.default → required check. Evidence:
+    `flowai-init/wizard.ts:1-200`.
+  - [x] `mod.ts` `runInit(argv, opts)` orchestrates preflight → autodetect →
+    wizard → scaffold → metadata with structured exit codes (0/1/3), dry-run
+    path, and help text. Evidence: `flowai-init/mod.ts:1-340`.
+  - [x] Engine dispatcher in `engine/cli.ts` routes `init` subcommand to the
+    scaffolder via dynamic import, passing `VERSION` as `engineVersion`.
+    Evidence: `engine/cli.ts:197-215`.
+  - [x] Unit tests cover scaffold, autodetect, preflight, manifest, wizard,
+    and flag parsing (80+ tests). Integration tests stand up a tmp git repo,
+    run the full `runInit` path in `--answers` mode, and assert on resulting
+    file tree, placeholder substitution, and self-containment invariant
+    (no files outside `.flowai-workflow/`). Evidence:
+    `flowai-init/scaffold_test.ts`, `flowai-init/autodetect_test.ts`,
+    `flowai-init/preflight_test.ts`, `flowai-init/manifest_test.ts`,
+    `flowai-init/wizard_test.ts`, `flowai-init/mod_test.ts`,
+    `flowai-init/integration_test.ts`.
+  - [x] `.flowai-workflow/.template.json` records template name, template
+    version, engine version, ISO 8601 timestamp, and wizard answers. Layout
+    ready for future `flowai-workflow update` command. Evidence:
+    `flowai-init/scaffold.ts` `writeTemplateMetadata`.
+  - [x] `README.md` quickstart explains the init command. Evidence:
+    `README.md` § "Quick Start: New Project".
+- **Out of scope (deferred):**
+  - AI adaptation / bootstrap workflow / post-init `## Project Context`
+    fills. Users edit template-generated agent prompts by hand if they want
+    project-specific tuning.
+  - `flowai-workflow update` command to pull template changes from upstream.
+    v1 records the state (`.template.json`) to enable it later.
+  - Lite 3-agent template (draft → review → finalize). v1 ships SDLC-only.
+  - Multi-IDE templates (Cursor, OpenCode). Requires alternative agent
+    layouts; current layout has zero `.claude/` coupling so adding is a
+    pure addition.
+  - External template repository. Templates remain in-repo for v1.
+  - Non-GitHub remotes (GitLab, Gitea). SDLC template hard-couples to
+    GitHub by design.
+
 ## 4. Non-functional requirements
 
 - **Isolation:** Each agent runs in its own Claude Code process with no shared state except file artifacts. Single local execution assumed (one workflow at a time). Concurrent execution is not supported.

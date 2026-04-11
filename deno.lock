@@ -42,6 +42,8 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@^1.0.19",
+      "jsr:@std/cli@1",
+      "jsr:@std/fs@1",
       "jsr:@std/path@^1.1.4",
       "jsr:@std/semver@1",
       "jsr:@std/yaml@^1.0.12"

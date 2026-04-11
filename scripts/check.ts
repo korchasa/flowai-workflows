@@ -360,6 +360,21 @@ if (import.meta.main) {
     Deno.exit(1);
   }
 
+  // Delegate init scaffolder checks to @korchasa/flowai-workflow-init.
+  console.log("\n--- @korchasa/flowai-workflow-init (delegated) ---");
+  console.log("> deno task check (cwd=flowai-init)");
+  const initCheck = new Deno.Command("deno", {
+    args: ["task", "check"],
+    cwd: "flowai-init",
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const { success: initOk } = await initCheck.output();
+  if (!initOk) {
+    console.error("FAILED: @korchasa/flowai-workflow-init check");
+    Deno.exit(1);
+  }
+
   await workflowIntegrity();
   await hitlArtifactSource();
   await agentListAccuracy();

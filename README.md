@@ -69,6 +69,64 @@ Inter-agent communication uses structured Markdown artifacts in `<runs-dir>/<run
 - **Resume** — failed/interrupted runs resumable via `--resume <run-id>`; completed nodes skipped
 - **Observability** — 4 verbosity levels (`-q` / default / `-s` / `-v`); status lines with timestamps; final summary
 
+## Quick Start: New Project
+
+Scaffold a ready-to-run `.flowai-workflow/` directory into an existing
+project in one command:
+
+```bash
+cd your-project
+flowai-workflow init
+```
+
+The wizard asks four questions (project name, default branch, test
+command, lint command) with autodetected defaults read from `deno.json`,
+`package.json`, `go.mod`, `pyproject.toml`, or `Cargo.toml`. On success, the
+bundled SDLC template (PM → Architect → Tech Lead → Developer/QA loop →
+Tech Lead Review) is written into `.flowai-workflow/`, ready for:
+
+```bash
+flowai-workflow --config .flowai-workflow/workflow.yaml
+```
+
+### Non-interactive init (CI)
+
+```bash
+cat > init-answers.yaml <<EOF
+PROJECT_NAME: my-project
+DEFAULT_BRANCH: main
+TEST_CMD: npm test
+LINT_CMD: npm run lint
+EOF
+
+flowai-workflow init --answers init-answers.yaml
+```
+
+### Hard dependencies
+
+Init preflight verifies all of these before writing any files:
+
+- `git` — version control.
+- `gh` — GitHub CLI (issue triage, PR creation, merge).
+- `claude` — Claude Code CLI (agent runtime).
+- A `github.com` remote on `origin` (HTTPS, SCP-SSH, or URL-SSH).
+
+Missing dependencies are reported together in a single summary so the
+first run can be fixed in one pass. Init writes **only** inside
+`.flowai-workflow/` — no `.claude/agents/`, no top-level `.gitignore`
+append, no files outside the target directory. Run `flowai-workflow init
+--dry-run` to preview the file list before committing.
+
+### What's inside the template
+
+The `sdlc-claude` template is framework-independent: generic agent
+prompts with no hardcoded project-specific references. Review and tune
+`.flowai-workflow/agents/agent-*.md` for your project conventions after
+scaffold. A separate `flowai-workflow update` command will pull upstream
+template changes in a future release — metadata in
+`.flowai-workflow/.template.json` records the engine + template version
+at init time for the diff.
+
 ## Quick Start
 
 ```bash
