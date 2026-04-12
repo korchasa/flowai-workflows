@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.14](https://github.com/korchasa/flowai-workflow/compare/v0.1.13...v0.1.14) (2026-04-12)
+
+
+### Bug Fixes
+
+* **engine/cli:** use flowai-workflow binary name in --help examples ([10c5d72](https://github.com/korchasa/flowai-workflow/commit/10c5d728ea8b87881476ec6ae1b180cb01c448b5))
+
 ### [0.1.13](https://github.com/korchasa/flowai-workflow/compare/v0.1.12...v0.1.13) (2026-04-12)
 
 
