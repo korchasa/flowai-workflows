@@ -127,11 +127,10 @@
 
 - **Description:** First-class `permission_mode` field in `WorkflowDefaults` and
   `NodeConfig` that maps to Claude Code's `--permission-mode` CLI flag. Replaces
-  raw `--dangerously-skip-permissions` in `claude_args`. Supported values:
+  raw `--dangerously-skip-permissions` in `runtime_args`. Supported values:
   `acceptEdits`, `bypassPermissions`, `default`, `dontAsk`, `plan`, `auto`.
   Per-node override cascades: node → defaults → omit. Config validation rejects
-  invalid values and detects conflicts with permission-related flags in
-  `claude_args`.
+  invalid values.
 - **Motivation:** Declarative, type-safe permission control. Eliminates raw CLI
   arg strings, enables per-node granularity, validates at config load time.
 - **Acceptance criteria:**
@@ -141,10 +140,8 @@
     Evidence: `engine/claude-process.ts:88-90`.
   - [x] AC3: Config validation rejects invalid values. Evidence:
     `engine/config.ts:138-149`; `engine/config_test.ts` (invalid mode tests).
-  - [x] AC4: Conflict detection: error if `claude_args` contains
-    `--dangerously-skip-permissions` or `--permission-mode` AND
-    `permission_mode` field is also set. Evidence: `engine/config.ts:150-162`;
-    `engine/config_test.ts` (conflict tests).
+  - [ ] AC4: (Removed) `claude_args` field removed in favor of universal
+    `runtime_args`.
   - [x] AC5: Per-node override resolution (node → defaults → omit) in
     `node-dispatch.ts` and `loop.ts`. Evidence: `engine/node-dispatch.ts:54`,
     `engine/loop.ts:93-94`.

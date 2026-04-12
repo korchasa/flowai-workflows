@@ -128,139 +128,26 @@
     (FR-E22) — persists excerpt to `NodeState.result` in `state.json`
   - **IDE CLI wrapper layer (FR-E44)** — extracted to
     `@korchasa/ai-ide-cli` (sibling workspace member `ai-ide-cli/`, published
-    separately on JSR). Runtime adapters, low-level Claude/OpenCode
-    runners, Claude stream parser, OpenCode HITL MCP helper, and pure
-    process registry all live in that package. Engine imports via
-    sub-path specifiers (e.g. `@korchasa/ai-ide-cli/runtime`,
-    `@korchasa/ai-ide-cli/claude/process`) and owns only workflow-level
-    concerns. Library has zero imports from engine (one-way dependency
-    invariant — guarded by `rg` in Step 11 of the migration plan).
-  - `@korchasa/ai-ide-cli/runtime` — runtime adapters and capability
-    metadata. `runtime/index.ts` exposes `getRuntimeAdapter(id)` and
-    `resolveRuntimeConfig({defaults, node, parent})` (node > parent >
-    defaults precedence). `resolveRuntimeConfig` takes a library-local
-    `RuntimeConfigSource` shape so engine's `NodeConfig` /
-    `WorkflowDefaults` structurally satisfy it without the library
-    depending on workflow types. `runtime/claude-adapter.ts` wraps
-    `claude/process.ts` (`permissionMode=true`, `hitl=true`,
-    `transcript=true`). `runtime/opencode-adapter.ts` wraps
-    `opencode/process.ts` (`permissionMode=true`, `hitl=true`,
-    `transcript=false`). Normalized output shape `CliRunOutput`
-    (runtime-neutral rename of former `ClaudeCliOutput`) carries
-    `result`, `session_id`, `total_cost_usd`, `duration_ms`,
-    `duration_api_ms`, `num_turns`, `is_error`, optional
-    `permission_denials`, `hitl_request`, `runtime`.
+    separately on JSR). Runtime adapters, low-level Claude/OpenCode/Cursor
+    runners, stream parsers, HITL MCP helper, and process registry live in
+    that package. Engine imports via sub-path specifiers (e.g.
+    `@korchasa/ai-ide-cli/runtime`, `@korchasa/ai-ide-cli/claude/process`).
+    Library has zero imports from engine (one-way dependency invariant).
+    See `ai-ide-cli/documents/design.md` for full module descriptions.
   - `agent.ts` — runtime-agnostic agent invocation, continuation loop, retry.
     Agent context injected via `--agent` + `--append-system-prompt` (native
     Claude Code subagents in `.claude/agents/*.md`). Pipeline-specific context
     via `task_template` `{{file(...)}}` (FR-S38). Base system prompt preserved.
-    Runtime resolution is centralized in `@korchasa/ai-ide-cli/runtime`;
+    Runtime resolution centralized in `@korchasa/ai-ide-cli/runtime`;
     `runAgent()` resolves the adapter once and keeps continuation semantics
-    unchanged across runtimes. `AgentRunOptions.model`: optional string for
-    per-node model selection. For Claude, `buildClaudeArgs()` (from
-    `@korchasa/ai-ide-cli/claude/process`) emits `--model <value>` only on
-    fresh invocations (resume inherits model from session). For OpenCode,
-    the runner at `@korchasa/ai-ide-cli/opencode/process` emits
-    `run --model <provider/model>` on fresh invocations and resumes
-    sessions with `run --session <id>`. `runAgent()` wires
-    `hitlMcpCommandBuilder` from `engine/hitl-mcp-command.ts` so the
-    OpenCode runner can self-spawn the engine binary for the stdio MCP
-    HITL helper.
-    **Permission mode (FR-E40):** `PermissionMode` union type in `types.ts`
-    with 6 values matching Claude CLI `--permission-mode` flag. Optional field
-    on `WorkflowDefaults` and `NodeConfig`. Resolution cascade:
-    `node.permission_mode → config.defaults.permission_mode → omit`.
-    `buildClaudeArgs()` emits `--permission-mode <value>` when set.
-    `DEFAULT_WORKFLOW_DEFAULTS` uses `Omit<WorkflowDefaults, "permission_mode">`
-    to keep field absent by default (no empty-string sentinel).
-    Config validation in `validateSchema()`: rejects invalid values via
-    `VALID_PERMISSION_MODES` constant; conflict detection throws if
-    `claude_args` contains `--dangerously-skip-permissions` or
-    `--permission-mode` while `permission_mode` field is also set. Effective
-    `opencode` agent nodes reject `permission_mode` at config-load time.
-    Threaded through: `AgentRunOptions`, `ClaudeInvokeOptions`, `HitlBaseParams`,
-    `HitlRunOptions` — all accept optional `permissionMode?: string`.
-    `executeClaudeProcess()` uses `--output-format stream-json` and reads
-    stdout line-by-line. Each JSON line appended to `streamLogPath` file
-    (crash-resilient incremental write via `Deno.writeFile({ append: true })`).
-    **Stream log timestamps (FR-E18):** `tsPrefix()` returns `[HH:MM:SS]`
-    wall-clock prefix; `stampLines()` prepends it to each non-empty line (empty
-    lines pass through). Applied to log file writes only — terminal output via
-    `onOutput` callback receives raw text without timestamps.
-    On `result` event: extracts `CliRunOutput` fields (`result`,
-    `session_id`, `is_error`, `total_cost_usd`, `duration_ms`,
-    `duration_api_ms`, `num_turns`, `permission_denials`). `is_error` derived
-    from `subtype !== "success"`. No `result` event → throws descriptive error.
-    `streamLogPath` accepted as required parameter in `executeClaudeProcess()`.
-    Append semantics: multiple invocations (continuation) with same path
-    produce concatenated JSONL. `--verbose` flag removed from
-    `buildClaudeArgs()` (unrelated to streaming, changes stderr globally).
-  - `@korchasa/ai-ide-cli/opencode/process` — low-level
-    `opencode run --format json` runner (formerly
-    `engine/opencode-process.ts`). Parses NDJSON events (`step_start`,
-    `text`, `step_finish`, `error`), normalizes them into
-    `CliRunOutput`-compatible shape, and supports generic runtime
-    extension flags via `runtime_args` (for example `--variant high`).
-    OpenCode has no dedicated system-prompt flag, so the adapter prepends
-    `system_prompt` content to the task prompt before invocation. When
-    `hitlConfig` is set, the runner injects a per-invocation local MCP
-    server through `OPENCODE_CONFIG_CONTENT`; the MCP sub-process `argv`
-    comes from the consumer-provided
-    `RuntimeInvokeOptions.hitlMcpCommandBuilder` callback — the library
-    ships no binary and throws a clear error if `hitlConfig` is set
-    without a builder. The engine supplies the builder via
-    `engine/hitl-mcp-command.ts`, pointing at engine's own `cli.ts`
-    (`--internal-opencode-hitl-mcp`). The injected server exposes
-    `request_human_input`, surfaced in stream events as
-    `hitl_request_human_input`. The parsed stream is normalized into the
-    same output shape consumed elsewhere by state, continuation, and log
-    code (`CliRunOutput` + optional `hitl_request`).
-    **Repeated file read warning (FR-E20):** `FileReadTracker` class in
-    `agent.ts`. `track(path): string | null` — maintains `Map<string, number>`,
-    returns `[WARN] repeated file read: <path> (<N> times)` when count >
-    threshold (default 2), else null. Instantiated per `executeClaudeProcess()`
-    call (counter resets per invocation). In event loop: for `tool_use` blocks
-    with `name === "Read"`, calls `tracker.track(block.input.file_path)`. Non-
-    null result written to `logFile` via `stampLines()`. Log-file-only (terminal
-    `onOutput` unchanged). Pure-logic class — unit-testable without I/O.
-    **Turn separators and summary footer (FR-S20):** `executeClaudeProcess()`
-    maintains `turnCount` counter. On each `event.type === "assistant"`:
-    increments counter, writes `--- turn N ---` line to `logFile` via
-    `stampLines()` (timestamped, consistent with existing log writes). After
-    `result` event extraction: writes `--- end ---` + one-line summary via
-    `formatFooter(output: CliRunOutput): string`. Footer format:
-    `status=<ok|error> duration=<X>s cost=$<Y> turns=<N>`. Both separators and
-    footer are log-file-only (terminal `onOutput` callback unchanged).
-    `formatFooter()` is a pure function — unit-testable without CLI.
-    **Stream event processor extraction (FR-E30):** `processStreamEvent(event,
-    state): Promise<void>` — extracted helper consolidating duplicated event-
-    processing logic from main loop and buffer-remainder block in
-    `executeClaudeProcess()`. Receives parsed JSON event + mutable
-    `StreamProcessorState` bag (`turnCount`, `resultEvent`, `tracker:
-    FileReadTracker`, `logFile`, `encoder`, `onOutput?`, `verbosity?`).
-    Performs: turn counting + separator writing, file-read tracking (warns on
-    repeated reads), result event extraction, log file writes via `stampLines()`,
-    footer generation via `formatFooter()`, terminal output forwarding via
-    `onOutput` callback (with optional semi-verbose filtering). Both call sites
-    in `executeClaudeProcess()` reduce to: parse JSON → `await
-    processStreamEvent(parsed, state)`. Net ~40-line reduction. Pure-ish
-    function — unit-testable with synthetic events, no CLI spawn.
-    **Repeated file read warning (FR-S20):** `executeClaudeProcess()` maintains
-    `readCounts: Map<string, number>` tracking per-path `Read` tool-use events.
-    On each `assistant` event: iterates `message.content` blocks, detects
-    `tool_use` with `name === "Read"`, extracts `input.file_path`, increments
-    count. When count > 2: writes warning to `logFile` via `stampLines()`.
-    `checkRepeatedRead(readCounts, filePath): string | null` — helper: increments
-    map, returns formatted warning when count > 2, else null.
-    `formatRepeatedReadWarning(path, count): string` — pure function returning
-    `[WARN] repeated file read: <path> (<N> times)`. Exported for unit testing.
-    Warning is log-only (no `onOutput` callback). Counters reset per invocation
-    (map is local to `executeClaudeProcess()` call). Execution not blocked.
-    **Semi-verbose filtering (FR-E21):** `formatEventForOutput(event,
-    verbosity?)` accepts optional `Verbosity` param. When
-    `verbosity === "semi-verbose"`, skips `tool_use` content blocks in
-    `assistant` events — emits only `text` blocks. Default `undefined` =
-    all blocks (backward-compatible). Log file writes call without verbosity
-    (full output preserved). `onOutput` callback path passes verbosity from
-    `AgentRunOptions` so terminal output is filtered at source
+    unchanged across runtimes. `runAgent()` wires `hitlMcpCommandBuilder`
+    from `engine/hitl-mcp-command.ts` for OpenCode HITL.
+    **Permission mode (FR-E40):** `PermissionMode` type in
+    `@korchasa/ai-ide-cli/types`. Optional field on `WorkflowDefaults` and
+    `NodeConfig`. Resolution cascade: node → defaults → omit. Config
+    validation rejects invalid values. Non-claude runtimes (`opencode`,
+    `cursor`) accept only `bypassPermissions`.
+    Low-level CLI invocation, stream parsing, event formatting, and
+    `FileReadTracker` live in `@korchasa/ai-ide-cli` — see
+    `ai-ide-cli/documents/design/01-modules.md` for details
 

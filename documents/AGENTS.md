@@ -4,10 +4,12 @@
 
 ## Scope Separation
 
-Project has two documentation scopes:
+Project has three documentation scopes:
 
 - **Engine** — domain-agnostic DAG executor (`engine/`). Core features: node
   types, validation, continuation, resume, HITL, CLI, template interpolation.
+- **AI IDE CLI** — CLI wrapper library (`ai-ide-cli/`). Runtime adapters,
+  subprocess management, stream parsing, HITL MCP wiring.
 - **SDLC Workflow** — example workflow using the engine. SDLC-specific agents,
   prompts, GitHub workflow, dashboard, devcontainer.
 
@@ -31,14 +33,19 @@ Each scope has its own SRS and SDS files.
 2. **SRS Engine** (`documents/requirements-engine.md` — index; sections under
    `documents/requirements-engine/*.md`): "What" & "Why" for engine. Source
    of truth. FR-E numbering.
-3. **SRS SDLC** (`documents/requirements-sdlc.md` — index; sections under
+3. **SRS AI IDE CLI** (`ai-ide-cli/documents/requirements.md` — index;
+   sections under `ai-ide-cli/documents/requirements/*.md`): "What" & "Why"
+   for CLI wrapper library. FR-L numbering.
+4. **SRS SDLC** (`documents/requirements-sdlc.md` — index; sections under
    `documents/requirements-sdlc/*.md`): "What" & "Why" for SDLC workflow.
    Source of truth. FR-S numbering.
-4. **SDS Engine** (`documents/design-engine.md` — index; sections under
+5. **SDS Engine** (`documents/design-engine.md` — index; sections under
    `documents/design-engine/*.md`): "How" for engine.
-5. **SDS SDLC** (`documents/design-sdlc.md` — index; sections under
+6. **SDS AI IDE CLI** (`ai-ide-cli/documents/design.md` — index; sections
+   under `ai-ide-cli/documents/design/*.md`): "How" for CLI wrapper library.
+7. **SDS SDLC** (`documents/design-sdlc.md` — index; sections under
    `documents/design-sdlc/*.md`): "How" for SDLC workflow.
-6. **Tasks** (`documents/tasks/<YYYY-MM-DD>-<slug>.md`): Temporary plans/notes per task.
+8. **Tasks** (`documents/tasks/<YYYY-MM-DD>-<slug>.md`): Temporary plans/notes per task.
 
 ### File size budget
 

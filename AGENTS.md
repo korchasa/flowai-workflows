@@ -72,8 +72,8 @@ Project is a Deno workspace with two members, each a separately published
 JSR package:
 
 - `engine/` → `@korchasa/flowai-workflow` — DAG executor (main package)
-- `ai-ide-cli/` → `@korchasa/ai-ide-cli` — Claude/OpenCode CLI wrapper library
-  (extracted from engine per FR-E44; engine depends on it one-way)
+- `ai-ide-cli/` → `@korchasa/ai-ide-cli` — Claude/OpenCode/Cursor CLI wrapper
+  library (extracted from engine per FR-E44; engine depends on it one-way)
 
 Workspace gotchas discovered empirically — honor these to avoid CI failures:
 
@@ -104,19 +104,23 @@ Workspace gotchas discovered empirically — honor these to avoid CI failures:
 
 ## Scope Separation
 
-Two scopes with strict boundary:
+Three scopes with strict boundaries:
 
 - **Engine** (`scope: engine`) — domain-agnostic DAG executor (`engine/`).
   Node types, validation, continuation, resume, HITL, CLI, templates.
   SRS: `documents/requirements-engine.md`. SDS: `documents/design-engine.md`.
   GitHub label: `scope: engine`.
+- **AI IDE CLI** (`scope: ai-ide-cli`) — CLI wrapper library (`ai-ide-cli/`).
+  Runtime adapters, subprocess management, stream parsing, HITL MCP.
+  SRS: `ai-ide-cli/documents/requirements.md`.
+  SDS: `ai-ide-cli/documents/design.md`.
 - **SDLC Workflow** (`scope: sdlc`) — example workflow using the engine.
   Agents, prompts, GitHub workflow, dashboard, devcontainer.
   SRS: `documents/requirements-sdlc.md`. SDS: `documents/design-sdlc.md`.
   GitHub label: `scope: sdlc`.
 
-FR numbering: `FR-E<N>` (engine), `FR-S<N>` (SDLC). Existing `FR-<N>` kept
-as aliases during migration.
+FR numbering: `FR-E<N>` (engine), `FR-L<N>` (ai-ide-cli library),
+`FR-S<N>` (SDLC). Existing `FR-<N>` kept as aliases during migration.
 
 ## GitHub Issue Rules
 
@@ -147,8 +151,14 @@ as aliases during migration.
 
 ## Documentation Hierarchy
 1. **`AGENTS.md`**: Project vision, constraints, mandatory rules. READ-ONLY reference.
-2. **SRS** (`documents/requirements-engine.md` + `documents/requirements-engine/*.md`; `documents/requirements-sdlc.md` + `documents/requirements-sdlc/*.md`): "What" & "Why". Source of truth for requirements. The top-level `.md` files are thin indexes mapping FR-IDs to section files — read the index first, then only the section(s) you need.
-3. **SDS** (`documents/design-engine.md` + `documents/design-engine/*.md`; `documents/design-sdlc.md` + `documents/design-sdlc/*.md`): "How". Architecture and implementation. Same index + sections pattern as SRS. Depends on SRS.
+2. **SRS** — "What" & "Why". Source of truth for requirements. Index + section files pattern — read the index first, then only the section(s) you need.
+   - Engine: `documents/requirements-engine.md` + `documents/requirements-engine/*.md`
+   - AI IDE CLI: `ai-ide-cli/documents/requirements.md` + `ai-ide-cli/documents/requirements/*.md`
+   - SDLC: `documents/requirements-sdlc.md` + `documents/requirements-sdlc/*.md`
+3. **SDS** — "How". Architecture and implementation. Same index + sections pattern. Depends on SRS.
+   - Engine: `documents/design-engine.md` + `documents/design-engine/*.md`
+   - AI IDE CLI: `ai-ide-cli/documents/design.md` + `ai-ide-cli/documents/design/*.md`
+   - SDLC: `documents/design-sdlc.md` + `documents/design-sdlc/*.md`
 4. **Tasks** (`documents/tasks/<YYYY-MM-DD>-<slug>.md`): Temporary plans/notes per task.
 5. **`README.md`**: Public-facing overview. Installation, usage, quick start. Derived from AGENTS.md + SRS + SDS.
 
