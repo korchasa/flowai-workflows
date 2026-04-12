@@ -28,13 +28,25 @@ Each scope has its own SRS and SDS files.
 ## Hierarchy
 
 1. **`AGENTS.md`**: "Why" & "For Whom". Long-term goal/value. READ-ONLY.
-2. **SRS Engine** (`documents/requirements-engine.md`): "What" & "Why" for
-   engine. Source of truth. FR-E numbering.
-3. **SRS SDLC** (`documents/requirements-sdlc.md`): "What" & "Why" for SDLC
-   workflow. Source of truth. FR-S numbering.
-4. **SDS Engine** (`documents/design-engine.md`): "How" for engine.
-5. **SDS SDLC** (`documents/design-sdlc.md`): "How" for SDLC workflow.
+2. **SRS Engine** (`documents/requirements-engine.md` — index; sections under
+   `documents/requirements-engine/*.md`): "What" & "Why" for engine. Source
+   of truth. FR-E numbering.
+3. **SRS SDLC** (`documents/requirements-sdlc.md` — index; sections under
+   `documents/requirements-sdlc/*.md`): "What" & "Why" for SDLC workflow.
+   Source of truth. FR-S numbering.
+4. **SDS Engine** (`documents/design-engine.md` — index; sections under
+   `documents/design-engine/*.md`): "How" for engine.
+5. **SDS SDLC** (`documents/design-sdlc.md` — index; sections under
+   `documents/design-sdlc/*.md`): "How" for SDLC workflow.
 6. **Whiteboards** (`documents/whiteboards/<YYYY-MM-DD>-<slug>.md`): Temporary plans/notes per task.
+
+### File size budget
+
+Every file under `documents/` must fit in `Read`'s 10k-token limit. Working
+budget ~8k tokens / ~30 KB per file. If a file grows past this, split it by
+functional area: keep the original path as a thin index, move sections into
+a sibling directory. FR-IDs are stable on move — never renumber.
+`scripts/check.ts` enforces this via `docsTokenBudget()`.
 
 ## Rules
 

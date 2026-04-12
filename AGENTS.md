@@ -147,8 +147,8 @@ as aliases during migration.
 
 ## Documentation Hierarchy
 1. **`AGENTS.md`**: Project vision, constraints, mandatory rules. READ-ONLY reference.
-2. **SRS** (`documents/requirements-engine.md`, `documents/requirements-sdlc.md`): "What" & "Why". Source of truth for requirements.
-3. **SDS** (`documents/design-engine.md`, `documents/design-sdlc.md`): "How". Architecture and implementation. Depends on SRS.
+2. **SRS** (`documents/requirements-engine.md` + `documents/requirements-engine/*.md`; `documents/requirements-sdlc.md` + `documents/requirements-sdlc/*.md`): "What" & "Why". Source of truth for requirements. The top-level `.md` files are thin indexes mapping FR-IDs to section files — read the index first, then only the section(s) you need.
+3. **SDS** (`documents/design-engine.md` + `documents/design-engine/*.md`; `documents/design-sdlc.md` + `documents/design-sdlc/*.md`): "How". Architecture and implementation. Same index + sections pattern as SRS. Depends on SRS.
 4. **Whiteboards** (`documents/whiteboards/<YYYY-MM-DD>-<slug>.md`): Temporary plans/notes per task.
 5. **`README.md`**: Public-facing overview. Installation, usage, quick start. Derived from AGENTS.md + SRS + SDS.
 
@@ -201,8 +201,14 @@ When the root cause is outside your control (missing API keys/URLs, missing gene
 
 - **ONE READ PER FILE. ZERO re-reads.** After Read(file), its FULL content is
   in context. Do NOT re-read — not even partially, not even after Write/Edit.
-- **No offset/limit.** NEVER pass offset or limit to Read(). All project files
-  are under 2000 lines. Always read full file.
+- **No offset/limit.** NEVER pass offset or limit to Read(). Always read full
+  file.
+- **File size budget.** All project files fit within Read's 10k-token limit
+  (working budget ~8k tokens / ~30 KB per file). If a file grows past the
+  limit, split it by functional area and expose a thin index at the original
+  path — see `documents/requirements-engine.md` as the reference pattern
+  (index file at the original path, section files in a sibling directory).
+  Enforced by `scripts/check.ts::docsTokenBudget()`.
 - **ZERO Grep after Read.** After reading a file, extract ALL needed facts in
   your SAME text response. Do NOT Grep the same file — the content IS in your
   context. Use Grep ONLY for files you have NOT read.
@@ -220,4 +226,4 @@ When the root cause is outside your control (missing API keys/URLs, missing gene
   context limits. Write down important facts from tool results in your text
   response — original tool results may be cleared later.
 
-> **Before you start:** read `documents/requirements-engine.md` (or `requirements-sdlc.md`) and `documents/design-engine.md` (or `design-sdlc.md`) if you haven't in this session. They contain project requirements and architecture that inform every task.
+> **Before you start:** read `documents/requirements-engine.md` (or `requirements-sdlc.md`) and `documents/design-engine.md` (or `design-sdlc.md`) if you haven't in this session. These are thin index files — read the index, then open only the section file(s) from `documents/requirements-engine/`, `requirements-sdlc/`, `design-engine/`, or `design-sdlc/` that your task touches. Index files contain FR-ID → section-file maps.

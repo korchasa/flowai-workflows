@@ -89,11 +89,15 @@ async function hasTestFiles(dir: string): Promise<boolean> {
   return false;
 }
 
-async function* walkDir(dir: string): AsyncGenerator<string> {
+async function* walkDir(
+  dir: string,
+  skipDirs?: Set<string>,
+): AsyncGenerator<string> {
   for await (const entry of Deno.readDir(dir)) {
     const path = `${dir}/${entry.name}`;
     if (entry.isDirectory && !entry.name.startsWith(".")) {
-      yield* walkDir(path);
+      if (skipDirs?.has(entry.name)) continue;
+      yield* walkDir(path, skipDirs);
     } else if (entry.isFile) {
       yield path;
     }
@@ -223,6 +227,41 @@ async function agentListAccuracy(): Promise<void> {
   console.log("  AGENTS.md agent list valid (6 active agents, no deprecated).");
 }
 
+/**
+ * Enforces per-file size budget on `documents/` so every doc fits in the
+ * `Read` tool's 10k-token limit in one call. Uses a byte heuristic (~3.4
+ * bytes per token, measured empirically on SRS/SDS) with a working budget
+ * of 30 KB (~8800 tokens), leaving ~1200-token headroom. Files exceeding
+ * the budget must be split by functional area (see AGENTS.md Read
+ * Efficiency rules). Whiteboards and rnd/ are excluded — temp/reference.
+ */
+async function docsTokenBudget(): Promise<void> {
+  console.log("\n--- Docs Token Budget ---");
+  const MAX_BYTES = 30000; // ≈ 8800 tokens (≈ 3.4 B/tok)
+  // Prune temp/reference subtrees at walk level — they may contain many
+  // files (one whiteboard per task) and are not subject to the budget.
+  const skipDirs = new Set(["whiteboards", "rnd"]);
+  const offenders: string[] = [];
+  for await (const entry of walkDir("documents", skipDirs)) {
+    if (!entry.endsWith(".md")) continue;
+    const info = await Deno.stat(entry);
+    if (info.size > MAX_BYTES) {
+      const estTokens = Math.round(info.size / 3.4);
+      offenders.push(
+        `  ${entry}: ${info.size} bytes (~${estTokens} tok) > ${MAX_BYTES} bytes budget`,
+      );
+    }
+  }
+  if (offenders.length > 0) {
+    for (const line of offenders) console.error(line);
+    console.error(
+      "FAILED: Docs token budget — split overlarge files by functional area (see AGENTS.md Read Efficiency).",
+    );
+    Deno.exit(1);
+  }
+  console.log("  All documents/ files fit within Read-tool token budget.");
+}
+
 export function printUsage(): string {
   return `Full project verification: fmt, lint, test, comment-scan
 
@@ -240,6 +279,7 @@ Checks performed:
   - Workflow integrity check
   - AGENTS.md agent list accuracy
   - HITL artifact_source template validation
+  - Docs token budget (every documents/*.md fits in Read's 10k-token limit)
   - Comment marker scan (TODO/FIXME/HACK/XXX)
 
 No options accepted.
@@ -363,6 +403,7 @@ if (import.meta.main) {
   await workflowIntegrity();
   await hitlArtifactSource();
   await agentListAccuracy();
+  await docsTokenBudget();
   await commentScan();
 
   console.log("\n=== All checks passed! ===");
