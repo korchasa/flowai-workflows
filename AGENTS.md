@@ -68,20 +68,34 @@ example of engine usage.
 
 ## Deno Workspace Layout
 
-Project is a Deno workspace with two members, each a separately published
-JSR package:
+Project is a single-member Deno workspace:
 
 - `engine/` → `@korchasa/flowai-workflow` — DAG executor (main package)
-- `ai-ide-cli/` → `@korchasa/ai-ide-cli` — Claude/OpenCode/Cursor CLI wrapper
-  library (extracted from engine per FR-E44; engine depends on it one-way)
+
+The Claude/OpenCode/Cursor CLI wrapper library
+(`@korchasa/ai-ide-cli`) lives in the sibling repo
+[`korchasa/ai-ide-cli`](https://github.com/korchasa/ai-ide-cli).
+Engine depends on it one-way via JSR (`jsr:@korchasa/ai-ide-cli@^0.2.0`,
+pinned in `engine/deno.json`).
+
+For local cross-repo iteration (edit library, see effect in engine
+without a JSR republish), clone both repos side by side under one
+parent dir and add a `links` entry to the root `deno.json` — Deno
+resolves the JSR specifier from the sibling checkout instead of the
+registry:
+
+```jsonc
+{
+  "workspace": ["./engine"],
+  "links": ["../ai-ide-cli"]  // local dev only — do not commit
+}
+```
+
+`links` is intentionally NOT committed to keep CI and publish-dry-run
+honest about the JSR-published version.
 
 Workspace gotchas discovered empirically — honor these to avoid CI failures:
 
-- **`deno publish` from workspace root publishes ONLY the first member.**
-  CI and local publish must use explicit per-member `cd <member> && deno
-  publish` steps. Publication order matters: `ai-ide-cli` first, then
-  `engine` (engine's workspace imports auto-pin to ide-cli version at
-  publish time, so ide-cli must already exist on JSR).
 - **`publish.include` cannot reference files outside the package
   directory.** `../README.md` / `../LICENSE` get rejected with
   `error[invalid-path]`. Each member ships only its own files.
@@ -89,11 +103,8 @@ Workspace gotchas discovered empirically — honor these to avoid CI failures:
   Keep `name`/`version`/`exports`/`publish` out of root deno.json —
   move them into member `deno.json` files.
 - **`deno compile` DOES embed workspace members inline** without requiring
-  JSR publication — the resulting binary is self-contained.
-- **`deno task check` runs both packages' checks** — engine's `scripts/
-  check.ts` runs engine publish dry-run, then delegates to
-  `cd ai-ide-cli && deno task check` for library-scoped verification
-  (fmt/lint/type-check/tests/doc-lint/publish-dry).
+  JSR publication — the resulting binary is self-contained. With `links`,
+  the patched sibling package is also embedded inline.
 - **JSR slow-types rules (`no-slow-types`, `missing-jsdoc`,
   `private-type-ref`) fire ONLY on `deno publish --dry-run`** — not on
   `deno check` or `deno lint`. Always run `deno task check` before commit
@@ -104,23 +115,24 @@ Workspace gotchas discovered empirically — honor these to avoid CI failures:
 
 ## Scope Separation
 
-Three scopes with strict boundaries:
+Two scopes with strict boundaries:
 
 - **Engine** (`scope: engine`) — domain-agnostic DAG executor (`engine/`).
   Node types, validation, continuation, resume, HITL, CLI, templates.
   SRS: `documents/requirements-engine.md`. SDS: `documents/design-engine.md`.
   GitHub label: `scope: engine`.
-- **AI IDE CLI** (`scope: ai-ide-cli`) — CLI wrapper library (`ai-ide-cli/`).
-  Runtime adapters, subprocess management, stream parsing, HITL MCP.
-  SRS: `ai-ide-cli/documents/requirements.md`.
-  SDS: `ai-ide-cli/documents/design.md`.
 - **SDLC Workflow** (`scope: sdlc`) — example workflow using the engine.
   Agents, prompts, GitHub workflow, dashboard, devcontainer.
   SRS: `documents/requirements-sdlc.md`. SDS: `documents/design-sdlc.md`.
   GitHub label: `scope: sdlc`.
 
-FR numbering: `FR-E<N>` (engine), `FR-L<N>` (ai-ide-cli library),
-`FR-S<N>` (SDLC). Existing `FR-<N>` kept as aliases during migration.
+The CLI wrapper library (`@korchasa/ai-ide-cli`) is maintained in the
+sibling repo [`korchasa/ai-ide-cli`](https://github.com/korchasa/ai-ide-cli)
+— file issues there for library changes, not here.
+
+FR numbering: `FR-E<N>` (engine), `FR-S<N>` (SDLC). Library FRs live in
+the sibling repo as `FR-L<N>`. Existing `FR-<N>` kept as aliases during
+migration.
 
 ## GitHub Issue Rules
 
@@ -153,12 +165,12 @@ FR numbering: `FR-E<N>` (engine), `FR-L<N>` (ai-ide-cli library),
 1. **`AGENTS.md`**: Project vision, constraints, mandatory rules. READ-ONLY reference.
 2. **SRS** — "What" & "Why". Source of truth for requirements. Index + section files pattern — read the index first, then only the section(s) you need.
    - Engine: `documents/requirements-engine.md` + `documents/requirements-engine/*.md`
-   - AI IDE CLI: `ai-ide-cli/documents/requirements.md` + `ai-ide-cli/documents/requirements/*.md`
    - SDLC: `documents/requirements-sdlc.md` + `documents/requirements-sdlc/*.md`
+   - AI IDE CLI: lives in the sibling repo `korchasa/ai-ide-cli`.
 3. **SDS** — "How". Architecture and implementation. Same index + sections pattern. Depends on SRS.
    - Engine: `documents/design-engine.md` + `documents/design-engine/*.md`
-   - AI IDE CLI: `ai-ide-cli/documents/design.md` + `ai-ide-cli/documents/design/*.md`
    - SDLC: `documents/design-sdlc.md` + `documents/design-sdlc/*.md`
+   - AI IDE CLI: sibling repo.
 4. **Tasks** (`documents/tasks/<YYYY-MM-DD>-<slug>.md`): Temporary plans/notes per task.
 5. **`README.md`**: Public-facing overview. Installation, usage, quick start. Derived from AGENTS.md + SRS + SDS.
 
