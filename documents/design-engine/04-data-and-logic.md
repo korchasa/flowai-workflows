@@ -249,7 +249,7 @@
     fields — never both (config validation rejects mixed configs at parse time).
     `getNodeDir()` resolves phase-aware paths: `${runDir}/${phase}/${nodeId}`
     when phase registered, `${runDir}/${nodeId}` otherwise. Evidence:
-    `engine/state.ts:20-36`, `engine/engine.ts:135`.
+    `state.ts:20-36`, `engine.ts:135`.
   - **Error Handling Precedence (FR-E34)**: Two mechanisms interact:
     - `on_error: continue` (per-node): marks node `failed`, logs info message,
       continues workflow. Does NOT trigger `on_failure_script` at node level.
@@ -281,7 +281,7 @@
     `AgentRunOptions` so terminal output is filtered at source.
   - **Binary Compile Flow (FR-E39):** `scripts/compile.ts` iterates
     `TARGETS` array. Per target: construct `deno compile --allow-all --target
-    <denoTarget> --output dist/flowai-workflow-<os>-<arch> engine/cli.ts`. If
+    <denoTarget> --output dist/flowai-workflow-<os>-<arch> cli.ts`. If
     `--dry-run`: print command string, skip execution. Otherwise:
     `new Deno.Command("deno", { args })` → `output()` → check
     `success`; on failure: throw with target + stderr. `dist/` dir created

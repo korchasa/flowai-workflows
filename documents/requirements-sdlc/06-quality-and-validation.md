@@ -8,7 +8,7 @@
 - **Description:** SDLC workflow config (`.flowai-workflow/workflow.yaml`) must be validated for schema correctness as part of `deno task check`. Detects drift between workflow config and engine schema requirements before runtime failures occur.
 - **Rationale:** Unvalidated config changes cause hard-to-diagnose runtime failures. Static validation catches invalid node types, missing required fields, and bad `inputs` references at development time. Maps to SDLC-scope aspect of engine FR-E7 (config drift detection).
 - **Acceptance criteria:**
-  - [x] `scripts/check.ts` validates `.flowai-workflow/workflow.yaml` schema: node types, required fields, `inputs` references, `run_on` values. Evidence: `scripts/check.ts:84-96` (`workflowIntegrity()` calls `loadConfig()`), `engine/config.ts:43-103` (schema validation), `engine/config.ts:105-249` (node validation — types, inputs, `run_on`).
+  - [x] `scripts/check.ts` validates `.flowai-workflow/workflow.yaml` schema: node types, required fields, `inputs` references, `run_on` values. Evidence: `scripts/check.ts:84-96` (`workflowIntegrity()` calls `loadConfig()`), `config.ts:43-103` (schema validation), `config.ts:105-249` (node validation — types, inputs, `run_on`).
   - [x] `deno task check` exits non-zero with descriptive error on invalid config. Evidence: `scripts/check.ts:84-96` (`workflowIntegrity()` catches `loadConfig()` exceptions and reports descriptive error messages).
   - [x] `deno task check` passes on valid config with no false positives. Evidence: `deno task check` passes on current `.flowai-workflow/workflow.yaml` with no errors.
 

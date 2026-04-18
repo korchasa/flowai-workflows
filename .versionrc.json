@@ -1,5 +1,5 @@
 {
-  "$comment": "engine/deno.json is the single canonical version source. ai-ide-cli now lives in a sibling repo and manages its own versioning.",
+  "$comment": "deno.json is the single canonical version source. ai-ide-cli lives in a sibling repo and manages its own versioning.",
   "types": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },
@@ -15,7 +15,7 @@
   "compareUrlFormat": "{{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}",
   "issueUrlFormat": "{{host}}/{{owner}}/{{repository}}/issues/{{id}}",
   "bumpFiles": [
-    { "filename": "engine/deno.json", "type": "json" }
+    { "filename": "deno.json", "type": "json" }
   ],
-  "packageFiles": [{ "filename": "engine/deno.json", "type": "json" }]
+  "packageFiles": [{ "filename": "deno.json", "type": "json" }]
 }

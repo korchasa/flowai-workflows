@@ -7,10 +7,10 @@
 
 - **Description:** Single entry point `deno task run [--prompt "..."]`. PM agent autonomously triages open GitHub issues — selects highest-priority open issue, fetches its title and body, and writes `issue: <N>` in `01-spec.md` YAML frontmatter. `--prompt` provides optional additional context passed to the PM agent.
 - **Acceptance criteria:**
-  - [x] `deno task run` starts workflow; PM selects highest-priority open issue autonomously. Evidence: `engine/cli.ts:36-76` (CLI argument parsing + workflow entry point), `.flowai-workflow/agents/agent-pm/SKILL.md` (PM triage logic via `gh issue list`)
-  - [x] `deno task run --prompt "..."` passes additional context string to PM agent. Evidence: `engine/cli.ts:40-42` (`--prompt` arg parsed into `cliArgs.prompt`)
+  - [x] `deno task run` starts workflow; PM selects highest-priority open issue autonomously. Evidence: `cli.ts:36-76` (CLI argument parsing + workflow entry point), `.flowai-workflow/agents/agent-pm/SKILL.md` (PM triage logic via `gh issue list`)
+  - [x] `deno task run --prompt "..."` passes additional context string to PM agent. Evidence: `cli.ts:40-42` (`--prompt` arg parsed into `cliArgs.prompt`)
   - [x] PM writes `issue: <N>` in `01-spec.md` YAML frontmatter after issue selection. Evidence: `.flowai-workflow/agents/agent-pm/SKILL.md` (Output Format section mandates YAML frontmatter with `issue: N`)
-  - [x] Common engine flags (`--resume`, `--dry-run`, `-v`, `-q`, `--config`) work with the single entry point. Evidence: `engine/cli.ts:36-76` (`--resume` :43-45, `--dry-run` :47-49, `-v` :50-53, `-q` :58-61, `--config` :37-39)
+  - [x] Common engine flags (`--resume`, `--dry-run`, `-v`, `-q`, `--config`) work with the single entry point. Evidence: `cli.ts:36-76` (`--resume` :43-45, `--dry-run` :47-49, `-v` :50-53, `-q` :58-61, `--config` :37-39)
 
 
 
@@ -117,7 +117,7 @@
 ### 3.7 FR-S7: Stage 6-7 — Developer + QA (Iterative Implementation Loop)
 
 - **Description:** The Developer and QA agents work as an iterative pair. Developer implements, QA verifies. If QA finds issues, Developer fixes them. The loop continues until QA passes or the iteration limit is reached.
-- **Orchestration:** The loop is managed by the engine's `loop` node type (`engine/loop.ts`). It invokes the Developer agent, then QA agent. Based on the QA verdict, it either exits the loop (on `PASS`) or re-invokes the Developer with the QA report (on `FAIL`). Legacy: `stage-6-developer.sh` calls `stage-7-qa.sh` as sub-step.
+- **Orchestration:** The loop is managed by the engine's `loop` node type (`loop.ts`). It invokes the Developer agent, then QA agent. Based on the QA verdict, it either exits the loop (on `PASS`) or re-invokes the Developer with the QA report (on `FAIL`). Legacy: `stage-6-developer.sh` calls `stage-7-qa.sh` as sub-step.
 - **Developer Input:** `03-decision.md`, `documents/requirements-sdlc.md`, `documents/design-sdlc.md`, source code. On subsequent iterations: previous QA report (`05-qa-report.md`).
 - **Developer Output:** Code changes, tests, commits and pushes on feature branch. PR comment with implementation summary.
 - **QA Input:** `01-spec.md`, `03-decision.md`, all changed files, test results.

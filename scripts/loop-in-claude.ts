@@ -8,7 +8,7 @@ import {
   installSignalHandlers,
   register,
   unregister,
-} from "../engine/process-registry.ts";
+} from "../process-registry.ts";
 import { MIN_PAUSE_SEC, nextPause } from "./backoff.ts";
 
 /** Query open issues excluding "in-progress" label via gh CLI. */

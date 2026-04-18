@@ -40,20 +40,20 @@
 - **Acceptance criteria:**
   - [x] Loop nodes define body nodes inline via `nodes` sub-object in
     `workflow.yaml`. Evidence: `.flowai-workflow/workflow.yaml:120-158` (`implementation` loop node with inline `nodes:` containing `build` and `verify`)
-  - [x] Body node IDs in `nodes` are not registered as top-level DAG nodes. Evidence: `engine/dag.ts:17-19` (`collectLoopBodyNodes()`), `engine/dag.ts:36-45` (body nodes filtered from main DAG in `buildLevels()`)
-  - [x] Body nodes can reference external (top-level) nodes in their `inputs`. Evidence: `engine/config.ts:204` (`validInputIds = [...allNodeIds, ...bodyNodeIds]`), `.flowai-workflow/workflow.yaml:124` (`build` inputs `[decision]` — top-level node)
+  - [x] Body node IDs in `nodes` are not registered as top-level DAG nodes. Evidence: `dag.ts:17-19` (`collectLoopBodyNodes()`), `dag.ts:36-45` (body nodes filtered from main DAG in `buildLevels()`)
+  - [x] Body nodes can reference external (top-level) nodes in their `inputs`. Evidence: `config.ts:204` (`validInputIds = [...allNodeIds, ...bodyNodeIds]`), `.flowai-workflow/workflow.yaml:124` (`build` inputs `[decision]` — top-level node)
   - [x] Body nodes can reference sibling body nodes (within the same loop) in
-    their `inputs`. Evidence: `engine/config.ts:190-195` (validates internal inputs for ordering), `.flowai-workflow/workflow.yaml:144` (`verify` inputs `[specification, decision, build]` — `build` is a sibling body node)
+    their `inputs`. Evidence: `config.ts:190-195` (validates internal inputs for ordering), `.flowai-workflow/workflow.yaml:144` (`verify` inputs `[specification, decision, build]` — `build` is a sibling body node)
   - [x] `{{loop.iteration}}` template variable resolves only inside loop body
-    node contexts. Evidence: `engine/engine.ts:651-653` (`loop` context only when `loopIteration !== undefined`), `engine/engine.ts:559-560` (loop body nodes receive iteration via `buildCtx`)
+    node contexts. Evidence: `engine.ts:651-653` (`loop` context only when `loopIteration !== undefined`), `engine.ts:559-560` (loop body nodes receive iteration via `buildCtx`)
   - [x] Engine config loader (`config.ts`) parses nested node definitions from
-    loop nodes. Evidence: `engine/config.ts:325-338` (merges defaults into inline loop body nodes)
+    loop nodes. Evidence: `config.ts:325-338` (merges defaults into inline loop body nodes)
   - [x] Engine DAG builder (`dag.ts`) excludes loop body nodes from top-level
-    topological sort. Evidence: `engine/dag.ts:36-45` (`collectLoopBodyNodes()` filter applied in `buildLevels()`)
+    topological sort. Evidence: `dag.ts:36-45` (`collectLoopBodyNodes()` filter applied in `buildLevels()`)
   - [x] Engine loop executor (`loop.ts`) resolves body node configs from the
-    loop node's `nodes` sub-object. Evidence: `engine/loop.ts:76` (`loopNode.nodes![bodyNodeId]`), `engine/loop.ts:66` (`buildLoopBodyOrder(config, loopNodeId)`)
+    loop node's `nodes` sub-object. Evidence: `loop.ts:76` (`loopNode.nodes![bodyNodeId]`), `loop.ts:66` (`buildLoopBodyOrder(config, loopNodeId)`)
   - [x] Template resolver handles `{{input.<node-id>}}` for both body-to-body
-    and body-to-external references. Evidence: `engine/engine.ts:637-639` (resolves all `inputs` via `findNodeConfig` which searches top-level and loop body nodes)
+    and body-to-external references. Evidence: `engine.ts:637-639` (resolves all `inputs` via `findNodeConfig` which searches top-level and loop body nodes)
   - [x] `workflow.yaml` and any other workflow configs updated to use nested
     body node definitions. Evidence: `.flowai-workflow/workflow.yaml:120-158` (`implementation` loop with inline `nodes:` sub-object)
   - [x] All existing engine tests pass after restructuring. Evidence: `deno task check` — 490 passed, 0 failed
@@ -82,13 +82,13 @@
   `run_on: "always"` during config loading. `run_always: false` (or absent) is
   unchanged (no `run_on` set).
 - **Acceptance criteria:**
-  - [x] `NodeConfig` in `types.ts` has `run_on?: "always" | "success" | "failure"` field. `run_always` deprecated. Evidence: `engine/types.ts:66-69` (`run_on?` field, `run_always?: boolean` with `@deprecated` tag)
-  - [x] `config.ts` normalizes `run_always: true` → `run_on: "always"` for backward compat. Evidence: `engine/config.ts:341-347` (normalizes `run_always: true` → `run_on: "always"`, deletes `run_always`)
-  - [x] Engine filters post-workflow nodes: skips `run_on: success` nodes when workflow failed, skips `run_on: failure` nodes when workflow succeeded. Evidence: `engine/engine.ts:182-199` (skip logic with `markNodeSkipped`)
-  - [x] Meta-agent runs on every outcome (`run_on: always`). Evidence: `.flowai-workflow/workflow.yaml:174` (`optimize` node `run_on: always`), `engine/engine.ts:182-199` (`run_on: always` bypasses skip filter)
+  - [x] `NodeConfig` in `types.ts` has `run_on?: "always" | "success" | "failure"` field. `run_always` deprecated. Evidence: `types.ts:66-69` (`run_on?` field, `run_always?: boolean` with `@deprecated` tag)
+  - [x] `config.ts` normalizes `run_always: true` → `run_on: "always"` for backward compat. Evidence: `config.ts:341-347` (normalizes `run_always: true` → `run_on: "always"`, deletes `run_always`)
+  - [x] Engine filters post-workflow nodes: skips `run_on: success` nodes when workflow failed, skips `run_on: failure` nodes when workflow succeeded. Evidence: `engine.ts:182-199` (skip logic with `markNodeSkipped`)
+  - [x] Meta-agent runs on every outcome (`run_on: always`). Evidence: `.flowai-workflow/workflow.yaml:174` (`optimize` node `run_on: always`), `engine.ts:182-199` (`run_on: always` bypasses skip filter)
   - [x] `workflow.yaml` migrated from `run_always: true` to appropriate `run_on` values. Evidence: `.flowai-workflow/workflow.yaml:174` (`optimize: run_on: always`), `.flowai-workflow/workflow.yaml:200` (`tech-lead-review: run_on: always`)
-  - [x] Engine remains domain-agnostic — no git/PR/GitHub logic in engine code. Evidence: `engine/git.ts` deleted; `engine/engine.ts` uses generic `on_failure_script` hook; `engine/mod.ts` git re-exports removed.
-  - [x] All existing engine tests pass; new tests cover `run_on` filtering logic. Evidence: `engine/engine_test.ts:211-506` (collectPostWorkflowNodes and run_on tests), `engine/config_test.ts:446-564` (run_on validation + run_always normalization tests); 490 passed, 0 failed
+  - [x] Engine remains domain-agnostic — no git/PR/GitHub logic in engine code. Evidence: `git.ts` deleted; `engine.ts` uses generic `on_failure_script` hook; `mod.ts` git re-exports removed.
+  - [x] All existing engine tests pass; new tests cover `run_on` filtering logic. Evidence: `engine_test.ts:211-506` (collectPostWorkflowNodes and run_on tests), `config_test.ts:446-564` (run_on validation + run_always normalization tests); 490 passed, 0 failed
   - [x] `deno task check` passes. Evidence: 490 passed, 0 failed
 
 
@@ -120,14 +120,14 @@
   - Loop body nodes: inherit loop node's `model` unless overridden in inline
     `nodes` config.
 - **Acceptance criteria:**
-  - [x] `WorkflowDefaults` in `types.ts` has `model?: string` field. Evidence: `engine/types.ts:21`
-  - [x] `NodeConfig` in `types.ts` has `model?: string` field. Evidence: `engine/types.ts:39`
-  - [x] `config.ts` parses `model` from defaults and node configs. Evidence: `engine/config.ts:26-33` (YAML pass-through via structural typing; `WorkflowDefaults`/`NodeConfig` types carry `model?`)
-  - [x] `agent.ts` `buildClaudeArgs()` emits `--model <value>` when model is set. Evidence: `engine/agent.ts:309-311`
-  - [x] `agent.ts` does NOT emit `--model` on `--resume` invocations. Evidence: `engine/agent.ts:309` (`&& !opts.resumeSessionId` guard)
-  - [x] Loop body nodes resolve model from: own config > loop node config > defaults. Evidence: `engine/loop.ts:76`
+  - [x] `WorkflowDefaults` in `types.ts` has `model?: string` field. Evidence: `types.ts:21`
+  - [x] `NodeConfig` in `types.ts` has `model?: string` field. Evidence: `types.ts:39`
+  - [x] `config.ts` parses `model` from defaults and node configs. Evidence: `config.ts:26-33` (YAML pass-through via structural typing; `WorkflowDefaults`/`NodeConfig` types carry `model?`)
+  - [x] `agent.ts` `buildClaudeArgs()` emits `--model <value>` when model is set. Evidence: `agent.ts:309-311`
+  - [x] `agent.ts` does NOT emit `--model` on `--resume` invocations. Evidence: `agent.ts:309` (`&& !opts.resumeSessionId` guard)
+  - [x] Loop body nodes resolve model from: own config > loop node config > defaults. Evidence: `loop.ts:76`
   - [x] `workflow.yaml` updated: default model + per-node overrides for complex stages. Evidence: `.flowai-workflow/workflow.yaml:15` (default), `.flowai-workflow/workflow.yaml:65,84,147` (overrides)
-  - [x] All existing engine tests pass; new tests cover model flag emission and resolution. Evidence: `engine/agent_test.ts:207-233` (3 model tests); 434 tests pass.
+  - [x] All existing engine tests pass; new tests cover model flag emission and resolution. Evidence: `agent_test.ts:207-233` (3 model tests); 434 tests pass.
   - [x] `deno task check` passes. Evidence: validated — 434 passed, 0 failed.
 
 
@@ -148,13 +148,13 @@
 - **Acceptance criteria:**
   - [x] Body node referencing external input not listed in loop `inputs` is
     rejected at parse time with a config error. Evidence:
-    `engine/config.ts:273-289`.
+    `config.ts:273-289`.
   - [x] Error message identifies body node ID, loop node ID, and all missing
-    external input IDs. Evidence: `engine/config.ts:284-288` — message:
+    external input IDs. Evidence: `config.ts:284-288` — message:
     `"Loop '${id}' body node '${bodyId}' references external input(s) [${missing.join(", ")}] not listed in loop inputs"`.
   - [x] Body node referencing a sibling body node generates no error (intra-body
-    refs are valid). Evidence: `engine/config.ts:279-280`
-    (`!bodyNodeIds.includes(inp)` guard); `engine/config_test.ts:235-262`.
+    refs are valid). Evidence: `config.ts:279-280`
+    (`!bodyNodeIds.includes(inp)` guard); `config_test.ts:235-262`.
   - [x] Forwarding mechanism and validation algorithm documented in SDS
     (`documents/design-engine.md`). Evidence: `documents/design-engine.md:109-116`
     (§3.1 `config.ts`), `documents/design-engine.md:569-581` (§5 Logic).
@@ -179,25 +179,25 @@
 - **Acceptance criteria:**
   - [x] Parse-time: if condition node has a non-empty `validate` block, validate that a
     `frontmatter_field` rule with matching `field` exists. Evidence:
-    `engine/config.ts:291-312`.
+    `config.ts:291-312`.
   - [x] Parse-time: if condition node has no `validate` block, skip check (no contract to
-    enforce). Evidence: `engine/config.ts:300`
+    enforce). Evidence: `config.ts:300`
     (`if (Array.isArray(condNodeRaw.validate) && condNodeRaw.validate.length > 0)`).
   - [x] Parse-time error message identifies loop ID, field, and condition node. Evidence:
-    `engine/config.ts:308-310` — message:
+    `config.ts:308-310` — message:
     `"Loop '${id}' condition_field '${node.condition_field}' is not declared as a frontmatter_field in condition node '${node.condition_node}' validate block"`.
   - [x] Runtime: `extractConditionValue()` throws descriptive error when field absent.
-    Evidence: `engine/loop.ts:224-226` — message:
+    Evidence: `loop.ts:224-226` — message:
     `"Loop '${loopId}': condition_field '${field}' not found in condition node '${condNodeId}' output at '${nodeDir}'"`.
   - [x] Runtime: `loopId` and `condNodeId` threaded through `extractConditionValue()`
     signature (updated from 3 to 5 params); `runLoop()` passes them. Evidence:
-    `engine/loop.ts:192-198` (signature), `engine/loop.ts:144-151` (call site).
-  - [x] Parse-time tests (2): missing rule → throws (`engine/config_test.ts:1139-1173`),
-    present rule → passes (`engine/config_test.ts:1175-1206`).
+    `loop.ts:192-198` (signature), `loop.ts:144-151` (call site).
+  - [x] Parse-time tests (2): missing rule → throws (`config_test.ts:1139-1173`),
+    present rule → passes (`config_test.ts:1175-1206`).
   - [x] Runtime tests (3): throws when field absent in output file
-    (`engine/loop_test.ts:281-317`), throws when output dir empty
-    (`engine/loop_test.ts:319-351`), returns value when field present
-    (`engine/loop_test.ts:353-378`).
+    (`loop_test.ts:281-317`), throws when output dir empty
+    (`loop_test.ts:319-351`), returns value when field present
+    (`loop_test.ts:353-378`).
   - [x] `deno task check` green: 533 tests, 0 failures. Evidence: run `20260319T221833`.
 
 

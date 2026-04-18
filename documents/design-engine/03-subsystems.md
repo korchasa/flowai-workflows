@@ -5,12 +5,12 @@
 
 ### 3.2 Phase Registry (`state.ts`) — IMPLEMENTED
 
-- **Status:** Implemented. `getNodeDir()` in `engine/state.ts` resolves
-  phase-aware artifact paths. Evidence: `engine/state.ts:20-36`
+- **Status:** Implemented. `getNodeDir()` in `state.ts` resolves
+  phase-aware artifact paths. Evidence: `state.ts:20-36`
   (`setPhaseRegistry()` — builds nodeId→phase map from config),
-  `engine/state.ts:98-104` (`getNodeDir()` — phase-aware path resolution),
-  `engine/state.ts:44-46` (`getPhaseForNode()` — lookup),
-  `engine/engine.ts:135` (`setPhaseRegistry(config)` call at engine init).
+  `state.ts:98-104` (`getNodeDir()` — phase-aware path resolution),
+  `state.ts:44-46` (`getPhaseForNode()` — lookup),
+  `engine.ts:135` (`setPhaseRegistry(config)` call at engine init).
 - **Purpose:** Module-scoped mapping from nodeId → phase string, enabling
   `getNodeDir()` to resolve phase-aware artifact paths without signature change.
 - **Data:** `phaseRegistry: Map<string, string>` — populated from
@@ -68,7 +68,7 @@
     `x86_64-apple-darwin`, `aarch64-apple-darwin`.
   - Output naming: `flowai-workflow-<os>-<arch>` (e.g., `flowai-workflow-linux-x86_64`).
   - Invokes: `deno compile --target <t> --env VERSION=<v> --output <name>
-    engine/cli.ts` per target.
+    cli.ts` per target.
   - `--version` flag value: reads `VERSION` env var, falls back to `"dev"`.
 - **deno.json task:** `"compile": "deno run -A scripts/compile.ts"`.
 - **GitHub Actions Workflow** (`.github/workflows/release.yml`):
@@ -116,7 +116,7 @@
    {os: "darwin", arch: "arm64", denoTarget: "aarch64-apple-darwin"}]`
 - **Output:** `dist/flowai-workflow-<os>-<arch>` per target.
 - **Flags:** `--allow-all` (engine needs Deno.Command, env, file I/O).
-  Entry: `engine/cli.ts`.
+  Entry: `cli.ts`.
 - **CLI:** `--dry-run` prints commands without executing.
 - **Tests:** `scripts/compile_test.ts` — target list, filename convention,
   dry-run behavior.

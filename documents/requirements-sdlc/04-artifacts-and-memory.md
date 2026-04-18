@@ -24,8 +24,8 @@
 - **Rationale:** SDLC workflow nodes are grouped into `plan`, `impl`, `report` phases in `workflow.yaml`. Phase-organized storage improves navigability and aligns artifact structure with declared execution flow. Without engine FR-E9 (phase registry + phase-aware `getNodeDir()`), the `phase` field in `workflow.yaml` has no effect on artifact paths.
 - **Acceptance criteria:**
   - [x] All SDLC workflow nodes in `.flowai-workflow/workflow.yaml` have `phase:` field set to `plan`, `impl`, or `report` as appropriate. Evidence: `.flowai-workflow/workflow.yaml` (specification, design, decision → `plan`; implementation → `impl`; tech-lead-review, optimize → `report`).
-  - [x] After engine FR-E9 implementation, artifact directories follow `.flowai-workflow/runs/<run-id>/<phase>/<node-id>/` layout for all phased nodes. Evidence: `engine/state.ts:20-36` (`setPhaseRegistry()`), `engine/state.ts:98-103` (`getNodeDir()` phase-aware path), `engine/engine.ts:129-130` (init at run start).
-  - [x] `{{input.<node-id>}}` and `{{node_dir}}` template variables resolve to phase-aware paths for phased nodes. Evidence: `engine/state.ts:44-46` (`getPhaseForNode()`); `getNodeDir()` underpins template variable resolution.
+  - [x] After engine FR-E9 implementation, artifact directories follow `.flowai-workflow/runs/<run-id>/<phase>/<node-id>/` layout for all phased nodes. Evidence: `state.ts:20-36` (`setPhaseRegistry()`), `state.ts:98-103` (`getNodeDir()` phase-aware path), `engine.ts:129-130` (init at run start).
+  - [x] `{{input.<node-id>}}` and `{{node_dir}}` template variables resolve to phase-aware paths for phased nodes. Evidence: `state.ts:44-46` (`getPhaseForNode()`); `getNodeDir()` underpins template variable resolution.
   - [x] SDLC workflow runs end-to-end successfully with phase subdirectory layout.
     Evidence: `.flowai-workflow/runs/20260314T154052/plan/specification/`,
     `.flowai-workflow/runs/20260314T154052/plan/design/`,
@@ -145,8 +145,8 @@
     transport does not require it). Evidence:
     `.flowai-workflow/workflow.yaml:18-22`.
   - [x] `interpolate()` applied to `artifact_source` in
-    `engine/hitl.ts:buildScriptArgs()` before passing value to scripts; ctx
-    threaded through `HitlRunOptions`. Evidence: `engine/hitl.ts:257,264`.
+    `hitl.ts:buildScriptArgs()` before passing value to scripts; ctx
+    threaded through `HitlRunOptions`. Evidence: `hitl.ts:257,264`.
   - [x] `validateHitlArtifactSource(config)` exported pure function: returns
     error message for hardcoded path (no `{{`), empty array for template or
     absent field. Evidence: `scripts/check.ts:110–118`.
@@ -154,9 +154,9 @@
     workflow config, calls `validateHitlArtifactSource()`, emits error and
     exits 1 on hardcoded path. Evidence: `scripts/check.ts:120–146`.
   - [x] Test `runHitlLoop — artifact_source template resolved via ctx` in
-    `engine/hitl_test.ts` verifies `{{input.specification}}/01-spec.md` →
+    `hitl_test.ts` verifies `{{input.specification}}/01-spec.md` →
     `/runs/abc/specification/01-spec.md`. Evidence:
-    `engine/hitl_test.ts:232–277`.
+    `hitl_test.ts:232–277`.
   - [x] Tests in `scripts/check_test.ts` cover: valid template path (pass),
     hardcoded path (fail), absent field (skip/pass), empty string (skip/pass).
     Evidence: `scripts/check_test.ts:109–130`.

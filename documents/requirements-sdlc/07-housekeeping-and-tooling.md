@@ -20,7 +20,7 @@
 
 ### 3.27 FR-S27: CLI Help for SDLC Utility Scripts
 
-- **Description:** SDLC utility scripts that accept CLI arguments must respond to `--help` / `-h` with a usage synopsis and exit 0. Unknown flags must produce an error message referencing `--help` and exit non-zero. Output format follows the pattern in `engine/cli.ts`. Applies to: `scripts/self-runner.ts`, `scripts/loop-in-claude.ts`, `scripts/generate-dashboard.ts`.
+- **Description:** SDLC utility scripts that accept CLI arguments must respond to `--help` / `-h` with a usage synopsis and exit 0. Unknown flags must produce an error message referencing `--help` and exit non-zero. Output format follows the pattern in `cli.ts`. Applies to: `scripts/self-runner.ts`, `scripts/loop-in-claude.ts`, `scripts/generate-dashboard.ts`.
 - **Motivation:** Users must read source code to discover available options for SDLC utility scripts. No help text forces unnecessary source inspection and increases risk of misuse.
 - **Acceptance criteria:**
   - [x] `scripts/self-runner.ts`: `--help` / `-h` prints usage and exits 0.
@@ -29,7 +29,7 @@
     exits 0.
   - [x] All three scripts: unknown flags produce error message referencing
     `--help` and exit non-zero.
-  - [x] Output format follows `engine/cli.ts` pattern.
+  - [x] Output format follows `cli.ts` pattern.
   - [x] `deno task check` passes.
 
 

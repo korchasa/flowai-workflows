@@ -8,14 +8,14 @@
 - **Description:** With `-v` flag, engine output must provide full transparency into what is happening at every step — not just node start/stop, but the reasoning context: what input is being passed, what prompt is constructed, what validation is run, what the result is.
 - **Motivation:** Current verbose mode shows only lifecycle events (started/completed/failed). Debugging workflow issues or understanding agent behavior requires reading log files after the fact.
 - **Acceptance criteria:**
-  - [x] `-v` shows the full task prompt text sent to each agent (after template interpolation). Evidence: `engine/output.ts:109-114` (`verbosePrompt()`), `engine/agent.ts:67-69`
-  - [x] `-v` shows the list of input artifacts resolved for each node (file paths + sizes). Evidence: `engine/output.ts:117-123` (`verboseInputs()`), `engine/engine.ts:280`
-  - [x] `-v` shows validation rule execution: which rules ran, pass/fail per rule, failure details. Evidence: `engine/output.ts:126-137` (`verboseValidation()`), `engine/agent.ts:98-104`
-  - [x] `-v` shows continuation context: why continuation was triggered, what error text is appended. Evidence: `engine/output.ts:140-151` (`verboseContinuation()`), `engine/agent.ts:126-135`
-  - [x] `-v` streams agent stdout in real-time (not buffered until completion). Evidence: `engine/output.ts` (`nodeOutput()` method — pre-existing)
+  - [x] `-v` shows the full task prompt text sent to each agent (after template interpolation). Evidence: `output.ts:109-114` (`verbosePrompt()`), `agent.ts:67-69`
+  - [x] `-v` shows the list of input artifacts resolved for each node (file paths + sizes). Evidence: `output.ts:117-123` (`verboseInputs()`), `engine.ts:280`
+  - [x] `-v` shows validation rule execution: which rules ran, pass/fail per rule, failure details. Evidence: `output.ts:126-137` (`verboseValidation()`), `agent.ts:98-104`
+  - [x] `-v` shows continuation context: why continuation was triggered, what error text is appended. Evidence: `output.ts:140-151` (`verboseContinuation()`), `agent.ts:126-135`
+  - [x] `-v` streams agent stdout in real-time (not buffered until completion). Evidence: `output.ts` (`nodeOutput()` method — pre-existing)
   - ~~`-v` shows safety check results~~ — `verboseSafety()` removed (engine domain-agnostic refactor; safety output now via agent stdout).
   - ~~`-v` shows commit details~~ — `verboseCommit()` removed (engine no longer commits; git operations delegated to agent nodes).
-  - [x] Default mode (no `-v`) remains concise: node start/complete/fail + summary. Evidence: `engine/output_test.ts:175-197` (all 6 verbose methods produce zero output in default mode)
+  - [x] Default mode (no `-v`) remains concise: node start/complete/fail + summary. Evidence: `output_test.ts:175-197` (all 6 verbose methods produce zero output in default mode)
 
 
 
@@ -32,17 +32,17 @@
   decisions, actions — appear in lines 2–5 (avg result: 626 chars, 6–15 lines).
 - **Acceptance criteria:**
   - [x] `OutputManager.nodeResult(nodeId, output)` displays one-line summary.
-    Evidence: `engine/output.ts` (`nodeResult()` method).
+    Evidence: `output.ts` (`nodeResult()` method).
   - [ ] Result text extract: up to 3 non-empty lines from `output.result`, each
     truncated to 120 chars, joined with ` | ` separator, total excerpt ≤400
     chars. Empty lines skipped. Single-line results unchanged.
   - [ ] Format: `[HH:MM:SS] <nodeId>  RESULT: <excerpt> | cost=$X.XXXX | duration=Xs | turns=N`.
     (excerpt = collapsed multi-line extract; no literal newlines in output)
   - [x] Shown in default and verbose modes; suppressed in quiet mode.
-    Evidence: `engine/output.ts` (`verbosity !== "quiet"` guard).
+    Evidence: `output.ts` (`verbosity !== "quiet"` guard).
   - [x] Called for top-level agent nodes in `executeNode()` and for loop body
     nodes in `executeLoopNode()` `onNodeComplete` callback.
-    Evidence: `engine/engine.ts` (two call sites).
+    Evidence: `engine.ts` (two call sites).
   - [ ] `extractResultExcerpt(result: string): string` — pure function in
     `output.ts`: filters empty lines, takes first 3, truncates each to 120
     chars, joins with ` | `, trims total to 400 chars. Unit-testable without I/O.
@@ -62,19 +62,19 @@
   change.
 - **Acceptance criteria:**
   - [x] `NodeState.cost_usd?: number` field written at node completion time.
-    Evidence: `engine/types.ts` (`NodeState.cost_usd`), `engine/state.ts`
+    Evidence: `types.ts` (`NodeState.cost_usd`), `state.ts`
     (`markNodeCompleted()` optional `costUsd` param).
   - [x] `RunState.total_cost_usd?: number` is the sum of all `nodes[*].cost_usd`.
-    Evidence: `engine/state.ts` (`updateRunCost()` / `recomputeTotalCost()`).
+    Evidence: `state.ts` (`updateRunCost()` / `recomputeTotalCost()`).
   - [x] Fields written alongside existing fields at node completion.
-    Evidence: `engine/engine.ts` and `engine/loop.ts` — both pass
+    Evidence: `engine.ts` and `loop.ts` — both pass
     `result.output?.total_cost_usd` to `markNodeCompleted()`.
   - [x] Loop iteration nodes also report cost.
-    Evidence: `engine/loop.ts` loop body call site.
+    Evidence: `loop.ts` loop body call site.
   - [x] Backward-compatible: fields are optional; existing state files without
     cost fields remain valid.
   - [x] Unit tests cover: cost present, cost absent, mixed multi-node, all-undefined.
-    Evidence: `engine/state_test.ts`.
+    Evidence: `state_test.ts`.
 
 
 
@@ -89,20 +89,20 @@
   correlate log entries with real-world events during post-incident analysis.
 - **Acceptance criteria:**
   - [x] Each non-empty line in the stream log file is prefixed with `[HH:MM:SS]`.
-    Evidence: `engine/agent.ts:606-611` (`stampLines()`),
-    `engine/agent_test.ts:400-407` (single-line test),
-    `engine/agent_test.ts:409-424` (multi-line test).
+    Evidence: `agent.ts:606-611` (`stampLines()`),
+    `agent_test.ts:400-407` (single-line test),
+    `agent_test.ts:409-424` (multi-line test).
   - [x] Timestamp reflects wall-clock time when the event was received (not batch time).
-    Evidence: `engine/agent.ts:594-600` (`tsPrefix()` calls `new Date()` at call time),
-    `engine/agent.ts:384,402` (`stampLines` called inside stream processing loop).
+    Evidence: `agent.ts:594-600` (`tsPrefix()` calls `new Date()` at call time),
+    `agent.ts:384,402` (`stampLines` called inside stream processing loop).
   - [x] Terminal output via `onOutput` callback is NOT prefixed with timestamps.
-    Evidence: `engine/agent.ts:386,404` (`onOutput` receives raw `summary` without `stampLines`).
+    Evidence: `agent.ts:386,404` (`onOutput` receives raw `summary` without `stampLines`).
   - [x] Timestamp format is `[HH:MM:SS] <content>` (24-hour, zero-padded, space before content).
-    Evidence: `engine/agent.ts:594-600` (format construction),
-    `engine/agent_test.ts:391-398` (format regex test).
+    Evidence: `agent.ts:594-600` (format construction),
+    `agent_test.ts:391-398` (format regex test).
   - [x] Empty lines pass through to stream log without timestamp prefix.
-    Evidence: `engine/agent.ts:609` (identity branch in `stampLines` map),
-    `engine/agent_test.ts:426-442` (empty-line test).
+    Evidence: `agent.ts:609` (identity branch in `stampLines` map),
+    `agent_test.ts:426-442` (empty-line test).
   - [x] `deno task check` passes.
 
 
@@ -111,15 +111,15 @@
 
 - **Description:** Stream log emits a `[WARN]` line when the same file path is read more than 2 times within one agent session (`executeClaudeProcess()` invocation). Warning includes the file path and read count. Informational only — does not block execution. Enables meta-agent to detect and diagnose repeated-read anti-patterns from log analysis.
 - **Motivation:** Agents were silently re-reading the same file 3-4 times per session (run `20260313T025203`: PM agent read `documents/requirements-sdlc.md` 4 times consecutively), wasting tokens. The pattern was invisible to logging and prompt optimization tooling.
-- **Implementation:** `FileReadTracker` class in `engine/agent.ts`. Instantiated per `executeClaudeProcess()` call (counters reset per invocation). In event loop: for `tool_use` blocks with `name === "Read"`, calls `tracker.track(block.input.file_path)`. Non-null result written to log via `stampLines()`. Terminal `onOutput` callback unchanged (log-file-only).
+- **Implementation:** `FileReadTracker` class in `agent.ts`. Instantiated per `executeClaudeProcess()` call (counters reset per invocation). In event loop: for `tool_use` blocks with `name === "Read"`, calls `tracker.track(block.input.file_path)`. Non-null result written to log via `stampLines()`. Terminal `onOutput` callback unchanged (log-file-only).
 - **Warning format:** `[WARN] repeated file read: <path> (<N> times)`.
 - **Acceptance criteria:**
-  - [x] Stream log emits `[WARN] repeated file read: <path> (<N> times)` when same path is read >2 times in one session. Evidence: `engine/agent.ts:332` (`FileReadTracker` class), `engine/agent.ts:346` (`track()` method), commit `ebe7cb2`.
-  - [x] Warning includes file path and read count. Evidence: `engine/agent.ts:346` (`FileReadTracker.track()` return value format).
-  - [x] Warning is log-file-only — terminal `onOutput` callback unchanged. Evidence: `engine/agent.ts:410` (`tracker` used in `executeClaudeProcess()`, warning written via `stampLines()` to logFile only).
-  - [x] Counter resets per `executeClaudeProcess()` invocation (not cross-continuation). Evidence: `engine/agent.ts:410` (`FileReadTracker` instantiated inside `executeClaudeProcess()`).
-  - [x] Execution not blocked by warning. Evidence: `engine/agent.ts:346` (`track()` returns warning string; engine continues normally).
-  - [x] `FileReadTracker` is a pure-logic class — unit-testable without I/O. Evidence: `engine/agent_test.ts:790-855` (FileReadTracker unit tests).
+  - [x] Stream log emits `[WARN] repeated file read: <path> (<N> times)` when same path is read >2 times in one session. Evidence: `agent.ts:332` (`FileReadTracker` class), `agent.ts:346` (`track()` method), commit `ebe7cb2`.
+  - [x] Warning includes file path and read count. Evidence: `agent.ts:346` (`FileReadTracker.track()` return value format).
+  - [x] Warning is log-file-only — terminal `onOutput` callback unchanged. Evidence: `agent.ts:410` (`tracker` used in `executeClaudeProcess()`, warning written via `stampLines()` to logFile only).
+  - [x] Counter resets per `executeClaudeProcess()` invocation (not cross-continuation). Evidence: `agent.ts:410` (`FileReadTracker` instantiated inside `executeClaudeProcess()`).
+  - [x] Execution not blocked by warning. Evidence: `agent.ts:346` (`track()` returns warning string; engine continues normally).
+  - [x] `FileReadTracker` is a pure-logic class — unit-testable without I/O. Evidence: `agent_test.ts:790-855` (FileReadTracker unit tests).
   - [x] `deno task check` passes. Evidence: QA PASS — all tests pass (run `20260314T060523`).
 
 
@@ -135,15 +135,15 @@
   agent reasoning + results without tool-call noise.
 - **Acceptance criteria:**
   - [x] `Verbosity` type includes `"semi-verbose"` value alongside `"quiet"`,
-    `"normal"`, `"verbose"`. Evidence: `engine/types.ts` (`Verbosity` union).
-  - [x] `-s` CLI flag maps to `semi-verbose` verbosity. Evidence: `engine/cli.ts`.
+    `"normal"`, `"verbose"`. Evidence: `types.ts` (`Verbosity` union).
+  - [x] `-s` CLI flag maps to `semi-verbose` verbosity. Evidence: `cli.ts`.
   - [x] In semi-verbose mode, `formatEventForOutput()` skips `tool_use` content
     blocks in `assistant` events — emits only `text` blocks. Evidence:
-    `engine/agent.ts` (`formatEventForOutput()` with `verbosity` param).
+    `agent.ts` (`formatEventForOutput()` with `verbosity` param).
   - [x] Log file writes are unaffected — full output preserved. Evidence:
-    `engine/agent.ts` (log path calls `formatEventForOutput()` without verbosity).
+    `agent.ts` (log path calls `formatEventForOutput()` without verbosity).
   - [x] `nodeOutput()` gate shows in both `verbose` and `semi-verbose`. Evidence:
-    `engine/output.ts` (`nodeOutput()` condition).
+    `output.ts` (`nodeOutput()` condition).
   - [x] `deno task check` passes. Evidence: design.md (FR-E21 referenced as implemented).
 
 
@@ -155,7 +155,7 @@
   (Workflow name, Run ID, Status, Duration, Nodes count). Eliminates the need
   to scroll back through interleaved logs to find what each agent produced after
   a 30+ minute run.
-- **Motivation:** Current `summary()` output (`engine/output.ts:98-111`) renders
+- **Motivation:** Current `summary()` output (`output.ts:98-111`) renders
   only aggregate metadata. Per-node result text is available in
   `.flowai-workflow/runs/<run-id>/logs/<node-id>.json` but not in `state.json`, forcing
   operators to read N log files after the run. Issue #109: "After a 30+ minute
@@ -189,7 +189,7 @@
 
 ### 3.23 FR-E23: CLI Help for `deno task check`
 
-- **Description:** `scripts/check.ts` (`deno task check`) must respond to `--help` / `-h` with a usage synopsis describing what checks are run and exit 0. Unknown flags must produce an error message referencing `--help` and exit non-zero. Output format follows the pattern established by `engine/cli.ts`.
+- **Description:** `scripts/check.ts` (`deno task check`) must respond to `--help` / `-h` with a usage synopsis describing what checks are run and exit 0. Unknown flags must produce an error message referencing `--help` and exit non-zero. Output format follows the pattern established by `cli.ts`.
 - **Motivation:** Users must read source code to discover what `deno task check` does and whether any options exist. No help text forces unnecessary source inspection.
 - **Acceptance criteria:**
   - [x] `--help` / `-h` prints usage synopsis and exits 0.
@@ -214,40 +214,40 @@
   management. Power users use `run` explicitly.
 - **Acceptance:**
   - [x] No args → `launchRepl()` via dynamic import.
-    Evidence: `engine/cli.ts:281-283`.
+    Evidence: `cli.ts:281-283`.
   - [x] `run` subcommand → engine with all current flags.
-    Evidence: `engine/cli.ts:272-274`.
+    Evidence: `cli.ts:272-274`.
   - [x] `init` subcommand removed from dispatch.
-    Evidence: `engine/cli.ts` (no `init` handler).
+    Evidence: `cli.ts` (no `init` handler).
   - [x] Backward-compat shim for bare `--` flags.
-    Evidence: `engine/cli.ts:276-280`.
+    Evidence: `cli.ts:276-280`.
   - [x] `deno task run` updated with `run` subcommand.
     Evidence: `deno.json:18`.
   - [x] Existing parseArgs tests pass unchanged.
-    Evidence: `engine/cli_test.ts` (20 tests).
+    Evidence: `cli_test.ts` (20 tests).
 
 
 ### 3.46 FR-E46: Interactive REPL
 
-- **Description:** `engine/repl/mod.ts` — interactive AI-assisted REPL. On
+- **Description:** `repl/mod.ts` — interactive AI-assisted REPL. On
   launch: resolves runtime (CLI flag → persisted config → interactive prompt),
-  loads bundled skills from `engine/repl/skills/`, launches
+  loads bundled skills from `repl/skills/`, launches
   `adapter.launchInteractive()` with skills + system prompt. Runtime choice
   persisted at `~/.config/flowai-workflow/runtime.json`.
 - **Motivation:** Single entry point for project management operations (init,
   adapt agents) via AI-assisted conversation.
 - **Acceptance:**
   - [x] `resolveRuntime()` checks override → config → interactive prompt.
-    Evidence: `engine/repl/mod.ts:46-80`.
+    Evidence: `repl/mod.ts:46-80`.
   - [x] Runtime persisted to `~/.config/flowai-workflow/runtime.json`.
-    Evidence: `engine/repl/mod.ts:82-94`.
+    Evidence: `repl/mod.ts:82-94`.
   - [x] `loadBundledSkills()` loads skills via `parseSkill()`.
-    Evidence: `engine/repl/mod.ts:107-125`.
+    Evidence: `repl/mod.ts:107-125`.
   - [x] MVP skills: `init`, `adapt-agents`.
-    Evidence: `engine/repl/skills/init/SKILL.md`, `engine/repl/skills/adapt-agents/SKILL.md`.
+    Evidence: `repl/skills/init/SKILL.md`, `repl/skills/adapt-agents/SKILL.md`.
   - [x] `launchRepl()` orchestrates runtime + skills + launch.
-    Evidence: `engine/repl/mod.ts:145-172`.
+    Evidence: `repl/mod.ts:145-172`.
   - [x] Tests: skill loading, metadata verification.
-    Evidence: `engine/repl/mod_test.ts`.
+    Evidence: `repl/mod_test.ts`.
 
 

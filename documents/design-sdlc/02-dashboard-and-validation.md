@@ -104,13 +104,13 @@
 - **CLI help (FR-S26):** `printUsage()` static function outputs: description,
   usage line (`deno task dashboard --run-dir <path>`), options (`--run-dir`),
   examples. `--help`/`-h` → `printUsage()` + `Deno.exit(0)`. Unknown flags →
-  error referencing `--help` + `Deno.exit(1)`. Follows `engine/cli.ts` format.
+  error referencing `--help` + `Deno.exit(1)`. Follows `cli.ts` format.
   Exported `printUsage()`/`checkArgs()` for unit testing
 - **Interfaces:**
   - CLI: `deno task dashboard --run-dir <path>`
   - Hook: `after:` on `tech-lead-review` node via `run-dashboard.sh` wrapper
     (FR-S36 — replaces `|| true` with explicit warning logging)
-- **Deps:** `engine/types.ts` (imports `RunState` and `CliRunOutput` — the
+- **Deps:** `types.ts` (imports `RunState` and `CliRunOutput` — the
   latter re-exported from `@korchasa/ai-ide-cli/types`). No runtime engine
   dependency — reads JSON files directly.
 
@@ -119,7 +119,7 @@
 - **Purpose:** Validate `.flowai-workflow/workflow.yaml` against engine schema as part
   of `deno task check`. Prevents config drift causing runtime failures.
 - **Implementation:** `workflowIntegrity()` in `scripts/check.ts` delegates to
-  engine's `loadConfig()` (`engine/config.ts`). The engine validation covers:
+  engine's `loadConfig()` (`config.ts`). The engine validation covers:
   - Node type validation (agent, merge, loop, human)
   - Required field validation per node type
   - `inputs` reference validation (referenced nodes must exist)
@@ -132,7 +132,7 @@
   with descriptive messages; `workflowIntegrity()` catches and reports.
 - **Interfaces:** Called as part of `deno task check` sequence. No separate CLI
   entry point (deferred).
-- **Deps:** `engine/config.ts` (`loadConfig` function).
+- **Deps:** `config.ts` (`loadConfig` function).
 
 ### 3.8.1 HITL Artifact Source Validation (FR-S35)
 
@@ -151,13 +151,13 @@
 - **Interfaces:** Called as part of `deno task check` sequence in
   `scripts/check.ts` main sequence, alongside `workflowIntegrity()` and
   `agentListAccuracy()`.
-- **Deps:** `engine/config.ts` (`loadConfig` function).
+- **Deps:** `config.ts` (`loadConfig` function).
 
 ### 3.9 SDLC Utility Scripts CLI Help (FR-S26)
 
 - **Purpose:** `--help`/`-h` support for `scripts/self-runner.ts` and
   `scripts/loop-in-claude.ts`. Each script gets inline `printUsage()` following
-  `engine/cli.ts` format (description, usage, options, examples).
+  `cli.ts` format (description, usage, options, examples).
 - **`scripts/self-runner.ts`:** `printUsage()` describes workflow loop runner.
   Usage: `deno task loop [interval] [-- claude-args...]`. `--help`/`-h` →
   print + exit 0. Unknown `--`-prefixed flags → error + exit 1. Exported
@@ -165,7 +165,7 @@
 - **`scripts/loop-in-claude.ts`:** `printUsage()` describes in-Claude workflow
   runner. Usage: `deno task loop-in-claude [claude-args...]`. `--help`/`-h`
   detected before passthrough to Claude CLI. Exported helpers for unit testing.
-- **Pattern:** Identical to `engine/cli.ts`: static string, `Deno.args` scan,
+- **Pattern:** Identical to `cli.ts`: static string, `Deno.args` scan,
   `Deno.exit(0)` on help, `Deno.exit(1)` on unknown flag with message
   referencing `--help`.
 

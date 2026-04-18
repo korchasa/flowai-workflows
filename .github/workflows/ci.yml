@@ -39,7 +39,6 @@ jobs:
         run: deno task check
 
       - name: Verify JSR publish of @korchasa/flowai-workflow (dry-run)
-        working-directory: engine
         run: deno publish --dry-run --allow-dirty
 
       - name: Verify no files modified by check
@@ -88,7 +87,7 @@ jobs:
 
           if [ "$RELEASABLE" = "true" ]; then
             deno task release $BUMP_ARGS
-            NEW_VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('engine/deno.json')).version)")
+            NEW_VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
             NEW_TAG="v${NEW_VERSION}"
             git tag -a "$NEW_TAG" -m "Release ${NEW_TAG}"
             git push origin main "$NEW_TAG"
@@ -228,5 +227,4 @@ jobs:
       # @korchasa/ai-ide-cli is maintained in korchasa/ai-ide-cli and
       # published from there. Engine imports the stable JSR version.
       - name: Publish @korchasa/flowai-workflow to JSR
-        working-directory: engine
         run: deno publish

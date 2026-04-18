@@ -47,8 +47,8 @@ example of engine usage.
 
 ## Architecture
 
-- **Core:** Domain-agnostic DAG executor engine (`engine/`, Deno/TypeScript).
-  Reads YAML workflow configs. Entry: `deno task run [--prompt "..."]`
+- **Core:** Domain-agnostic DAG executor engine (root-level Deno/TypeScript
+  modules). Reads YAML workflow configs. Entry: `deno task run [--prompt "..."]`
 - **Node types:** `agent` (Claude CLI), `merge` (combine outputs), `loop`
   (iterative body with exit condition), `human` (terminal prompt)
 - **Inter-agent communication:** Structured artifacts in
@@ -66,27 +66,34 @@ example of engine usage.
   subagents). Memory in `.flowai-workflow/memory/`
 - **Docker image:** Single image with claude CLI, deno, git, gh
 
-## Deno Workspace Layout
+## Repo Layout
 
-Project is a single-member Deno workspace:
+Single-package repository:
 
-- `engine/` → `@korchasa/flowai-workflow` — DAG executor (main package)
+- Root `deno.json` defines the `@korchasa/flowai-workflow` JSR package.
+  Source files (engine modules, CLI entry, init scaffolder, REPL, HITL) live
+  at repo root — no `engine/` subfolder.
+- `scripts/` — dev tooling (check, compile, dashboard, release-notes,
+  loop runners). Excluded from the JSR tarball.
+- `documents/` — SRS/SDS and task notes. Excluded from the tarball.
+- `.flowai-workflow/` — dogfood SDLC workflow config and run artifacts.
+  Excluded from the tarball.
 
 The Claude/OpenCode/Cursor CLI wrapper library
 (`@korchasa/ai-ide-cli`) lives in the sibling repo
 [`korchasa/ai-ide-cli`](https://github.com/korchasa/ai-ide-cli).
-Engine depends on it one-way via JSR (`jsr:@korchasa/ai-ide-cli@^0.2.0`,
-pinned in `engine/deno.json`).
+flowai-workflow depends on it one-way via JSR
+(`jsr:@korchasa/ai-ide-cli@^0.2.0`, pinned in `deno.json`).
 
-For local cross-repo iteration (edit library, see effect in engine
-without a JSR republish), clone both repos side by side under one
-parent dir and add a `links` entry to the root `deno.json` — Deno
-resolves the JSR specifier from the sibling checkout instead of the
-registry:
+For local cross-repo iteration (edit library, see effect here without a
+JSR republish), clone both repos side by side under one parent dir and
+add a `links` entry to `deno.json` — Deno resolves the JSR specifier
+from the sibling checkout instead of the registry:
 
 ```jsonc
 {
-  "workspace": ["./engine"],
+  "name": "@korchasa/flowai-workflow",
+  // ...
   "links": ["../ai-ide-cli"]  // local dev only — do not commit
 }
 ```
@@ -94,17 +101,15 @@ registry:
 `links` is intentionally NOT committed to keep CI and publish-dry-run
 honest about the JSR-published version.
 
-Workspace gotchas discovered empirically — honor these to avoid CI failures:
+Publish gotchas honored in `deno.json#publish`:
 
 - **`publish.include` cannot reference files outside the package
   directory.** `../README.md` / `../LICENSE` get rejected with
-  `error[invalid-path]`. Each member ships only its own files.
-- **Root `deno.json` cannot be both a workspace root AND a package.**
-  Keep `name`/`version`/`exports`/`publish` out of root deno.json —
-  move them into member `deno.json` files.
-- **`deno compile` DOES embed workspace members inline** without requiring
-  JSR publication — the resulting binary is self-contained. With `links`,
-  the patched sibling package is also embedded inline.
+  `error[invalid-path]`.
+- Dev-only paths (`scripts/`, `documents/`, `.github/`, `.flowai-workflow/`,
+  `.claude/`, `.devcontainer/`, `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`,
+  `.versionrc.json`) are listed in `publish.exclude` so the JSR tarball
+  ships only runtime source + `deno.json` + `README.md`.
 - **JSR slow-types rules (`no-slow-types`, `missing-jsdoc`,
   `private-type-ref`) fire ONLY on `deno publish --dry-run`** — not on
   `deno check` or `deno lint`. Always run `deno task check` before commit
@@ -117,7 +122,9 @@ Workspace gotchas discovered empirically — honor these to avoid CI failures:
 
 Two scopes with strict boundaries:
 
-- **Engine** (`scope: engine`) — domain-agnostic DAG executor (`engine/`).
+- **Engine** (`scope: engine`) — domain-agnostic DAG executor (root-level
+  `*.ts` modules: `cli.ts`, `engine.ts`, `agent.ts`, `dag.ts`, `config.ts`,
+  `validate.ts`, `hitl.ts`, `loop.ts`, `state.ts`, `template.ts`, etc.).
   Node types, validation, continuation, resume, HITL, CLI, templates.
   SRS: `documents/requirements-engine.md`. SDS: `documents/design-engine.md`.
   GitHub label: `scope: engine`.
