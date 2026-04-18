@@ -8,7 +8,13 @@
     `buildLoopBodyOrder()` reads from inline `nodes` sub-object (replaces
     `body` array), topo-sorts body nodes by their `inputs` declarations.
     `buildContext()` resolves `inputs` against both sibling body nodes and
-    top-level nodes. Accepts `streamLogPath` pattern from engine; computes
+    top-level nodes.
+    **Budget enforcement (FR-E47):** After each body node `markNodeCompleted()`:
+    checks `state.total_cost_usd > options.budget_usd` → abort workflow if
+    exceeded. Before iteration spawn (iteration > 1): computes
+    `avgIterCost = totalLoopCost / iterationCount`; if
+    `avgIterCost > remainingBudget` → exits loop cleanly with `budget_preempt`
+    exit reason. First iteration skips pre-check (no cost data yet). Accepts `streamLogPath` pattern from engine; computes
     iteration-qualified path `${nodeId}-iter-${i}.jsonl` per body node
     invocation; forwards to inner `runAgent()` calls.
     **Runtime condition_field presence check (FR-E36):**
@@ -77,6 +83,12 @@
     node result summary display (FR-E15/E22),
     phase registry init via `setPhaseRegistry(config)` at engine startup,
     pre-post-workflow `on_failure_script` execution.
+    **Budget enforcement (FR-E47):** After `markNodeCompleted()` in
+    `executeNode()`: (1) workflow-wide check —
+    `state.total_cost_usd > options.budget_usd` → abort workflow with
+    `Error("Workflow budget exceeded: $X.XX > $Y.YY")`. (2) Per-node check —
+    `node.cost_usd > resolvedBudget.max_usd` → fail node (not workflow).
+    `budget_usd` from `EngineOptions` threaded to loop executor.
     Two-phase config loading (FR-E24): `run()` reads raw YAML →
     `extractPreRun()` → `runPreRunScript()` if present → `loadConfig()`
     re-reads (potentially updated) config.
@@ -101,7 +113,9 @@
     bare `--` flags → backward-compat shim (deprecated, delegates to `run`),
     default (no args) → dynamic import `repl/mod.ts` → `launchRepl()`.
     `runEngine()` extracted as named function shared by `run` and compat shim.
-    `parseArgs()` unchanged (synchronous).
+    `parseArgs()`: parses `--budget <USD>` flag (FR-E47). Converts to float,
+    validates positive. Maps to `EngineOptions.budget_usd`. Added to `--help`
+    output.
     `VERSION` constant: `Deno.env.get("VERSION") ?? "dev"`.
   - `repl/mod.ts` — interactive REPL module (FR-E46):
     `resolveRuntime()` — flag → persisted config
@@ -146,7 +160,8 @@
 - **Interfaces:**
   - CLI: `flowai-workflow` (REPL), `flowai-workflow run [--prompt <text>]
     [--config <path>] [--resume <run-id>] [--dry-run] [-v|-s|-q]
-    [--env KEY=VAL] [--skip nodes] [--only nodes]`, `--version|-V`, `--help`
+    [--env KEY=VAL] [--skip nodes] [--only nodes] [--budget <USD>]`,
+    `--version|-V`, `--help`
   - Config: `.flowai-workflow/workflow.yaml` (YAML, version "1")
   - State: `.flowai-workflow/runs/<run-id>/state.json` (JSON)
 - **Node types:** `agent`, `merge`, `loop` (with inline `nodes` sub-object

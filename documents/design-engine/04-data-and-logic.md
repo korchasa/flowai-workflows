@@ -34,13 +34,21 @@
   - RunState: `{ ..., total_cost_usd?: number }` — sum of all
     `nodes[*].cost_usd`, recomputed by `updateRunCost()` on each node
     completion (FR-E17)
+  - EngineOptions: `{ ..., budget_usd?: number }` — workflow-wide USD cap
+    from `--budget` CLI flag (FR-E47). When set, engine aborts after any node
+    completion if `state.total_cost_usd > budget_usd`
+  - WorkflowDefaults: `{ ..., budget?: { max_usd?: number; max_turns?: number } }`
+    — default budget applied to all nodes via cascade merge (FR-E47)
   - NodeConfig: `{ ..., run_on?: "always"|"success"|"failure", phase?: string,
     env?: Record<string, string>, model?: string,
     allowed_paths?: string[] }` — `run_on` for conditional post-workflow
     execution; `phase` for artifact directory grouping; `env` for node-level
     env vars; `model` for per-node Claude model override (FR-E12);
     `allowed_paths` for scope-based file modification detection (FR-E37) —
-    glob patterns defining permitted file modifications during agent invocation
+    glob patterns defining permitted file modifications during agent invocation;
+    `budget?: { max_usd?: number; max_turns?: number }` (FR-E47) — per-node
+    budget limits. `max_usd` caps node cost; `max_turns` emitted as
+    `--max-turns <N>` for Claude CLI
 - **ERD:** N/A (file-based, no database).
 - **Migration:** N/A.
 
@@ -279,6 +287,24 @@
     all blocks (backward-compatible). Log file writes call without verbosity
     (full output preserved). `onOutput` callback path passes verbosity from
     `AgentRunOptions` so terminal output is filtered at source.
+  - **Run Budget Enforcement (FR-E47):** Inline checks at 4 sites:
+    1. **Workflow-wide (engine.ts):** After `markNodeCompleted()` in
+       `executeNode()`: `if (options.budget_usd && state.total_cost_usd >
+       options.budget_usd)` → throw `Error("Workflow budget exceeded:
+       $X.XX > $Y.YY")`. Aborts workflow — remaining nodes skipped.
+    2. **Per-node (engine.ts):** After `markNodeCompleted()`: `if
+       (resolvedBudget.max_usd && node.cost_usd > resolvedBudget.max_usd)` →
+       fail node (not workflow). `resolvedBudget` = node.budget ?? defaults.budget.
+    3. **Loop workflow check (loop.ts):** After each body node
+       `markNodeCompleted()`: same workflow-wide check as #1.
+    4. **Loop pre-check (loop.ts):** Before iteration spawn (iteration > 1):
+       `avgIterCost = totalLoopCost / iterationCount`. If
+       `avgIterCost > (options.budget_usd - state.total_cost_usd)` → exit loop
+       with `budget_preempt` reason. First iteration skips (no cost data).
+    Budget cascade in `mergeDefaults()`: `node.budget → loopParent.budget →
+    defaults.budget`. Same merge pattern as `model` field. `--max-turns`
+    emission: `agent.ts` appends `--max-turns <N>` to `extraArgs` when
+    `resolvedBudget.max_turns` present (Claude CLI only).
   - **Binary Compile Flow (FR-E39):** `scripts/compile.ts` iterates
     `TARGETS` array. Per target: construct `deno compile --allow-all --target
     <denoTarget> --output dist/flowai-workflow-<os>-<arch> cli.ts`. If
@@ -305,8 +331,8 @@
 
 - **Simplified:** Pipeline runs sequentially (no parallel stages in v1).
 - **Deferred:** Multi-repo support. Parallel workflows for multiple issues.
-  Issue size/complexity limits. Cost budget limits and alerts (per-node cost
-  aggregation implemented in FR-E17; budget enforcement deferred). Binary smoke
+  Issue size/complexity limits. Budget alerts/notifications (FR-E47 covers
+  enforcement; alerts deferred). Binary smoke
   tests in CI matrix (FR-E39 Variant B — deferred until base release workflow
   proven). Package manager distribution (brew, npm). Windows binary targets.
   Auto-update mechanism. Windows
