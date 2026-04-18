@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.17](https://github.com/korchasa/flowai-workflow/compare/v0.1.16...v0.1.17) (2026-04-17)
+
+
+### Features
+
+* **engine,ai-ide-cli:** add interactive REPL as default CLI command (FR-E45, FR-E46, FR-L11, FR-L12) ([e566840](https://github.com/korchasa/flowai-workflow/commit/e5668409d7085dac02ef487c4a92f021dd09299c))
+* **engine:** make init skill analyze project and confirm settings with user ([e282207](https://github.com/korchasa/flowai-workflow/commit/e282207ff337dbf52aabefd4b433f1c95e0e0dad))
+* **engine:** restore init subcommand, add Python init script to REPL skill ([6a2bc01](https://github.com/korchasa/flowai-workflow/commit/6a2bc01d0541f9dbad869febaa57d73486d92385))
+* **engine:** unify CHECK_CMD in init skill, improve REPL system prompt ([74f540e](https://github.com/korchasa/flowai-workflow/commit/74f540e18ff5247928154943d0d112a762c2ec5f))
+
+
+### Bug Fixes
+
+* **ai-ide-cli:** inject REPL skills into user's skills dir instead of overriding config ([8a67aa3](https://github.com/korchasa/flowai-workflow/commit/8a67aa3320dae4a9c4b015ab4f1e5fe9675d266a))
+* **ai-ide-cli:** remove SKILL_PREFIX from injection, use frontmatter name as-is ([72def2b](https://github.com/korchasa/flowai-workflow/commit/72def2bec3a1ba8971333cd543d1bc529fc5b533))
+* **ai-ide-cli:** symlink all config entries (not just files) for Claude REPL auth ([dcc797b](https://github.com/korchasa/flowai-workflow/commit/dcc797b1ff8ad38c05be153658aad3a45901e929))
+* **engine:** embed REPL skills in compiled binary via --include flag ([1ee8bfa](https://github.com/korchasa/flowai-workflow/commit/1ee8bfa5ecae93b7b21fd5101247797753338ec1))
+* **engine:** match skill frontmatter name with injected directory name ([cc9394a](https://github.com/korchasa/flowai-workflow/commit/cc9394ab30ac822ed8bbfb4d49b46313f773e16b))
+
+
+### Documentation
+
+* split ides-difference.md by IDE into separate files ([bb0a3d9](https://github.com/korchasa/flowai-workflow/commit/bb0a3d98511f068f077bf81acc85756bbaeee477))
+
+
+### Code Refactoring
+
+* **engine:** remove Python init script, let skill call CLI directly ([73b321b](https://github.com/korchasa/flowai-workflow/commit/73b321b53ef61d9a864f24546a9ad43bd8314045))
+
 ### [0.1.16](https://github.com/korchasa/flowai-workflow/compare/v0.1.15...v0.1.16) (2026-04-12)
 
 
