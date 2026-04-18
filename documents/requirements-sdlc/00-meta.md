@@ -145,8 +145,8 @@ Design ideas captured for discussion; not committed work. Promote to FR-S only a
     agent-qa/SKILL.md                    # QA via PR reviews
   scripts/                              # HITL scripts (engine infrastructure)
     lib.sh                              # Shared functions (logging, continuation loop, git ops)
-    hitl-ask.sh                         # HITL question delivery via GitHub issue
-    hitl-check.sh                       # HITL reply polling via GitHub issue
+    hitl-ask.sh                         # HITL question delivery via Telegram Bot API
+    hitl-check.sh                       # HITL reply polling via Telegram Bot API
   runs/                                 # Per-run artifacts (engine-controlled path)
     <run-id>/                           # Per-run artifacts
       <phase>/<node-id>/                # Phase-grouped node output

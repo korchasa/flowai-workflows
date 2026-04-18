@@ -225,27 +225,36 @@
 
 ### 3.5 HITL Pipeline Scripts (`.flowai-workflow/scripts/hitl-*.sh`)
 
-- **Purpose:** Deliver agent questions to humans and poll for replies. Pipeline-
-  specific (GitHub), not engine code. Engine invokes via configurable paths.
+- **Purpose:** Deliver agent questions to humans and poll for replies via
+  Telegram Bot API. Pipeline-specific (Telegram), not engine code. Engine
+  invokes via configurable paths.
+- **Env:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` sourced from project-root
+  `.env` (gitignored). See `.env.example`. Personal DM with a bot created via
+  `@BotFather`.
 - **Scripts:**
-  - `hitl-ask.sh` — render question JSON → markdown, post to GitHub issue.
-    - Input: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`,
-      `--question-json`.
-    - Extracts issue: `yq '.issue' "$RUN_DIR/$ISSUE_SOURCE"`.
-    - Auto-detects repo: `gh repo view --json nameWithOwner`.
-    - Renders: header, blockquoted question, numbered options, HTML marker
-      `<!-- hitl:<run-id>:<node-id> -->`.
-    - Posts via `gh issue comment <N> --body "$md"`.
-    - Deps: `jq`, `yq`, `gh`.
-  - `hitl-check.sh` — poll GitHub issue for human reply after marker.
-    - Input: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`,
-      `--exclude-login`.
-    - Extracts issue: `yq '.issue' "$RUN_DIR/$ISSUE_SOURCE"`.
-    - Auto-detects repo: `gh repo view --json nameWithOwner`.
-    - Fetches comments: `gh api repos/{owner}/{repo}/issues/<N>/comments`.
-    - jq filter: find comment with marker, then first subsequent non-bot comment.
-    - Exit 0 + body on stdout = reply found. Exit 1 = no reply yet.
-    - Deps: `jq`, `yq`, `gh`.
+  - `hitl-ask.sh` — send question to Telegram chat.
+    - Input: `--run-dir`, `--run-id`, `--node-id`, `--question-json`
+      (`--artifact-source` accepted for engine compat, ignored).
+    - Renders plain-text body: `Agent <node> is waiting…` + header + question
+      + numbered options + footer `[run=<id> node=<id>]`.
+    - Captures baseline `update_id` via
+      `GET /getUpdates?offset=-1&limit=1`, writes to
+      `$RUN_DIR/$NODE_ID/.tg_baseline` so subsequent checks ignore prior
+      messages.
+    - Posts via `POST /sendMessage` (JSON body, `disable_web_page_preview`).
+    - Deps: `curl`, `jq`.
+  - `hitl-check.sh` — poll Telegram for a reply newer than baseline.
+    - Input: `--run-dir`, `--node-id` (`--artifact-source`, `--run-id`,
+      `--exclude-login` accepted for engine compat, ignored).
+    - Reads baseline from `$RUN_DIR/$NODE_ID/.tg_baseline`.
+    - Fetches `GET /getUpdates?offset=<baseline+1>&timeout=0`, filters
+      `update_id > baseline && message.chat.id == TELEGRAM_CHAT_ID &&
+      message.text`, picks the oldest match.
+    - Exit 0 + text on stdout = reply found. Exit 1 = no reply yet.
+    - Deps: `curl`, `jq`.
+- **Constraints:** Single bot consumer (no webhooks, no parallel pollers) —
+  `getUpdates` is exclusive. Telegram retains pending updates for 24h, well
+  above default `timeout=7200` (2h).
 - **Interfaces:** Called by engine via `defaults.hitl.ask_script` /
   `defaults.hitl.check_script` paths in `workflow.yaml`.
 

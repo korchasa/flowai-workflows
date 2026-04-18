@@ -130,18 +130,20 @@
 
 ### 3.35 FR-S35: HITL Artifact Source Node Reference
 
-- **Description:** `defaults.hitl.artifact_source` in `workflow.yaml` MUST
-  reference the upstream node via `{{input.<node-id>}}/…` template syntax
-  instead of a hardcoded relative path. Engine interpolates the template at
-  runtime in `buildScriptArgs()`. SDLC-level validator emits a parse-time error
-  if a hardcoded path (no `{{input.`) is detected. HITL polling behavior and
-  timing remain unchanged.
+- **Description:** `defaults.hitl.artifact_source` in `workflow.yaml` is
+  optional. When set, it MUST reference the upstream node via
+  `{{input.<node-id>}}/…` template syntax — a hardcoded relative path is
+  rejected at parse time by the SDLC-level validator. Engine interpolates the
+  template at runtime in `buildScriptArgs()`. The SDLC workflow now uses
+  Telegram HITL transport (see SDS §3.5) which does not read any artifact —
+  the field is therefore absent from `workflow.yaml`; validation still
+  enforces template syntax for any other workflow that opts in.
 - **Extends:** FR-S24 (Workflow Config Validation) — concrete application of
   config validation for `hitl.artifact_source`.
 - **Acceptance criteria:**
-  - [x] `workflow.yaml` `defaults.hitl.artifact_source` uses
-    `{{input.specification}}/01-spec.md` template syntax. Evidence:
-    `.flowai-workflow/workflow.yaml:23`.
+  - [x] `workflow.yaml` omits `defaults.hitl.artifact_source` (Telegram
+    transport does not require it). Evidence:
+    `.flowai-workflow/workflow.yaml:18-22`.
   - [x] `interpolate()` applied to `artifact_source` in
     `engine/hitl.ts:buildScriptArgs()` before passing value to scripts; ctx
     threaded through `HitlRunOptions`. Evidence: `engine/hitl.ts:257,264`.

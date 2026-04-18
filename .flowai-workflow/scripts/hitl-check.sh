@@ -1,60 +1,75 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# hitl-check.sh — Poll GitHub issue for human reply after HITL marker.
+# hitl-check.sh — Poll Telegram for a reply to the HITL question.
 # Called by engine via defaults.hitl.check_script.
-# Args: --run-dir DIR --artifact-source PATH --run-id ID --node-id ID --exclude-login LOGIN
-# Exit 0 + body on stdout = reply found. Exit 1 = no reply yet.
+# Args (engine contract):
+#   --run-dir DIR --artifact-source PATH --run-id ID --node-id ID [--exclude-login LOGIN]
+# Exit 0 + reply text on stdout = reply found.
+# Exit 1 = no reply yet.
+# Env (from <project>/.env):
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
-RUN_DIR="" ARTIFACT_SOURCE="" RUN_ID="" NODE_ID="" EXCLUDE_LOGIN=""
+RUN_DIR="" NODE_ID=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --run-dir)          RUN_DIR="$2"; shift 2 ;;
-    --artifact-source)  ARTIFACT_SOURCE="$2"; shift 2 ;;
-    --run-id)           RUN_ID="$2"; shift 2 ;;
+    --artifact-source)  shift 2 ;; # unused in Telegram transport
+    --run-id)           shift 2 ;; # unused (baseline is per-node)
     --node-id)          NODE_ID="$2"; shift 2 ;;
-    --exclude-login)    EXCLUDE_LOGIN="$2"; shift 2 ;;
+    --exclude-login)    shift 2 ;; # unused in Telegram transport
     *) echo "Unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
-# Extract issue number from PM artifact frontmatter
-if [[ -z "$ARTIFACT_SOURCE" || -z "$RUN_DIR" ]]; then
-  echo "ERROR: --run-dir and --artifact-source are required" >&2
+if [[ -z "$RUN_DIR" || -z "$NODE_ID" ]]; then
+  echo "ERROR: --run-dir and --node-id are required" >&2
   exit 1
 fi
 
-ISSUE=$(yq '.issue' "$RUN_DIR/$ARTIFACT_SOURCE" 2>/dev/null || true)
-if [[ -z "$ISSUE" || "$ISSUE" == "null" ]]; then
-  echo "ERROR: could not extract issue number from $RUN_DIR/$ARTIFACT_SOURCE" >&2
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$PROJECT_ROOT/.env"
+  set +a
+fi
+
+: "${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN not set (expected in $PROJECT_ROOT/.env)}"
+: "${TELEGRAM_CHAT_ID:?TELEGRAM_CHAT_ID not set (expected in $PROJECT_ROOT/.env)}"
+
+API="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}"
+
+BASELINE_FILE="$RUN_DIR/$NODE_ID/.tg_baseline"
+if [[ ! -f "$BASELINE_FILE" ]]; then
+  echo "ERROR: baseline file missing: $BASELINE_FILE (ask_script must run first)" >&2
+  exit 1
+fi
+BASELINE=$(cat "$BASELINE_FILE")
+
+# Fetch pending updates strictly after the baseline. timeout=0 — short poll.
+UPDATES=$(curl -sS --fail-with-body \
+  "${API}/getUpdates?offset=$((BASELINE + 1))&timeout=0")
+
+OK=$(echo "$UPDATES" | jq -r '.ok // false')
+if [[ "$OK" != "true" ]]; then
+  echo "ERROR: getUpdates failed: $UPDATES" >&2
   exit 1
 fi
 
-# Auto-detect repo
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
+REPLY=$(echo "$UPDATES" | jq -r \
+  --argjson chat "$TELEGRAM_CHAT_ID" \
+  --argjson baseline "$BASELINE" \
+  '[.result[]
+    | select(.update_id > $baseline)
+    | select(.message.chat.id == $chat)
+    | select(.message.text)
+    | .message.text] | first // empty')
 
-MARKER="<!-- hitl:${RUN_ID}:${NODE_ID} -->"
-
-# Fetch all comments (--paginate emits one array per page; -s merges)
-COMMENTS=$(gh api "repos/${REPO}/issues/${ISSUE}/comments" --paginate | jq -s 'add // []')
-
-# Find the marker comment's index, then first subsequent non-bot comment
-REPLY=$(echo "$COMMENTS" | jq -r --arg marker "$MARKER" --arg bot "$EXCLUDE_LOGIN" '
-  # Find index of comment containing the marker
-  (to_entries | map(select(.value.body | contains($marker))) | last | .key) as $marker_idx |
-  if $marker_idx == null then
-    null
-  else
-    # Find first comment after marker where user is not the bot
-    [to_entries[] | select(.key > $marker_idx) | select(.value.user.login != $bot)] |
-    first | .value.body // null
-  end
-')
-
-if [[ "$REPLY" != "null" && -n "$REPLY" ]]; then
+if [[ -n "$REPLY" ]]; then
   echo "$REPLY"
   exit 0
-else
-  exit 1
 fi
+exit 1
