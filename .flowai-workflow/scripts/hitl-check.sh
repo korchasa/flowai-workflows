@@ -8,7 +8,7 @@ set -euo pipefail
 # Exit 0 + reply text on stdout = reply found.
 # Exit 1 = no reply yet.
 # Env (from <project>/.env):
-#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+#   FLOWAI_TELEGRAM_BOT_TOKEN, FLOWAI_TELEGRAM_CHAT_ID
 
 RUN_DIR="" NODE_ID=""
 
@@ -37,10 +37,10 @@ if [[ -f "$PROJECT_ROOT/.env" ]]; then
   set +a
 fi
 
-: "${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN not set (expected in $PROJECT_ROOT/.env)}"
-: "${TELEGRAM_CHAT_ID:?TELEGRAM_CHAT_ID not set (expected in $PROJECT_ROOT/.env)}"
+: "${FLOWAI_TELEGRAM_BOT_TOKEN:?FLOWAI_TELEGRAM_BOT_TOKEN not set (expected in $PROJECT_ROOT/.env)}"
+: "${FLOWAI_TELEGRAM_CHAT_ID:?FLOWAI_TELEGRAM_CHAT_ID not set (expected in $PROJECT_ROOT/.env)}"
 
-API="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}"
+API="https://api.telegram.org/bot${FLOWAI_TELEGRAM_BOT_TOKEN}"
 
 BASELINE_FILE="$RUN_DIR/$NODE_ID/.tg_baseline"
 if [[ ! -f "$BASELINE_FILE" ]]; then
@@ -60,7 +60,7 @@ if [[ "$OK" != "true" ]]; then
 fi
 
 REPLY=$(echo "$UPDATES" | jq -r \
-  --argjson chat "$TELEGRAM_CHAT_ID" \
+  --argjson chat "$FLOWAI_TELEGRAM_CHAT_ID" \
   --argjson baseline "$BASELINE" \
   '[.result[]
     | select(.update_id > $baseline)

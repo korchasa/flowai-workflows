@@ -228,7 +228,7 @@
 - **Purpose:** Deliver agent questions to humans and poll for replies via
   Telegram Bot API. Pipeline-specific (Telegram), not engine code. Engine
   invokes via configurable paths.
-- **Env:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` sourced from project-root
+- **Env:** `FLOWAI_TELEGRAM_BOT_TOKEN`, `FLOWAI_TELEGRAM_CHAT_ID` sourced from project-root
   `.env` (gitignored). See `.env.example`. Personal DM with a bot created via
   `@BotFather`.
 - **Scripts:**
@@ -248,7 +248,7 @@
       `--exclude-login` accepted for engine compat, ignored).
     - Reads baseline from `$RUN_DIR/$NODE_ID/.tg_baseline`.
     - Fetches `GET /getUpdates?offset=<baseline+1>&timeout=0`, filters
-      `update_id > baseline && message.chat.id == TELEGRAM_CHAT_ID &&
+      `update_id > baseline && message.chat.id == FLOWAI_TELEGRAM_CHAT_ID &&
       message.text`, picks the oldest match.
     - Exit 0 + text on stdout = reply found. Exit 1 = no reply yet.
     - Deps: `curl`, `jq`.

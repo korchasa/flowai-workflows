@@ -6,8 +6,8 @@ set -euo pipefail
 # Args (engine contract):
 #   --run-dir DIR --artifact-source PATH --run-id ID --node-id ID --question-json JSON
 # Env (from <project>/.env):
-#   TELEGRAM_BOT_TOKEN — bot token from @BotFather
-#   TELEGRAM_CHAT_ID   — target chat id (personal DM with the bot)
+#   FLOWAI_TELEGRAM_BOT_TOKEN — bot token from @BotFather
+#   FLOWAI_TELEGRAM_CHAT_ID   — target chat id (personal DM with the bot)
 
 RUN_DIR="" RUN_ID="" NODE_ID="" QUESTION_JSON=""
 
@@ -36,10 +36,10 @@ if [[ -f "$PROJECT_ROOT/.env" ]]; then
   set +a
 fi
 
-: "${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN not set (expected in $PROJECT_ROOT/.env)}"
-: "${TELEGRAM_CHAT_ID:?TELEGRAM_CHAT_ID not set (expected in $PROJECT_ROOT/.env)}"
+: "${FLOWAI_TELEGRAM_BOT_TOKEN:?FLOWAI_TELEGRAM_BOT_TOKEN not set (expected in $PROJECT_ROOT/.env)}"
+: "${FLOWAI_TELEGRAM_CHAT_ID:?FLOWAI_TELEGRAM_CHAT_ID not set (expected in $PROJECT_ROOT/.env)}"
 
-API="https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}"
+API="https://api.telegram.org/bot${FLOWAI_TELEGRAM_BOT_TOKEN}"
 
 QUESTION=$(echo "$QUESTION_JSON" | jq -r '.question // "No question provided"')
 HEADER=$(echo "$QUESTION_JSON" | jq -r '.header // empty')
@@ -81,7 +81,7 @@ mkdir -p "$RUN_DIR/$NODE_ID"
 echo "$BASELINE" > "$RUN_DIR/$NODE_ID/.tg_baseline"
 
 BODY=$(jq -n \
-  --arg chat "$TELEGRAM_CHAT_ID" \
+  --arg chat "$FLOWAI_TELEGRAM_CHAT_ID" \
   --arg text "$TEXT" \
   '{chat_id: ($chat | tonumber), text: $text, disable_web_page_preview: true}')
 
