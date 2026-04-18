@@ -76,9 +76,23 @@ The Claude/OpenCode/Cursor CLI wrapper library
 (`@korchasa/ai-ide-cli`) lives in the sibling repo
 [`korchasa/ai-ide-cli`](https://github.com/korchasa/ai-ide-cli).
 Engine depends on it one-way via JSR (`jsr:@korchasa/ai-ide-cli@^0.2.0`,
-pinned in `engine/deno.json`). For local development the root `deno.json`
-uses `"links": ["../ai-ide-cli"]` to resolve the JSR specifier from the
-sibling checkout — clone both repos side by side under one parent dir.
+pinned in `engine/deno.json`).
+
+For local cross-repo iteration (edit library, see effect in engine
+without a JSR republish), clone both repos side by side under one
+parent dir and add a `links` entry to the root `deno.json` — Deno
+resolves the JSR specifier from the sibling checkout instead of the
+registry:
+
+```jsonc
+{
+  "workspace": ["./engine"],
+  "links": ["../ai-ide-cli"]  // local dev only — do not commit
+}
+```
+
+`links` is intentionally NOT committed to keep CI and publish-dry-run
+honest about the JSR-published version.
 
 Workspace gotchas discovered empirically — honor these to avoid CI failures:
 
