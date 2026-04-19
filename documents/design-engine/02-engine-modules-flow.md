@@ -10,11 +10,18 @@
     `buildContext()` resolves `inputs` against both sibling body nodes and
     top-level nodes.
     **Budget enforcement (FR-E47):** After each body node `markNodeCompleted()`:
-    checks `state.total_cost_usd > options.budget_usd` → abort workflow if
-    exceeded. Before iteration spawn (iteration > 1): computes
-    `avgIterCost = totalLoopCost / iterationCount`; if
-    `avgIterCost > remainingBudget` → exits loop cleanly with `budget_preempt`
-    exit reason. First iteration skips pre-check (no cost data yet). Accepts `streamLogPath` pattern from engine; computes
+    (a) per-node check using `resolveBudget(bodyNode, defaults, loopNode)` —
+    if `iterCost > resolvedBudget.max_usd` the body node is demoted to failed
+    (per-iteration semantics) and the loop returns failure;
+    (b) workflow-wide check `state.total_cost_usd > opts.budgetUsd` → throws
+    — propagates to `executeNode`'s catch, which marks the loop node failed
+    and aborts the workflow. Pre-iteration preempt lives in exported
+    `shouldPreemptLoop(budgetUsd, totalRunCost, totalLoopCost, completedIter)`
+    helper — called for iteration > 1. When avg iter cost > remaining budget,
+    loop exits cleanly (`success=true`) with `exit_reason: "budget_preempt"`;
+    a `BUDGET_PREEMPT` status line is emitted via `OutputManager`. First
+    iteration always runs (skipped check, no cost data). `budgetUsd` is
+    threaded in via `LoopRunOptions.budgetUsd` by `executeLoopNode`. Accepts `streamLogPath` pattern from engine; computes
     iteration-qualified path `${nodeId}-iter-${i}.jsonl` per body node
     invocation; forwards to inner `runAgent()` calls.
     **Runtime condition_field presence check (FR-E36):**
@@ -83,12 +90,26 @@
     node result summary display (FR-E15/E22),
     phase registry init via `setPhaseRegistry(config)` at engine startup,
     pre-post-workflow `on_failure_script` execution.
-    **Budget enforcement (FR-E47):** After `markNodeCompleted()` in
-    `executeNode()`: (1) workflow-wide check —
-    `state.total_cost_usd > options.budget_usd` → abort workflow with
-    `Error("Workflow budget exceeded: $X.XX > $Y.YY")`. (2) Per-node check —
-    `node.cost_usd > resolvedBudget.max_usd` → fail node (not workflow).
-    `budget_usd` from `EngineOptions` threaded to loop executor.
+    **Budget enforcement (FR-E47):**
+    Per-node check inside `executeNode()` after `markNodeCompleted()`: when
+    `resolvedBudget.max_usd && state.nodes[id].cost_usd > max_usd` — demotes
+    the node via `markNodeFailed(..., "aborted")`, emits `nodeFailed`, honours
+    `on_error` (so `continue` still suppresses the failure).
+    Workflow-wide check in `executeLevel()` (after each level and after each
+    chunk when `max_parallel > 0`) via `checkWorkflowBudget("runtime")` —
+    throws `Error("Budget exceeded: $X.XX > $Y.YY")` when total strictly
+    exceeds `options.budget_usd`. Throw propagates to the `runWithLock` outer
+    try/catch which flips `workflowSuccess=false`.
+    Resume entry check: `runWithLock` calls `checkWorkflowBudget("resume")`
+    before the level loop — aborts immediately when a loaded
+    `state.total_cost_usd` already exceeds the cap.
+    `warnBudgetCaveats()` runs once at workflow start (after phase registry
+    init): (1) for every node with resolved `budget.max_turns` whose runtime
+    is not `claude` emits `budget.max_turns ignored: runtime=<id> (node
+    '<nodeId>')`; (2) when `--budget` is set and the default runtime is
+    non-Claude emits a one-line warning about possible silent no-op.
+    `budget_usd` flows from `EngineOptions` to `runLoop` via
+    `LoopRunOptions.budgetUsd`.
     Two-phase config loading (FR-E24): `run()` reads raw YAML →
     `extractPreRun()` → `runPreRunScript()` if present → `loadConfig()`
     re-reads (potentially updated) config.

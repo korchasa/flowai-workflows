@@ -72,11 +72,14 @@
     Called from `validateNode()`.
     `validateBudget()` (FR-E47): validates `budget.max_usd` (positive number)
     and `budget.max_turns` (positive integer) when present on node or defaults.
-    Called from `validateNode()`. Invalid → config error at parse time.
-    `mergeBudget()` in `mergeDefaults()` (FR-E47): cascade merge
-    `node.budget → loopParent.budget → defaults.budget`. Same pattern as
-    `model` cascade. Loop body nodes inherit from enclosing loop node, then
-    defaults.
+    Rejects unknown keys. Called from `validateNode()` and (for
+    `defaults.budget`) from the defaults-level validation pass. Invalid →
+    config error at parse time.
+    `resolveBudget(node, defaults, loopParent?)` (FR-E47): exported helper —
+    shallow cascade `node.budget ?? loopParent.budget ?? defaults.budget`.
+    Runtime-resolved (same spirit as `resolveRuntimeConfig` for the `model`
+    field); NOT merged into `NodeConfig` at config time. Returns `undefined`
+    when no budget is set at any level.
     `validateValidationRule()` (FR-E33, FR-E38): `"artifact"` added to
     `validTypes`. When `type === "artifact"`: at least one of `sections` or
     `fields` required (both optional individually). `sections` validated as
