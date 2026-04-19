@@ -109,7 +109,7 @@ async function workflowIntegrity(): Promise<void> {
   const workflowPath = ".flowai-workflow/workflow.yaml";
 
   // 1. Load and validate workflow config (schema + prompt paths + phases)
-  const { loadConfig } = await import("../engine/config.ts");
+  const { loadConfig } = await import("../config.ts");
   try {
     await loadConfig(workflowPath);
     console.log(`  Workflow config valid: ${workflowPath}`);
@@ -138,7 +138,7 @@ export function validateHitlArtifactSource(
 async function hitlArtifactSource(): Promise<void> {
   console.log("\n--- HITL Artifact Source Validation ---");
   const workflowPath = ".flowai-workflow/workflow.yaml";
-  const { loadConfig } = await import("../engine/config.ts");
+  const { loadConfig } = await import("../config.ts");
   let config;
   try {
     config = await loadConfig(workflowPath);
@@ -295,7 +295,7 @@ Checks performed:
   - Formatting check (deno fmt --check)
   - Linting (deno lint)
   - Type check (deno check — all .ts files incl. tests)
-  - CLI smoke test (engine/cli.ts --help)
+  - CLI smoke test (cli.ts --help)
   - Secret scan (gitleaks)
   - Tests (deno test)
   - Doc lint: JSDoc, private-type-ref, circular deps (deno doc --lint)
@@ -339,14 +339,14 @@ if (import.meta.main) {
   await run("deno", ["fmt"], "Formatting (auto-fix)");
   await run("deno", ["lint"], "Linting");
 
-  // Type check engine/ and scripts/ .ts files. The ai-ide-cli library
-  // lives in a sibling repo and runs its own check there; engine imports
-  // it via JSR (resolved locally through the `links` field in deno.json).
+  // Type check root-level .ts files and scripts/*.ts. The ai-ide-cli
+  // library lives in a sibling repo and runs its own check there;
+  // flowai-workflow imports it via JSR.
   const typeCheckFiles: string[] = [];
-  for (const dir of ["engine", "scripts"]) {
+  for (const dir of [".", "scripts"]) {
     for await (const entry of Deno.readDir(dir)) {
       if (entry.isFile && entry.name.endsWith(".ts")) {
-        typeCheckFiles.push(`${dir}/${entry.name}`);
+        typeCheckFiles.push(dir === "." ? entry.name : `${dir}/${entry.name}`);
       }
     }
   }
@@ -355,23 +355,17 @@ if (import.meta.main) {
   // Smoke test: verify CLI entry point actually starts
   await run(
     "deno",
-    ["run", "-A", "engine/cli.ts", "--help"],
+    ["run", "-A", "cli.ts", "--help"],
     "CLI Smoke Test",
   );
 
   await run("gitleaks", ["detect", "--no-git"], "Secret Scan");
 
-  const testDirs = ["scripts", ".flowai-workflow", "engine"];
-  const testableDir = (await Promise.all(
-    testDirs.map(async (d) => ({ d, has: await hasTestFiles(d) })),
-  )).filter((x) => x.has).map((x) => x.d);
-
-  if (testableDir.length > 0) {
-    await run(
-      "deno",
-      ["test", "-A", "--no-check", ...testableDir],
-      "Tests",
-    );
+  // "." recursively finds every *_test.ts in the repo (root engine
+  // modules, scripts/, .flowai-workflow/, init/, repl/, …). Passing
+  // overlapping paths would double-test the same files.
+  if (await hasTestFiles(".")) {
+    await run("deno", ["test", "-A", "--no-check", "."], "Tests");
   } else {
     console.log("\n--- Tests ---");
     console.log("No test files found, skipping.");
@@ -381,30 +375,16 @@ if (import.meta.main) {
   // Caveat: `deno doc --lint` validates ONLY symbols reachable from the
   // given entry. Public symbols exported via other barrels are not
   // visited — rely on `deno publish --dry-run` below for full coverage.
+  await run("deno", ["doc", "--lint", "mod.ts"], "Doc Lint");
+
+  // JSR publish dry-run — catches JSR `no-slow-types`, `missing-jsdoc`,
+  // `private-type-ref`, and `invalid-path` errors that `deno check` and
+  // `deno doc --lint` do NOT surface locally.
   await run(
     "deno",
-    ["doc", "--lint", "engine/mod.ts"],
-    "Doc Lint (engine)",
+    ["publish", "--dry-run", "--allow-dirty"],
+    "Publish Dry-Run",
   );
-
-  // Engine JSR publish dry-run — catches JSR `no-slow-types`,
-  // `missing-jsdoc`, `private-type-ref`, and `invalid-path` errors that
-  // `deno check` and `deno doc --lint` do NOT surface locally. Must run
-  // with CWD set to the workspace member because `deno publish` from
-  // the workspace root publishes only the first member.
-  console.log("\n--- Publish Dry-Run (engine) ---");
-  console.log("> deno publish --dry-run --allow-dirty (cwd=engine)");
-  const enginePublish = new Deno.Command("deno", {
-    args: ["publish", "--dry-run", "--allow-dirty"],
-    cwd: "engine",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  const { success: enginePublishOk } = await enginePublish.output();
-  if (!enginePublishOk) {
-    console.error("FAILED: Publish Dry-Run (engine)");
-    Deno.exit(1);
-  }
 
   await workflowIntegrity();
   await hitlArtifactSource();

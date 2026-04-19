@@ -30,6 +30,6 @@
       "description": "GitHub PAT for gh CLI (issues:write, pull-requests:write, contents:write)"
     }
   },
-  "postCreateCommand": "deno cache --reload engine/cli.ts",
+  "postCreateCommand": "deno cache --reload cli.ts",
   "remoteUser": "vscode"
 }

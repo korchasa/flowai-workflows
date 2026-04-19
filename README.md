@@ -46,7 +46,7 @@ graph TD
 
 ## Core Concepts
 
-The engine (`engine/`, Deno/TypeScript) reads a YAML workflow config and builds a directed acyclic graph (DAG) of nodes. Nodes are topologically sorted into levels and executed sequentially.
+The engine (Deno/TypeScript modules at repo root) reads a YAML workflow config and builds a directed acyclic graph (DAG) of nodes. Nodes are topologically sorted into levels and executed sequentially.
 
 Four node types:
 
@@ -241,7 +241,10 @@ All 6 workflow agents are native Claude Code subagents in `.claude/agents/agent-
 ## Project Structure
 
 ```
-engine/                          # DAG executor engine (Deno/TypeScript)
+cli.ts, engine.ts, agent.ts, ... # DAG executor engine modules (root)
+init/                            # Project scaffolder (`flowai-workflow init`)
+repl/                            # Interactive REPL
+scripts/                         # Dev tooling (check, compile, dashboard, release-notes)
 .flowai-workflow/
   workflow.yaml                  # SDLC workflow config (example)
   agents/                        # Agent prompts (symlinked from .claude/skills/)

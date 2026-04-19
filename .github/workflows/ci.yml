@@ -39,7 +39,6 @@ jobs:
         run: deno task check
 
       - name: Verify JSR publish of @korchasa/flowai-workflow (dry-run)
-        working-directory: engine
         run: deno publish --dry-run --allow-dirty
 
       - name: Verify no files modified by check
@@ -74,7 +73,21 @@ jobs:
           BUMP_ARGS=""
 
           if [ -z "$LATEST_TAG" ]; then
-            RELEASABLE=true
+            # Fresh repo with no prior tags — DO NOT auto-release on
+            # first push. Require at least one conventional-commit type
+            # that would normally trigger a release. Otherwise the
+            # initial push silently tags + publishes and often produces
+            # a spurious release (e.g. tag collides with a JSR version
+            # pre-existing from a prior repo move). Operators bootstrap
+            # by manually pushing v<X.Y.Z> that matches
+            # `deno.json#version` once the package is production-ready.
+            COMMITS_ALL=$(git log --format='%s' HEAD)
+            if echo "$COMMITS_ALL" | grep -qE '^feat'; then
+              RELEASABLE=true
+            elif echo "$COMMITS_ALL" | grep -qE '^(fix|perf|refactor|build|engine)'; then
+              RELEASABLE=true
+              BUMP_ARGS="--release-as patch"
+            fi
           else
             COMMITS_SINCE=$(git log --format='%s' ${LATEST_TAG}..HEAD)
             if echo "$COMMITS_SINCE" | grep -qE '^feat'; then
@@ -88,7 +101,7 @@ jobs:
 
           if [ "$RELEASABLE" = "true" ]; then
             deno task release $BUMP_ARGS
-            NEW_VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('engine/deno.json')).version)")
+            NEW_VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
             NEW_TAG="v${NEW_VERSION}"
             git tag -a "$NEW_TAG" -m "Release ${NEW_TAG}"
             git push origin main "$NEW_TAG"
@@ -228,5 +241,4 @@ jobs:
       # @korchasa/ai-ide-cli is maintained in korchasa/ai-ide-cli and
       # published from there. Engine imports the stable JSR version.
       - name: Publish @korchasa/flowai-workflow to JSR
-        working-directory: engine
         run: deno publish

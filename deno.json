@@ -1,8 +1,10 @@
 {
-  "workspace": [
-    "./engine"
-  ],
+  "name": "@korchasa/flowai-workflow",
+  "version": "0.2.1",
+  "license": "MIT",
+  "exports": "./cli.ts",
   "imports": {
+    "@korchasa/ai-ide-cli": "jsr:@korchasa/ai-ide-cli@^0.2.0",
     "@std/assert": "jsr:@std/assert@^1.0.19",
     "@std/path": "jsr:@std/path@^1.1.4",
     "@std/yaml": "jsr:@std/yaml@^1.0.12",
@@ -14,28 +16,50 @@
     "check": "deno run -A scripts/check.ts",
     "test": "deno test -A --no-check --ignore=.claude/",
     "test:lib": "deno test -A --no-check .flowai-workflow/scripts/lib_test.ts",
-    "run": "deno run -A --no-check engine/cli.ts run --config .flowai-workflow/workflow.yaml",
+    "run": "deno run -A --no-check cli.ts run --config .flowai-workflow/workflow.yaml",
     "loop": "deno run -A --no-check scripts/self-runner.ts",
-    "test:engine": "deno test -A --no-check engine/",
-    "fmt": "deno fmt",
     "loop-in-claude": "deno run -A --no-check scripts/loop-in-claude.ts",
     "dashboard": "deno run --allow-read --allow-write scripts/generate-dashboard.ts",
     "compile": "deno run -A scripts/compile.ts",
-    "release": "deno run -A npm:standard-version --skip.tag"
+    "release": "deno run -A npm:standard-version --skip.tag",
+    "fmt": "deno fmt"
   },
   "fmt": {
     "proseWrap": "preserve",
     "exclude": [
       "**/*.md",
       ".*/**/*.md",
-      "engine/init/templates/"
+      "init/templates/"
     ]
   },
   "lint": {
     "exclude": [
       ".claude/",
       ".flowai-workflow/agents/",
-      "engine/init/templates/"
+      "init/templates/"
+    ]
+  },
+  "publish": {
+    "include": [
+      "./",
+      "./deno.json",
+      "./README.md"
+    ],
+    "exclude": [
+      "**/*_test.ts",
+      ".claude/**",
+      ".devcontainer/**",
+      ".flowai-workflow/**",
+      ".github/**",
+      "documents/**",
+      "scripts/**",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "CHANGELOG.md",
+      ".versionrc.json",
+      ".gitignore",
+      ".gitattributes",
+      "deno.lock"
     ]
   }
 }

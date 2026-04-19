@@ -107,7 +107,7 @@
     `resolveRuntime()` — flag → persisted config
     (`~/.config/flowai-workflow/runtime.json`) → terminal prompt.
     `loadBundledSkills()` — `parseSkill()` for each subdir of
-    `engine/repl/skills/` (uses `import.meta.url` for compiled binary compat).
+    `repl/skills/` (uses `import.meta.url` for compiled binary compat).
     `launchRepl()` — orchestrates: resolve runtime, check `interactive`
     capability, load skills, build system prompt, call
     `adapter.launchInteractive()`. MVP skills: `init`, `adapt-agents`.
@@ -141,7 +141,7 @@
   outputs: description of checks performed, usage line, note about no accepted
   options, example. `--help`/`-h` in `Deno.args` → `printUsage()` +
   `Deno.exit(0)`. Any other arg → error referencing `--help` + `Deno.exit(1)`.
-  Follows `engine/cli.ts` format. Exported `printUsage()`/`checkArgs()` for
+  Follows `cli.ts` format. Exported `printUsage()`/`checkArgs()` for
   unit testing
 - **Interfaces:**
   - CLI: `flowai-workflow` (REPL), `flowai-workflow run [--prompt <text>]

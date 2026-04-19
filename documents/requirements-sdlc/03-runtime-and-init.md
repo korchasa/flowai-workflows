@@ -165,9 +165,9 @@
   - [x] `mod.ts` `runInit(argv, opts)` orchestrates preflight → autodetect →
     wizard → scaffold → metadata with structured exit codes (0/1/3), dry-run
     path, and help text. Evidence: `flowai-init/mod.ts:1-340`.
-  - [x] Engine dispatcher in `engine/cli.ts` routes `init` subcommand to the
+  - [x] Engine dispatcher in `cli.ts` routes `init` subcommand to the
     scaffolder via dynamic import, passing `VERSION` as `engineVersion`.
-    Evidence: `engine/cli.ts:197-215`.
+    Evidence: `cli.ts:197-215`.
   - [x] Unit tests cover scaffold, autodetect, preflight, manifest, wizard,
     and flag parsing (79+ tests). Integration tests stand up a tmp git repo,
     run the full `runInit` path in `--answers` mode, and assert on resulting

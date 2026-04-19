@@ -20,11 +20,11 @@
   - [x] After each non-loop agent node completes successfully, the engine saves a JSON log to `.flowai-workflow/runs/<run-id>/logs/` and, for Claude runtime only, copies the JSONL transcript:
     - `<node-id>.json` — full `CliRunOutput` JSON object (`result`, `session_id`, `total_cost_usd`, `duration_ms`, `duration_api_ms`, `num_turns`, `is_error`).
     - `<node-id>.jsonl` — Claude-only copy of the JSONL session transcript from `~/.claude/projects/<project-hash>/`, located by matching `session_id` in filenames.
-    - Evidence: `engine/engine.ts:266-270`, `engine/log.ts`
-  - [x] If the Claude JSONL transcript file is not found: engine logs a warning and continues — workflow does NOT fail. Evidence: `engine/log.ts`
-  - [x] Loop body nodes (developer, qa) must have logs saved after each iteration. Log files use iteration-qualified names: `<node-id>-iter-<N>.json` and `<node-id>-iter-<N>.jsonl`. `runLoop()` calls `saveAgentLog()` for each body node after successful completion. Evidence: `engine/engine.ts:574-582` (onNodeComplete callback in executeLoopNode saves logs using `${id}-iter-${iteration}` node ID)
-  - [x] `LoopResult` includes per-iteration `AgentResult` references (with `CliRunOutput`) to enable log extraction by the engine. Evidence: `engine/loop.ts:18-26` (`LoopResult.bodyResults: AgentResult[]`), `engine/loop.ts:69,99` (initialized, pushed per body node per iteration)
-  - [x] Log-saving logic has unit tests covering: successful save, JSONL-not-found warning path. Evidence: `engine/log_test.ts:29-124` (5 tests)
+    - Evidence: `engine.ts:266-270`, `log.ts`
+  - [x] If the Claude JSONL transcript file is not found: engine logs a warning and continues — workflow does NOT fail. Evidence: `log.ts`
+  - [x] Loop body nodes (developer, qa) must have logs saved after each iteration. Log files use iteration-qualified names: `<node-id>-iter-<N>.json` and `<node-id>-iter-<N>.jsonl`. `runLoop()` calls `saveAgentLog()` for each body node after successful completion. Evidence: `engine.ts:574-582` (onNodeComplete callback in executeLoopNode saves logs using `${id}-iter-${iteration}` node ID)
+  - [x] `LoopResult` includes per-iteration `AgentResult` references (with `CliRunOutput`) to enable log extraction by the engine. Evidence: `loop.ts:18-26` (`LoopResult.bodyResults: AgentResult[]`), `loop.ts:69,99` (initialized, pushed per body node per iteration)
+  - [x] Log-saving logic has unit tests covering: successful save, JSONL-not-found warning path. Evidence: `log_test.ts:29-124` (5 tests)
 
 
 
@@ -40,14 +40,14 @@
   6. Engine resumes agent in the same session (`claude --resume <session_id>` or `opencode run --session <session_id>`). Agent continues with full session context.
 - **Key constraint:** Engine contains zero GitHub/Slack/email-specific code. All delivery/polling logic lives in workflow scripts (`.flowai-workflow/scripts/`).
 - **Acceptance criteria:**
-  - [x] Engine detects runtime-native HITL requests after agent node completes: Claude via `permission_denials`, OpenCode via normalized `tool_use` parsing from `opencode run --format json`. Evidence: `engine/hitl.ts` (`detectHitlRequest()`), `engine/opencode-process.ts` (`extractOpenCodeOutput()`), `engine/node-dispatch.ts` (call in `executeAgentNode`)
-  - [x] Engine saves `session_id`, question JSON, and node status `waiting` to `state.json`. Evidence: `engine/state.ts:93-103` (`markNodeWaiting()`), `engine/engine.ts:324-325` (call + saveState), `engine/types.ts:104` (`question_json` field)
-  - [x] Engine invokes `ask_script` (path from `workflow.yaml` `defaults.hitl`) with args: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`, `--question-json`. Evidence: `engine/hitl.ts:111-125` (`buildScriptArgs("ask")`), `engine/hitl.ts:127-134` (ask invocation)
-  - [x] Engine enters poll loop calling `check_script` with args: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`, `--exclude-login`. Exit 0 = reply in stdout; exit 1 = no reply yet. Evidence: `engine/hitl.ts:137-175` (poll loop), `engine/hitl_test.ts:184-214` (poll test)
-  - [x] On reply: engine resumes agent via the selected runtime's session-resume mechanism. Claude uses `--resume`; OpenCode uses `run --session`. Evidence: `engine/hitl.ts` (`adapter.invoke()` with `resumeSessionId`), `engine/agent.ts`, `engine/opencode-process.ts`
-  - [x] Configurable `poll_interval` (default 60s) and `timeout` (default 7200s) per workflow. Evidence: `engine/types.ts:170-175` (`HitlConfig`), `.flowai-workflow/workflow.yaml:16-20` (defaults.hitl)
-  - [x] On timeout: node fails, Meta-Agent triggered. Evidence: `engine/hitl.ts:183-188` (timeout return), `engine/engine.ts:342-347` (markNodeFailed on HITL failure), `engine/hitl_test.ts:216-230` (timeout test)
-  - [x] `deno task run` on a workflow with `waiting` nodes auto-resumes polling (no manual `--resume` needed). Evidence: `engine/engine.ts:278-310` (wasWaiting resume path in executeAgentNode)
+  - [x] Engine detects runtime-native HITL requests after agent node completes: Claude via `permission_denials`, OpenCode via normalized `tool_use` parsing from `opencode run --format json`. Evidence: `hitl.ts` (`detectHitlRequest()`), `opencode-process.ts` (`extractOpenCodeOutput()`), `node-dispatch.ts` (call in `executeAgentNode`)
+  - [x] Engine saves `session_id`, question JSON, and node status `waiting` to `state.json`. Evidence: `state.ts:93-103` (`markNodeWaiting()`), `engine.ts:324-325` (call + saveState), `types.ts:104` (`question_json` field)
+  - [x] Engine invokes `ask_script` (path from `workflow.yaml` `defaults.hitl`) with args: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`, `--question-json`. Evidence: `hitl.ts:111-125` (`buildScriptArgs("ask")`), `hitl.ts:127-134` (ask invocation)
+  - [x] Engine enters poll loop calling `check_script` with args: `--run-dir`, `--artifact-source`, `--run-id`, `--node-id`, `--exclude-login`. Exit 0 = reply in stdout; exit 1 = no reply yet. Evidence: `hitl.ts:137-175` (poll loop), `hitl_test.ts:184-214` (poll test)
+  - [x] On reply: engine resumes agent via the selected runtime's session-resume mechanism. Claude uses `--resume`; OpenCode uses `run --session`. Evidence: `hitl.ts` (`adapter.invoke()` with `resumeSessionId`), `agent.ts`, `opencode-process.ts`
+  - [x] Configurable `poll_interval` (default 60s) and `timeout` (default 7200s) per workflow. Evidence: `types.ts:170-175` (`HitlConfig`), `.flowai-workflow/workflow.yaml:16-20` (defaults.hitl)
+  - [x] On timeout: node fails, Meta-Agent triggered. Evidence: `hitl.ts:183-188` (timeout return), `engine.ts:342-347` (markNodeFailed on HITL failure), `hitl_test.ts:216-230` (timeout test)
+  - [x] `deno task run` on a workflow with `waiting` nodes auto-resumes polling (no manual `--resume` needed). Evidence: `engine.ts:278-310` (wasWaiting resume path in executeAgentNode)
   - [x] Workflow scripts `hitl-ask.sh` and `hitl-check.sh` exist in `.flowai-workflow/scripts/`. Evidence: `.flowai-workflow/scripts/hitl-ask.sh`, `.flowai-workflow/scripts/hitl-check.sh`
   - [x] `hitl-ask.sh` renders question JSON → markdown with HTML marker `<!-- hitl:<run-id>:<node-id> -->`, posts via `gh issue comment`. Evidence: `.flowai-workflow/scripts/hitl-ask.sh:52-76` (markdown render + marker + gh post)
   - [x] `hitl-check.sh` finds first non-bot comment after marker, outputs body to stdout (exit 0) or exits 1 if no reply. Evidence: `.flowai-workflow/scripts/hitl-check.sh:39-54` (jq filter + exit codes)
@@ -59,12 +59,12 @@
 - **Description:** Engine supports a configurable `on_failure_script` field in `WorkflowDefaults` (YAML: `defaults.on_failure_script`). When the workflow fails, the engine executes the specified script via `Deno.Command`. Replaces the former hard-wired `rollbackUncommitted()` git call, which violated the domain-agnostic invariant (FR-E14).
 - **Rationale:** Domain-specific failure recovery (e.g., git rollback) belongs in workflow scripts, not engine code. The engine provides a generic hook; the workflow wires it to the appropriate script.
 - **Acceptance criteria:**
-  - [x] `WorkflowDefaults` in `engine/types.ts` includes `on_failure_script?: string`. Evidence: `engine/types.ts:23` (`on_failure_script?: string`)
-  - [x] Engine executes `on_failure_script` via `Deno.Command` on workflow failure (if configured). Evidence: `engine/engine.ts:171-175` (`runFailureHook` called when `!workflowSuccess`), `engine/engine.ts:808-831` (`runFailureHook` using `new Deno.Command(script, ...)`)
-  - [x] Engine does NOT import or call any git functions on failure. Evidence: `engine/engine.ts` — no git imports; failure path uses generic `runFailureHook` only
+  - [x] `WorkflowDefaults` in `types.ts` includes `on_failure_script?: string`. Evidence: `types.ts:23` (`on_failure_script?: string`)
+  - [x] Engine executes `on_failure_script` via `Deno.Command` on workflow failure (if configured). Evidence: `engine.ts:171-175` (`runFailureHook` called when `!workflowSuccess`), `engine.ts:808-831` (`runFailureHook` using `new Deno.Command(script, ...)`)
+  - [x] Engine does NOT import or call any git functions on failure. Evidence: `engine.ts` — no git imports; failure path uses generic `runFailureHook` only
   - [x] `.flowai-workflow/workflow.yaml` sets `on_failure_script: .flowai-workflow/scripts/rollback-uncommitted.sh`. Evidence: `.flowai-workflow/workflow.yaml:18` (`on_failure_script: .flowai-workflow/scripts/rollback-uncommitted.sh`)
-  - [x] If script path not found: engine logs warning and continues (no hard failure). Evidence: `engine/engine.ts:828-829` (catch block logs warning, does not throw)
-  - [x] Unit test covers `on_failure_script` execution path. Evidence: `engine/engine_test.ts:776-822` (4 `runFailureHook` tests: no-op, success, script failure, nonexistent script)
+  - [x] If script path not found: engine logs warning and continues (no hard failure). Evidence: `engine.ts:828-829` (catch block logs warning, does not throw)
+  - [x] Unit test covers `on_failure_script` execution path. Evidence: `engine_test.ts:776-822` (4 `runFailureHook` tests: no-op, success, script failure, nonexistent script)
   - [x] `deno task check` passes. Evidence: 490 passed, 0 failed
 
 
@@ -83,14 +83,14 @@
   work. Worktree isolation provides clean execution environment without modifying
   the original working tree.
 - **Acceptance criteria:**
-  - [x] `pre_run` field rejected with migration error at config validation. Evidence: `engine/config.ts:220-224`
-  - [x] `extractWorktreeDisabled(yaml)` extracts `defaults.worktree_disabled` without full parsing. Evidence: `engine/config.ts:51-57`
-  - [x] `worktree.ts` module: `createWorktree()`, `removeWorktree()`, `worktreeExists()`, `copyToOriginalRepo()`. Evidence: `engine/worktree.ts`
-  - [x] Engine creates worktree for new runs, reuses existing for resume, skips when `worktree_disabled: true`. Evidence: `engine/engine.ts:120-136`
-  - [x] `workPath()` utility centralizes workDir prefix logic. Evidence: `engine/state.ts:126-128`
-  - [x] All subprocess-spawning functions accept `cwd` parameter (agent, claude-process, hitl, validate, scope-check, loop). Evidence: `engine/agent.ts`, `engine/claude-process.ts`, `engine/hitl.ts`, `engine/validate.ts`, `engine/scope-check.ts`, `engine/loop.ts`
-  - [x] Template `interpolate()` and config `validateFileReferences()` accept `workDir` for `{{file()}}` resolution. Evidence: `engine/template.ts`, `engine/config.ts`
-  - [x] Tests: worktree lifecycle, path computation, error handling, config validation. Evidence: `engine/worktree_test.ts`, `engine/config_test.ts`
+  - [x] `pre_run` field rejected with migration error at config validation. Evidence: `config.ts:220-224`
+  - [x] `extractWorktreeDisabled(yaml)` extracts `defaults.worktree_disabled` without full parsing. Evidence: `config.ts:51-57`
+  - [x] `worktree.ts` module: `createWorktree()`, `removeWorktree()`, `worktreeExists()`, `copyToOriginalRepo()`. Evidence: `worktree.ts`
+  - [x] Engine creates worktree for new runs, reuses existing for resume, skips when `worktree_disabled: true`. Evidence: `engine.ts:120-136`
+  - [x] `workPath()` utility centralizes workDir prefix logic. Evidence: `state.ts:126-128`
+  - [x] All subprocess-spawning functions accept `cwd` parameter (agent, claude-process, hitl, validate, scope-check, loop). Evidence: `agent.ts`, `claude-process.ts`, `hitl.ts`, `validate.ts`, `scope-check.ts`, `loop.ts`
+  - [x] Template `interpolate()` and config `validateFileReferences()` accept `workDir` for `{{file()}}` resolution. Evidence: `template.ts`, `config.ts`
+  - [x] Tests: worktree lifecycle, path computation, error handling, config validation. Evidence: `worktree_test.ts`, `config_test.ts`
 
 
 
@@ -102,14 +102,14 @@
   - [ ] Zero `.flowai-workflow/` path references in `documents/requirements-engine.md`. Evidence: grep result = 0.
   - [ ] Zero `.flowai-workflow/` path references in `documents/design-engine.md`. Evidence: grep result = 0.
   - [ ] Zero `.flowai-workflow/agents/agent-*` hardcoded path references in `documents/requirements-engine.md`. Evidence: grep result = 0.
-  - [ ] Engine test fixtures (`engine/hitl_test.ts`, `engine/agent_test.ts`, `engine/config_test.ts`, `engine/workflow_integrity_test.ts`) use `.flowai-workflow/agents/` paths only. Evidence: file contents.
+  - [ ] Engine test fixtures (`hitl_test.ts`, `agent_test.ts`, `config_test.ts`, `workflow_integrity_test.ts`) use `.flowai-workflow/agents/` paths only. Evidence: file contents.
   - [ ] `deno task check` passes. Evidence: `deno task check` exit 0.
 
 
 
 ### 3.32 FR-E32: `{{file()}}` Template Function
 
-- **Description:** Template engine (`engine/template.ts`) supports `{{file("path/to/file.md")}}` function syntax. Reads named file content and inserts it inline at the call site. Paths resolved relative to repo root. Inserted content NOT re-interpolated (prevents recursion, ensures predictable behavior). Fail-fast: throws descriptive error if file not found.
+- **Description:** Template engine (`template.ts`) supports `{{file("path/to/file.md")}}` function syntax. Reads named file content and inserts it inline at the call site. Paths resolved relative to repo root. Inserted content NOT re-interpolated (prevents recursion, ensures predictable behavior). Fail-fast: throws descriptive error if file not found.
 - **Motivation:** Two separate mechanisms for file content injection (`prompt` field via `--system-prompt-file`; `task_template` via `{{variable}}` substitution) prevent composition of shared instructions across nodes without duplication. `{{file()}}` unifies inline file injection into the existing template system.
 - **Acceptance criteria:**
   - [x] `{{file("path")}}` resolves path relative to repo root and inserts
@@ -141,15 +141,15 @@
   arg strings, enables per-node granularity, validates at config load time.
 - **Acceptance criteria:**
   - [x] AC1: `PermissionMode` type and `permission_mode` field on
-    `WorkflowDefaults` + `NodeConfig`. Evidence: `engine/types.ts:9-24,55,90`.
+    `WorkflowDefaults` + `NodeConfig`. Evidence: `types.ts:9-24,55,90`.
   - [x] AC2: `buildClaudeArgs()` emits `--permission-mode <value>` when set.
-    Evidence: `engine/claude-process.ts:88-90`.
+    Evidence: `claude-process.ts:88-90`.
   - [x] AC3: Config validation rejects invalid values. Evidence:
-    `engine/config.ts:138-149`; `engine/config_test.ts` (invalid mode tests).
+    `config.ts:138-149`; `config_test.ts` (invalid mode tests).
   - [x] AC4: `claude_args` field removed in favor of universal `runtime_args`.
   - [x] AC5: Per-node override resolution (node → defaults → omit) in
-    `node-dispatch.ts` and `loop.ts`. Evidence: `engine/node-dispatch.ts:54`,
-    `engine/loop.ts:93-94`.
+    `node-dispatch.ts` and `loop.ts`. Evidence: `node-dispatch.ts:54`,
+    `loop.ts:93-94`.
   - [x] AC6: `deno task check` green: 590 tests, 0 failures.
 
 

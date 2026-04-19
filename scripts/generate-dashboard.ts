@@ -6,7 +6,7 @@
  * cost chart. Entry point: {@link renderHtml}.
  * CLI: deno task dashboard --run-dir <path>
  */
-import type { CliRunOutput, NodeState, RunState } from "../engine/types.ts";
+import type { CliRunOutput, NodeState, RunState } from "../types.ts";
 import { parse as parseYaml } from "@std/yaml";
 
 /** Escape HTML special chars to prevent XSS. */
