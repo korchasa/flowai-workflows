@@ -23,54 +23,60 @@ high_confidence_issues: 1
 
 **Issue #196:** "engine: Pin Claude CLI version per run via DISABLE_AUTOUPDATER=1"
 
-`01-spec.md` is absent — specification directory contains only `stream.log`. Verification conducted against issue #196 DoD and `03-decision.md` as secondary sources.
+Spec (`01-spec.md`) is present in this iteration (restored in iter3). Spec aligns with issue:
+- Issue DoD: `buildSpawnEnv()` sets `DISABLE_AUTOUPDATER=1` on all spawn paths → matches spec scope
+- Issue DoD: `RunState.claude_cli_version` captured at run start → matches spec FR-E49
+- Issue DoD: `deno task check` passes → ✓
+- Issue out-of-scope items match spec out-of-scope boundaries
 
-**Definition of Done from issue:**
-1. `buildSpawnEnv()` always sets `DISABLE_AUTOUPDATER=1` — ✓ `agent.ts:144-148`
-2. Applies on initial invocation, continuation, and resume spawn paths — ✓ all 3 paths wired
-3. Run-start diagnostic captures `claude --version`, stores in `RunState.claude_cli_version` — ✓ `captureClaudeVersion()` in `engine.ts`
-4. Unit test: `buildSpawnEnv()` returns env containing `DISABLE_AUTOUPDATER=1` — ✓ `agent_test.ts` (6 buildSpawnEnv tests pass)
-5. Unit test: user env merged, engine wins on conflict — ✓ covered
-6. `deno task check` passes — ✓ PASS
-7. Documented in `documents/design-engine.md` — ✓ design-engine sections updated
+**SRS Changes promised by spec:**
+- New FR-E49 section in `documents/requirements-engine/04-runtime-and-hooks.md` → **NOT in diff, not in file** (grep: 0 matches)
+- `documents/requirements-engine.md` index updated (FR-E49 row) → **NOT in diff, not in file** (grep: 0 matches)
 
-**Spec drift:** N/A — `01-spec.md` missing (see Issues Found #1).
+**Spec drift:** None. Spec correctly captures issue requirements.
 
 ## Acceptance Criteria
 
-Criteria verified from `03-decision.md` tasks (spec absent):
+Criteria from `01-spec.md` Scope Boundaries + SRS Changes sections:
 
-- [x] `claude_cli_version?: string` added to `RunState` in `types.ts`
-- [x] `buildSpawnEnv(nodeEnv?)` exported from `agent.ts` with engine-wins merge (lines 144–148)
-- [x] `buildSpawnEnv` wired into agent.ts initial invoke (`spawnEnv` at line 196, passed at line 244)
-- [x] `buildSpawnEnv` wired into agent.ts continuation invoke (line 354)
-- [x] `buildSpawnEnv` wired into `hitl.ts` HITL resume path (line 267)
-- [x] `env?: Record<string, string>` added to `AgentRunOptions` in `agent.ts:121-122`
-- [x] `LoopRunOptions.env` forwarded to inner `runAgent()` calls in `loop.ts:206` — **FIXED in iter 2**
-- [x] `captureClaudeVersion()` in `engine.ts` captures version at run start with graceful failure
-- [x] 6 unit tests for `buildSpawnEnv()` in `agent_test.ts` (all pass)
-- [x] Tests for `RunState.claude_cli_version` in `engine_test.ts`
-- [x] Design docs updated (`design-engine/01-engine-modules-core.md`, `02-engine-modules-flow.md`, `04-data-and-logic.md`)
+- [x] `DISABLE_AUTOUPDATER=1` injected on every Claude CLI spawn path (initial, continuation, resume) — `agent.ts:144-148`, `hitl.ts:267`, `loop.ts:206`
+- [x] Single `buildSpawnEnv()` env builder function used by all spawn sites — exported from `agent.ts`, imported in `hitl.ts`
+- [x] `RunState.claude_cli_version?: string` field in `types.ts`
+- [x] One-time `claude --version` capture at run start in `engine.ts:captureClaudeVersion()`
+- [x] Unit tests for `buildSpawnEnv()` in `agent_test.ts` (6 tests: always includes DISABLE_AUTOUPDATER, merges user env, engine wins, handles undefined/empty)
+- [ ] FR-E49 added to `documents/requirements-engine/04-runtime-and-hooks.md` — **ABSENT** (not in diff, 0 grep matches)
+- [ ] `documents/requirements-engine.md` index updated with FR-E49 row — **ABSENT** (not in diff, 0 grep matches)
 
 ## Issues Found
 
-1. **Missing upstream artifact `01-spec.md`** [confidence: 100]
-   - File: `.flowai-workflow/runs/20260425T222337/plan/specification/` (contains only `stream.log`)
+1. **FR-E49 absent from SRS (requirements-engine/04-runtime-and-hooks.md and requirements-engine.md index)** [confidence: 100]
+   - Files: `documents/requirements-engine/04-runtime-and-hooks.md`, `documents/requirements-engine.md`
    - Severity: **blocking**
-   - PM/Architect stage ran (stream.log exists) but did not produce the `01-spec.md` artifact. Per QA rules, missing upstream artifacts are a blocking FAIL regardless of implementation correctness. This is the same issue as iteration 1 — not resolved in iteration 2.
+   - Neither file is in `git diff main...HEAD --name-only`. Grep for "FR-E49" in both files returns 0 matches. Spec explicitly lists both SRS changes as required. This is the same PM-stage SRS persistence failure pattern seen in 25+ prior issues — developer must add the FR-E49 section and index row manually since PM agent never persisted them.
+
+## Correctness/Bugs Sub-Agent Findings
+
+- `hitl.ts:267` calls `buildSpawnEnv(opts.node.env)` — caller-level env not forwarded because `HitlRunOptions` has no `env` field. This asymmetry with `AgentRunOptions.env` is outside the decision's task scope (decision only says "wire buildSpawnEnv into HITL resume path") [confidence: 85]. Non-blocking.
+- `loop_test.ts` env forwarding tests verify TypeScript type acceptance but not behavioral forwarding to spawned process [confidence: 75]. Non-blocking — code path `env: opts.env` at `loop.ts:206` is correct; full integration test requires subprocess mock.
+- `buildSpawnEnv` test name "merges node.env and caller env" describes call-site merge logic in `runAgent`, not `buildSpawnEnv` itself (which receives pre-merged object) [confidence: 70]. Non-blocking.
+
+## Simplicity/DRY Sub-Agent Findings
+
+- Double `saveState` call in `engine.ts`: state saved at line 212, then again after version capture. Extra write per run start [confidence: 75]. Non-blocking — functional and matches graceful-failure design.
+- `captureClaudeVersion` graceful failure (warn + undefined) is intentional per spec: "Graceful failure (log warning, leave field undefined) when CLI not installed." [confidence: 80]. Not a violation.
+- No env construction duplication — `buildSpawnEnv` is the single source of truth across all spawn paths [confidence: 95]. DRY satisfied.
 
 ## Observations
 
-- `loop_test.ts` new tests (`LoopRunOptions — env field accepted and forwarded`, `LoopRunOptions — env is optional`) are type-structure tests, not behavioral forwarding tests — they verify the TypeScript interface accepts `env`, but do not assert that `env` reaches the spawned process [confidence: 100]. Non-blocking: the `deno task check` passes and the code path is correct; full integration test would require a subprocess mock.
-- `buildSpawnEnv` merge order: `{ ...(node.env ?? {}), ...(env ?? {}), DISABLE_AUTOUPDATER: "1" }` — engine wins, caller env wins over node.env. Correct contract [confidence: 95].
-- `captureClaudeVersion()` private, not directly unit-tested; graceful-failure path (CLI not found) covered only implicitly [confidence: 75].
+- `captureClaudeVersion` is a private function with no direct unit tests; graceful-failure path (CLI not in PATH) covered only implicitly by the try/catch structure [confidence: 60]. Non-blocking.
+- `HitlRunOptions` lacks an `env` field analogous to `AgentRunOptions.env` — if a future caller needs to pass additional env to HITL resume, they cannot without modifying the interface [confidence: 55]. Non-blocking — not in current spec scope.
 
 ## Verdict Details
 
-FAIL: The PM/Architect stage still did not produce `01-spec.md` in this iteration (iteration 2). This is a blocking workflow artifact failure.
+FAIL: 1 blocking issue. The SRS was never updated with FR-E49 content — both `documents/requirements-engine/04-runtime-and-hooks.md` (new section) and `documents/requirements-engine.md` (index row) are absent from the diff and contain 0 matches for "FR-E49". All 5 behavioral acceptance criteria pass. `deno task check` PASS with 741 tests.
 
-**Iteration 2 progress:** The non-blocking issue from iteration 1 (`LoopRunOptions.env` dead field) is now correctly fixed. `env: opts.env` is wired at `loop.ts:206`. `AgentRunOptions.env` field is added and used in `buildSpawnEnv` merge at `agent.ts:196`. All FR-E49 behavioral requirements are correctly implemented. `deno task check` passes with 741 tests.
+**Iteration 3 context:** `01-spec.md` is now present (blocking issue from iter2 resolved). Behavioral implementation is fully correct (confirmed in iter2, unchanged). Only the SRS persistence failure remains blocking.
 
 ## Summary
 
-FAIL — `01-spec.md` still missing (blocking upstream artifact failure). All FR-E49 behavioral requirements met. Iteration 2 fix: `LoopRunOptions.env` forwarding restored (`loop.ts:206`), `AgentRunOptions.env` field added. `deno task check` PASS, 741/741 tests pass.
+FAIL — 5/7 criteria passed, 1 blocking issue: FR-E49 absent from `documents/requirements-engine/04-runtime-and-hooks.md` and `documents/requirements-engine.md` index. `deno task check` PASS, 741 tests pass. Fix: add FR-E49 section to `04-runtime-and-hooks.md` and FR-E49 row to `requirements-engine.md` index table.
