@@ -203,3 +203,30 @@
     doc-lint + publish dry-run).
 
 
+
+### 3.49 FR-E49: CLI Auto-Update Prevention for Spawned Processes
+
+- **Description:** The engine always sets `DISABLE_AUTOUPDATER=1` in the
+  environment of every Claude CLI subprocess it spawns (initial invocation,
+  continuation, resume). Prevents Claude CLI auto-update between node
+  invocations within a single run, guaranteeing all agent nodes use the same
+  CLI version. The engine also captures `claude --version` once at run start
+  and stores it in `RunState` for observability.
+- **Motivation:** Claude CLI may silently self-upgrade between invocations. In
+  a long-running workflow with multiple agent nodes, earlier nodes could run on
+  version X and later on version Y — different system prompts, different tool
+  descriptions, no operator visibility. `DISABLE_AUTOUPDATER=1` is a
+  startup-only env var exposed by Claude Code that reliably prevents this.
+- **Constraints:**
+  - Engine always sets this — no YAML opt-out. Baseline safety.
+  - Applies only to engine-spawned processes, not the operator's own CLI.
+  - Must not break existing env passthrough (user env + engine-specific vars).
+  - Must be set on every spawn path: initial invocation, continuation, resume.
+- **Acceptance criteria:**
+  - [ ] `buildSpawnEnv()` in `claude-process.ts` always sets `DISABLE_AUTOUPDATER=1`.
+  - [ ] Applied on initial invocation, continuation, and resume spawn paths.
+  - [ ] `RunState` includes `claude_cli_version?: string` field.
+  - [ ] Engine captures `claude --version` once at run start; stores in `RunState.claude_cli_version`.
+  - [ ] Unit test: `buildSpawnEnv()` returns env containing `DISABLE_AUTOUPDATER=1` regardless of process env.
+  - [ ] Unit test: user-provided env merged but `DISABLE_AUTOUPDATER=1` always wins.
+  - [ ] `deno task check` passes.

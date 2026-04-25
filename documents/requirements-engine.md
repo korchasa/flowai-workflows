@@ -78,3 +78,4 @@ FR-IDs are stable — never renumber them on move.
 - FR-E46 (Interactive REPL)           → 05-cli-and-observability
 - FR-E47 (Run Budget Enforcement)    → 05-cli-and-observability
 - FR-E48 (Node Tool Filtering)       → 04-runtime-and-hooks
+- FR-E49 (CLI Auto-Update Prevention) → 04-runtime-and-hooks
