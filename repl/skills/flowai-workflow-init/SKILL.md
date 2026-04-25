@@ -19,13 +19,27 @@ the project to pre-fill settings, confirms them with the user, then runs
 
 ## Instructions
 
+**Narration rule:** before every step below, print one short sentence
+telling the user what you are about to do (what will be read, what will
+be written, what command will run). The goal is no surprises — the user
+should always know the next action before it happens. Do not bundle
+multiple steps into one announcement; narrate each one as you reach it.
+
 ### 1. Pre-check
+
+Announce first, e.g.:
+"Checking whether `.flowai-workflow/` already exists (read-only)."
 
 - If `.flowai-workflow/` already exists, inform the user and STOP. Do not
   overwrite without explicit confirmation. If the user confirms re-init,
   they must remove the directory manually first.
 
 ### 2. Analyze the project
+
+Announce first, e.g.:
+"Reading `deno.json` / `package.json` / `go.mod` / `Cargo.toml` /
+`pyproject.toml` and `git` metadata to detect project settings. Nothing
+is modified."
 
 Read manifest files to detect:
 
@@ -42,6 +56,10 @@ Read manifest files to detect:
 
 ### 3. Confirm with user
 
+Announce first, e.g.:
+"Showing the detected values; I will wait for your confirmation before
+running init."
+
 Present detected values and ask the user to confirm or edit:
 
 ```
@@ -57,6 +75,11 @@ Are these correct? If not, tell me what to change.
 Wait for user response. Apply any corrections.
 
 ### 4. Run init
+
+Announce first, e.g.:
+"Writing `/tmp/flowai-init-answers.yaml` (temp answers file) and running
+`flowai-workflow init`. This creates `.flowai-workflow/` in the project
+root; no other paths are touched. The temp file is removed after init."
 
 Write a temporary YAML answers file. The template uses two separate
 placeholders (`TEST_CMD`, `LINT_CMD`) — pass the single CHECK_CMD as both:
@@ -80,6 +103,10 @@ If init fails due to uncommitted changes, ask the user whether to pass
 `--allow-dirty` or commit first, then retry.
 
 ### 5. Post-init guidance
+
+Announce first, e.g.:
+"Init finished. Printing follow-up steps; nothing else will be changed."
+
 
 After successful scaffold, tell the user:
 

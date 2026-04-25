@@ -17,13 +17,55 @@ preserving your customizations while incorporating new features and fixes.
 
 ## Steps
 
-1. Detect installed agents in `.flowai-workflow/agents/`.
-2. Compare each agent against the upstream template version.
-3. For each agent with upstream changes:
-   a. Show a diff of upstream changes.
-   b. Propose a merged version preserving project customizations.
-   c. Apply the merge after confirmation.
-4. Report summary of adapted agents.
+**Narration rule:** before every step below, print one short sentence
+telling the user what you are about to do (what will be read, which file
+will be diffed or written). The goal is no surprises — the user should
+always know the next action before it happens. Do not bundle multiple
+steps into one announcement; narrate each one as you reach it.
+
+### 1. Detect installed agents
+
+Announce first, e.g.:
+"Listing files in `.flowai-workflow/agents/` to see which agents you
+have installed (read-only)."
+
+Detect installed agents in `.flowai-workflow/agents/`.
+
+### 2. Compare against upstream
+
+Announce first, e.g.:
+"Comparing each installed agent against its upstream template version.
+Read-only — I'm only computing diffs, nothing is written yet."
+
+Compare each agent against the upstream template version.
+
+### 3. Per-agent merge loop
+
+For each agent with upstream changes, repeat:
+
+1. **Announce the diff.** Example:
+   "Showing the upstream diff for `agent-<name>.md`. No file is touched
+   until you approve."
+   Display the upstream diff.
+
+2. **Announce the proposal.** Example:
+   "Proposing a merged version of `agent-<name>.md` that keeps your
+   project-specific sections and folds in upstream changes. Still
+   read-only — waiting for your approval."
+   Show the proposed merge.
+
+3. **Announce the write.** Example:
+   "Writing the merged version to `.flowai-workflow/agents/<name>.md`.
+   Only this single file is modified."
+   Apply the merge after the user confirms.
+
+### 4. Summary
+
+Announce first, e.g.:
+"All agents processed. Printing a summary of which files were adapted;
+no further changes."
+
+Report summary of adapted agents.
 
 ## Notes
 
