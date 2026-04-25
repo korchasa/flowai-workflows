@@ -22,6 +22,8 @@ type: feedback
 - Leaving extra trailing blank line at end of file — deno fmt expects exactly one trailing newline
 - **Edit tool says "File has not been read yet"** even when file was Read in an earlier response batch —
   must re-Read (even with offset/limit trick) to satisfy the Edit tool's session tracking
+- **Split edit calls for single file**: when multiple changes needed in a file, should use ONE Write. If
+  accidentally split into 2 Edits (e.g. import update then append tests), it works but violates process.
 
 ## Effective Strategies
 
@@ -36,6 +38,8 @@ type: feedback
 - When removing imports: trace each symbol to confirm it is truly unused after extraction before deleting
 - **Self-referential safety for prompt deletions:** Don't delete `.claude/agents/agent-*.md` files
   during a workflow run — the engine may still need them for later nodes in the current run
+- **Check JSR cached version for library fields**: sibling repo may be ahead; verify v0.5.4 cache directly
+  via `deno info jsr:@korchasa/ai-ide-cli@0.5.4/runtime/types` → get local cache path → grep for field
 
 ## Environment Quirks
 
@@ -51,21 +55,8 @@ type: feedback
   to temporarily clear them, verify own code passes, then `git stash pop` to restore
 - **Edit tool session tracking**: Re-read files with offset/limit (small range) to satisfy "File has not
   been read yet" errors — happens when file was Read in a previous parallel batch
-
-## Self-Referential SKILL.md Deletions
-
-- When the task is pure markdown deletion from SKILL.md files (no TS logic), no tests are needed per "DO NOT test constants/templates".
-- All 6 edits can be issued in parallel in one turn for maximum efficiency.
-
-## Doc-Only Run Pattern
-
-- When all 4 tasks are documentation-only (no TS logic), no tests needed.
-- Large markdown files (>89KB) can't be Read in full — use targeted Grep + Read
-  by offset/limit to locate specific sections, then issue multiple Edit calls.
-- Multiple parallel Edit calls on same large file is efficient and reliable when
-  each old_string is unique (avoids full-file Write which requires full read).
-- design-sdlc.md may already be updated by Tech Lead in the decide phase — check §8
-  for existing FR-S<N> entry before writing.
+- **JSR library env field**: `RuntimeInvokeOptions.env?: Record<string,string>` present in v0.5.4 — confirmed
+  via deno info + grep of cached file at path from `deno info jsr:@korchasa/ai-ide-cli@0.5.4/runtime/types`
 
 ## Scope-Check Module Pattern (FR-E37)
 
@@ -112,53 +103,21 @@ type: feedback
 - Release workflow: `ubuntu-latest` for all 4 targets (cross-compilation handled by deno compile's built-in cross-target support); `actions/upload-artifact` per job; final job uses `actions/download-artifact` with `merge-multiple: true` then `gh release create`.
 - No test needed for `--version` flag itself (calls Deno.exit; same untested pattern as `--help`). Test VERSION type + getVersionString format instead.
 
+## CLI Version Pinning Pattern (FR-E49)
+
+- `buildSpawnEnv(nodeEnv?)` merges nodeEnv with `{ DISABLE_AUTOUPDATER: "1" }` using spread; engine key placed last to win on conflict.
+- Wire `buildSpawnEnv(node.env)` once before both `adapter.invoke()` calls in `runAgent()` — assign to `spawnEnv` const, pass as `env:` param.
+- `hitl.ts` uses `buildSpawnEnv(opts.node.env)` inline in the `runtimeRun()` call.
+- `loop.ts` `LoopRunOptions.env?` field: added for API completeness; loop body nodes get DISABLE_AUTOUPDATER via `runAgent()` internal call, not via LoopRunOptions forwarding.
+- `captureClaudeVersion()` in engine.ts: tries stdout then stderr, matches `/\d+\.\d+\.\d+/`; graceful catch logs warn and returns undefined.
+- Version capture placed after first `saveState()` in `runWithLock()`; second `saveState()` only when version is captured (undefined skips re-save).
+- Test strategy: type-level + JSON roundtrip tests for `claude_cli_version`; no subprocess mock needed.
+
 ## Baseline Metrics
 
-- Run 20260315T003418: ~14 turns, scope sdlc, issue #121 (FR-S29), 7 SKILL.md + 2 memory files — PASS
-- Run 20260315T131001: ~38 turns, scope sdlc, issue #86 (FR-S29 impl), 3 files changed — PASS but env resets
-- Run 20260315T161245: ~15 turns, scope engine, issue #91 (FR-E30), 2 files changed — PASS (stash workaround)
-- Run 20260315T165136: ~12 turns, scope engine, issue #92 (FR-E30), 2 files changed — PASS (stash + trailing newline fix)
-- Run 20260315T205730: ~18 turns, scope sdlc, issue #127, 12 files changed — PASS (stash pattern; Edit re-read pattern)
-- Run 20260315T213641: ~10 turns, scope engine, issue #128 (FR-E32), 4 files changed — PASS (stash pattern; HEAD fmt issue needed direct fix)
-- Run 20260315T215901: ~12 turns, scope sdlc, issue #129 (FR-S31), 3 files changed — PASS (Write full file; SDS already had content; pre-existing fmt in other agents' files needed direct fix, stash insufficient for engine check)
-- Run 20260319T180115: ~9 turns, scope engine, issue #146 (FR-E33), 5 files changed — PASS (pre-existing fmt in committed tech-lead-history.md needed direct Write fix; stash not applicable for committed files)
-- Run 20260319T182156 iter1: ~15 turns, scope sdlc, issue #147 (FR-S32), 9 files changed — PASS (pure rename; SDS already updated by tech-lead; deno fmt table alignment painful for wide markdown columns — binary-search col widths)
-- Run 20260319T182156 iter2: ~5 turns, scope sdlc, issue #147 (FR-S32) QA fix — PASS (PM's FR-S32 SRS addition dropped in iter 1; added section 3.32 + Appendix C row)
-- Run 20260319T192055 iter1: ~5 turns, scope sdlc, issue #148 (FR-S33), 7 files changed — PASS (delete-only + block removal; SDS already correct from tech-lead; SRS NOT updated → QA FAIL)
-- Run 20260319T192055 iter2: ~8 turns, scope sdlc, issue #148 (FR-S33) QA fix — PASS (SRS: added §3.33, NFR §4, Appendix B/C, stale FR-S13/FR-S15 ACs; same pattern as iter2 of issue #147)
-- Run 20260319T194808: ~7 turns, scope sdlc, issue #149 (FR-S34), 2 files changed — PASS (Write both files; deno-lint-ignore inside for-loop header not recognized → extract cast to separate variable before loop)
-- Run 20260319T194808 iter2: ~5 turns, scope sdlc, issue #149 (FR-S34) QA fix — PASS (SRS: added §3.34, Appendix C FR-S34 row; same PM persistence failure pattern as #147/#148)
-- Run 20260319T201620: ~10 turns, scope engine, issue #150 (FR-E33), 5 files changed — PASS (mutual-exclusivity validation; workflow.yaml used both mechanisms → necessary fix outside tasks[].files; task breakdown should always include all affected files)
-- Run 20260319T201620 iter2: ~5 turns, scope engine, issue #150 QA fix — PASS (SRS: added §3.33, updated FR-E9 criterion, Appendix row; fourth consecutive PM persistence failure across #147/#148/#149/#150)
-- Run 20260319T204544: ~8 turns, scope sdlc, issue #151 (FR-S35), 5 files changed — PASS (template interpolation in buildScriptArgs + SDLC-level validation in check.ts; pure validator function pattern same as validateAgentListContent)
-- Run 20260319T204544 iter2: ~5 turns, scope sdlc, issue #151 (FR-S35) QA fix — PASS (SRS: added §3.35, Appendix C row; fifth consecutive PM persistence failure #147/#148/#149/#150/#151)
-- Run 20260319T211036: ~10 turns, scope engine, issue #152 (FR-E34), 3 files changed — PASS (info log + 5 interaction tests; SDS pre-populated by Tech Lead; `async` lambdas without await → `require-await` lint error → use `Promise.resolve(true)`)
-- Run 20260319T213344: ~7 turns, scope engine, issue #153 (FR-E35), 4 files changed — PASS (forwarding validation in config.ts; SDS already pre-populated by Tech Lead; workflow.yaml gap caught by new check → fix loop inputs; same coexistence pattern as #150)
-- Run 20260319T213344 iter2: ~5 turns, scope engine, issue #153 (FR-E35) QA fix — PASS (SRS: added §3.35 + Appendix row; sixth consecutive PM persistence failure #147–#153)
-- Run 20260319T215851: ~5 turns, scope sdlc, issue #154 (FR-S36), 2 files changed — PASS (shell wrapper + workflow.yaml edit; no TS logic → no new tests; do NOT use set -euo pipefail in wrapper — must capture non-zero exit code)
-- Run 20260319T215851 iter2: ~4 turns, scope sdlc, issue #154 (FR-S36) QA fix — PASS (SRS: added §3.36, Appendix C row; seventh consecutive PM persistence failure #147–#154)
-- Run 20260319T221833: ~8 turns, scope engine+sdlc, issue #155 (FR-E36+FR-S37), 5 files changed — PASS (parse-time cross-check in config.ts; runtime throw in loop.ts; assertRejects not in vendor assert.ts → use try/catch; "validation_failed" not in ErrorCategory → omit error_category; workflow.yaml coexistence pattern again)
-- Run 20260319T221833 iter2: ~5 turns, scope engine+sdlc, issue #155 QA fix — PASS (SRS: added §3.36 FR-E36 to requirements-engine.md + §3.37 FR-S37 to requirements-sdlc.md + both Appendix rows; ninth consecutive PM persistence failure #147–#155)
-- Run 20260319T224519: ~5 turns, scope sdlc, issue #156 (FR-S38), 2 files changed — PASS (workflow.yaml prompt→file() migration; integrity test inverted: presence→absence assertion for FR-S38 AC#3).
-- Run 20260319T224519 iter2: ~4 turns, scope sdlc, issue #156 QA fix — PASS (SRS: added §3.38 + Appendix C row; tenth consecutive PM persistence failure #147–#156).
-- Run 20260319T230952 iter2: ~5 turns, scope sdlc, issue #157 (FR-S39) QA fix — PASS (SRS: added §3.39 + Appendix C row; eleventh consecutive PM persistence failure #147–#157).
-- Run 20260320T000829: ~5 turns, scope sdlc, issue #159 (FR-S41), 2 files changed — PASS (shell script + new bash test file; 7 shell tests all green; deno task check unaffected since no TS changes).
-- Run 20260320T000829 iter2: ~4 turns, scope sdlc, issue #159 (FR-S41) QA fix — PASS (SRS: added §3.41 + Appendix C row; fourteenth consecutive PM persistence failure #147–#159).
-- Run 20260320T092158: ~5 turns, scope sdlc, issue #174 (FR-S42), 1 file changed — PASS (config-only: 19 validate rules → 6 artifact rules in workflow.yaml; workflow integrity check is acceptance gate; no tests needed).
-- Run 20260320T092158 iter2: ~4 turns, scope sdlc, issue #174 (FR-S42) QA fix — PASS (SRS: added §3.42 + Appendix C row; sixteenth consecutive PM persistence failure #147–#174).
-- Run 20260320T094502 iter2: ~5 turns, scope engine, issue #175 (FR-E37) QA fix — PASS (SRS: added §3.37, updated FR-E1 §3.1 Future→[x], Appendix FR-E36+FR-E37 rows; seventeenth consecutive PM persistence failure #147–#175).
-- Run 20260320T101834: ~6 turns, scope engine, issue #176 (FR-E7), 4 files changed — PASS (validateTemplateVars() in template.ts + hook validation in config.ts; 12+8 new tests; loop body nodes inherit combined IDs via existing recursive call).
-- Run 20260320T101834 iter2: ~4 turns, scope engine, issue #176 (FR-E7) QA fix — PASS (SRS: replaced vague FR-E7 criterion with 4 detailed [x] criteria + evidence; nineteenth consecutive PM persistence failure #147–#176).
-- Run 20260320T104440: ~6 turns, scope sdlc, issue #178 (FR-S43/44/45), 2 files changed — PASS (doc-only: Architect Codebase Exploration + QA Confidence Scoring + QA Multi-Focus Review + Agent tool allowances; 4 tasks, 2 Write calls).
-- Run 20260320T104440 iter2: ~5 turns, scope sdlc, issue #178 (FR-S43/44/45) QA fix — PASS (SRS: added §3.43/3.44/3.45 + 3 Appendix C rows; twenty-first consecutive PM persistence failure #147–#178).
-- Target: ≤35 turns. Key lesson: commit before deno task check; stash pattern for pre-existing fmt issues.
-
-## Workflow.yaml Coexistence Pattern
-
-- When engine validation is tightened to reject a config pattern, the reference workflow.yaml may use that pattern and must be fixed simultaneously.
-- Tech-lead task breakdown should include `workflow.yaml` when validation changes affect it.
-- Fix: remove the redundant mechanism (per-node `phase:` fields when top-level `phases:` block is authoritative).
-
-## QA-Fix Pattern
-
-- When QA flags a missing SRS section: read the spec (01-spec.md) for the PM's exact stated SRS changes, then reconstruct the missing section matching the project SRS format. Look at adjacent sections (e.g., 3.31) for format reference.
+- Run 20260315T003418: ~14 turns, scope sdlc, issue #121 (FR-S29) — PASS
+- Run 20260320T213059: ~6 turns, scope engine, issue #182 (FR-E38) — PASS
+- Run 20260320T220824: ~7 turns, scope engine, issue #183 (FR-E39) — PASS
+- Run 20260320T223114: ~12 turns, scope engine, issue #183 iter2 — PASS
+- Run 20260425T222337: ~10 turns, scope engine, issue #196 (FR-E49) — PASS (env field confirmed in v0.5.4; split Edit calls on agent_test.ts)
+- Target: ≤35 turns.

@@ -1113,3 +1113,42 @@ Deno.test("FR-E34 — log message format: failure suppressed by on_error: contin
     true,
   );
 });
+
+// --- FR-E49: claude_cli_version state field ---
+
+Deno.test("RunState — claude_cli_version field is optional and accepts string (FR-E49)", () => {
+  const state = createRunState("test-ver", "cfg.yaml", ["a"], {}, {});
+  assertEquals(state.claude_cli_version, undefined);
+  state.claude_cli_version = "1.5.0";
+  assertEquals(state.claude_cli_version, "1.5.0");
+});
+
+Deno.test("RunState — claude_cli_version roundtrips through JSON serialization (FR-E49)", async () => {
+  const state = createRunState("test-cli-ver", "cfg.yaml", ["a"], {}, {});
+  state.claude_cli_version = "1.2.34";
+
+  const tmpDir = await Deno.makeTempDir();
+  try {
+    const statePath = `${tmpDir}/state.json`;
+    await Deno.writeTextFile(statePath, JSON.stringify(state, null, 2) + "\n");
+    const loaded = JSON.parse(await Deno.readTextFile(statePath)) as RunState;
+    assertEquals(loaded.claude_cli_version, "1.2.34");
+  } finally {
+    await Deno.remove(tmpDir, { recursive: true });
+  }
+});
+
+Deno.test("RunState — claude_cli_version absent from JSON when undefined (FR-E49)", async () => {
+  const state = createRunState("test-cli-undef", "cfg.yaml", ["a"], {}, {});
+  // claude_cli_version not set
+
+  const tmpDir = await Deno.makeTempDir();
+  try {
+    const statePath = `${tmpDir}/state.json`;
+    await Deno.writeTextFile(statePath, JSON.stringify(state, null, 2) + "\n");
+    const content = await Deno.readTextFile(statePath);
+    assertEquals(content.includes("claude_cli_version"), false);
+  } finally {
+    await Deno.remove(tmpDir, { recursive: true });
+  }
+});

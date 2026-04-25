@@ -80,6 +80,8 @@ export interface LoopRunOptions {
   /** Workflow-wide USD cap (FR-E47). When set, enforced after each body node
    * and consulted for the pre-iteration preempt heuristic. */
   budgetUsd?: number;
+  /** Extra environment variables forwarded to body node agent invocations (FR-E49). */
+  env?: Record<string, string>;
 }
 
 /**

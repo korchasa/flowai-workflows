@@ -136,6 +136,16 @@ export function applyBudgetFlags(
 }
 
 /**
+ * Build the subprocess env for an agent invocation: merges node-level env
+ * with engine-enforced DISABLE_AUTOUPDATER=1. Engine wins on conflict (FR-E49).
+ */
+export function buildSpawnEnv(
+  nodeEnv?: Record<string, string>,
+): Record<string, string> {
+  return { ...(nodeEnv ?? {}), DISABLE_AUTOUPDATER: "1" };
+}
+
+/**
  * Execute an agent node: invoke Claude CLI, validate output, continue on failure.
  *
  * Flow:
@@ -180,6 +190,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
   } = opts;
   const adapter = runtimeAdapter ?? getRuntimeAdapter(runtime);
   const extraArgs = applyBudgetFlags(runtimeArgs, runtime, maxTurns);
+  const spawnEnv = buildSpawnEnv(node.env);
 
   // Derive onOutput callback from OutputManager
   const onOutput = output && nodeId
@@ -227,6 +238,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
     streamLogPath,
     verbosity,
     cwd,
+    env: spawnEnv,
   });
 
   let continuations = 0;
@@ -336,6 +348,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
       streamLogPath,
       verbosity,
       cwd,
+      env: spawnEnv,
     });
   }
 
