@@ -1166,7 +1166,7 @@ Deno.test("buildClaudeArgs — permissionMode + claudeArgs both present", () => 
 
 // --- FR-E47: applyBudgetFlags ---
 
-import { applyBudgetFlags } from "./agent.ts";
+import { applyBudgetFlags, buildSpawnEnv } from "./agent.ts";
 
 Deno.test("applyBudgetFlags — undefined maxTurns → returns base unchanged", () => {
   assertEquals(
@@ -1203,4 +1203,43 @@ Deno.test("applyBudgetFlags — does not mutate the input base map", () => {
   const result = applyBudgetFlags(base, "claude", 5);
   assertEquals(base, { "--foo": "" });
   assertEquals(result, { "--foo": "", "--max-turns": "5" });
+});
+
+// --- FR-E49: buildSpawnEnv ---
+
+Deno.test("buildSpawnEnv — always includes DISABLE_AUTOUPDATER=1", () => {
+  const env = buildSpawnEnv();
+  assertEquals(env["DISABLE_AUTOUPDATER"], "1");
+});
+
+Deno.test("buildSpawnEnv — merges user env alongside DISABLE_AUTOUPDATER", () => {
+  const env = buildSpawnEnv({ MY_VAR: "hello" });
+  assertEquals(env["MY_VAR"], "hello");
+  assertEquals(env["DISABLE_AUTOUPDATER"], "1");
+});
+
+Deno.test("buildSpawnEnv — engine wins on conflict: DISABLE_AUTOUPDATER stays 1", () => {
+  const env = buildSpawnEnv({ DISABLE_AUTOUPDATER: "0" });
+  assertEquals(env["DISABLE_AUTOUPDATER"], "1");
+});
+
+Deno.test("buildSpawnEnv — handles undefined nodeEnv", () => {
+  const env = buildSpawnEnv(undefined);
+  assertEquals(env["DISABLE_AUTOUPDATER"], "1");
+  assertEquals(Object.keys(env).length, 1);
+});
+
+Deno.test("buildSpawnEnv — handles empty nodeEnv", () => {
+  const env = buildSpawnEnv({});
+  assertEquals(env["DISABLE_AUTOUPDATER"], "1");
+  assertEquals(Object.keys(env).length, 1);
+});
+
+Deno.test("buildSpawnEnv — merges node.env and caller env, engine wins", () => {
+  const nodeEnv = { NODE_VAR: "node" };
+  const callerEnv = { CALLER_VAR: "caller", NODE_VAR: "overridden" };
+  const env = buildSpawnEnv({ ...nodeEnv, ...callerEnv });
+  assertEquals(env["NODE_VAR"], "overridden");
+  assertEquals(env["CALLER_VAR"], "caller");
+  assertEquals(env["DISABLE_AUTOUPDATER"], "1");
 });

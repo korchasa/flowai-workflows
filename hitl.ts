@@ -17,7 +17,7 @@ import type {
   TemplateContext,
 } from "./types.ts";
 import { interpolate } from "./template.ts";
-import { applyBudgetFlags } from "./agent.ts";
+import { applyBudgetFlags, buildSpawnEnv } from "./agent.ts";
 import type { AgentResult } from "./agent.ts";
 import { getRuntimeAdapter } from "@korchasa/ai-ide-cli/runtime";
 import type {
@@ -264,6 +264,7 @@ export async function runHitlLoop(
         maxRetries: settings.max_retries,
         retryDelaySeconds: settings.retry_delay_seconds,
         cwd: cwdOpt,
+        env: buildSpawnEnv(opts.node.env),
       });
 
       if (result.error) {

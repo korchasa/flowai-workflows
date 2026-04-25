@@ -118,6 +118,8 @@ export interface AgentRunOptions {
   allowedTools?: string[];
   /** Resolved tool blacklist (FR-E48). See {@link allowedTools}. */
   disallowedTools?: string[];
+  /** Extra environment variables merged with node.env before spawn (FR-E49). Engine-enforced keys win. */
+  env?: Record<string, string>;
 }
 
 /**
@@ -133,6 +135,16 @@ export function applyBudgetFlags(
   if (maxTurns === undefined) return base;
   if (runtime !== "claude") return base;
   return { ...(base ?? {}), "--max-turns": String(maxTurns) };
+}
+
+/**
+ * Build the subprocess env for an agent invocation: merges node-level env
+ * with engine-enforced DISABLE_AUTOUPDATER=1. Engine wins on conflict (FR-E49).
+ */
+export function buildSpawnEnv(
+  nodeEnv?: Record<string, string>,
+): Record<string, string> {
+  return { ...(nodeEnv ?? {}), DISABLE_AUTOUPDATER: "1" };
 }
 
 /**
@@ -177,9 +189,11 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
     maxTurns,
     allowedTools,
     disallowedTools,
+    env,
   } = opts;
   const adapter = runtimeAdapter ?? getRuntimeAdapter(runtime);
   const extraArgs = applyBudgetFlags(runtimeArgs, runtime, maxTurns);
+  const spawnEnv = buildSpawnEnv({ ...(node.env ?? {}), ...(env ?? {}) });
 
   // Derive onOutput callback from OutputManager
   const onOutput = output && nodeId
@@ -227,6 +241,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
     streamLogPath,
     verbosity,
     cwd,
+    env: spawnEnv,
   });
 
   let continuations = 0;
@@ -336,6 +351,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentResult> {
       streamLogPath,
       verbosity,
       cwd,
+      env: spawnEnv,
     });
   }
 

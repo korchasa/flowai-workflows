@@ -211,6 +211,12 @@ export class Engine {
     await this.ensureRunDirs(levels);
     await saveState(this.state, this.workDir);
 
+    // FR-E49: capture claude CLI version at run start, persist in state
+    this.state.claude_cli_version = await captureClaudeVersion(this.output);
+    if (this.state.claude_cli_version !== undefined) {
+      await saveState(this.state, this.workDir);
+    }
+
     // FR-E47: pre-execution budget check (applies to fresh and resumed runs)
     this.checkWorkflowBudget("resume");
     // FR-E47: one-time warnings before the level loop
@@ -672,6 +678,31 @@ export class Engine {
         : undefined,
     };
     this.output.summary(summary);
+  }
+}
+
+/**
+ * Capture the installed claude CLI version string (FR-E49).
+ * Runs `claude --version`, parses the first semver-like token from stdout/stderr.
+ * Returns undefined on failure (CLI not installed or not in PATH).
+ */
+async function captureClaudeVersion(
+  output: OutputManager,
+): Promise<string | undefined> {
+  try {
+    const proc = new Deno.Command("claude", {
+      args: ["--version"],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const result = await proc.output();
+    const text = new TextDecoder().decode(result.stdout).trim() ||
+      new TextDecoder().decode(result.stderr).trim();
+    const match = text.match(/\d+\.\d+\.\d+/);
+    return match ? match[0] : undefined;
+  } catch {
+    output.warn("claude CLI not found: skipping version capture (FR-E49)");
+    return undefined;
   }
 }
 

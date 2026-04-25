@@ -80,6 +80,8 @@ export interface LoopRunOptions {
   /** Workflow-wide USD cap (FR-E47). When set, enforced after each body node
    * and consulted for the pre-iteration preempt heuristic. */
   budgetUsd?: number;
+  /** Extra environment variables forwarded to body node agent invocations (FR-E49). */
+  env?: Record<string, string>;
 }
 
 /**
@@ -201,6 +203,7 @@ export async function runLoop(opts: LoopRunOptions): Promise<LoopResult> {
         verbosity: opts.verbosity,
         cwd: opts.cwd,
         maxTurns: resolvedBudget?.max_turns,
+        env: opts.env,
       });
 
       bodyResults.push(result);
