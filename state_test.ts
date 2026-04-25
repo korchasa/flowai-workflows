@@ -493,3 +493,20 @@ Deno.test("markNodeCompleted — backward compat: no result param still works", 
   assertEquals(state.nodes.a.result, undefined);
   assertEquals(state.nodes.a.cost_usd, undefined);
 });
+
+// --- FR-E49: claude_cli_version roundtrip test ---
+
+Deno.test("claude_cli_version — survives save/load roundtrip in state.json", async () => {
+  const state = createRunState("test-version", "cfg.yaml", ["a"], {}, {});
+  state.claude_cli_version = "1.2.3";
+
+  const tmpDir = await Deno.makeTempDir();
+  try {
+    const statePath = `${tmpDir}/state.json`;
+    await Deno.writeTextFile(statePath, JSON.stringify(state, null, 2) + "\n");
+    const loaded = JSON.parse(await Deno.readTextFile(statePath));
+    assertEquals(loaded.claude_cli_version, "1.2.3");
+  } finally {
+    await Deno.remove(tmpDir, { recursive: true });
+  }
+});

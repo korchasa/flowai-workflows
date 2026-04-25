@@ -67,6 +67,7 @@ import {
   removeWorktree,
   worktreeExists,
 } from "./worktree.ts";
+import { buildEngineEnv, captureCliVersion } from "./spawn-env.ts";
 
 /** Main workflow engine. Orchestrates node execution across DAG levels. */
 export class Engine {
@@ -206,6 +207,15 @@ export class Engine {
   ): Promise<RunState> {
     // Initialize phase registry before creating any node dirs (FR-E9)
     setPhaseRegistry(this.config);
+
+    // FR-E49: apply engine-mandated env vars and capture CLI version
+    const engineEnv = buildEngineEnv();
+    for (const [k, v] of Object.entries(engineEnv)) {
+      Deno.env.set(k, v);
+    }
+    this.state.claude_cli_version = await captureCliVersion(
+      this.workDir !== "." ? this.workDir : undefined,
+    );
 
     // Create run directory structure
     await this.ensureRunDirs(levels);
