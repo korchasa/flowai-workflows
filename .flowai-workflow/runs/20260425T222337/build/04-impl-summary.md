@@ -15,6 +15,10 @@
 - **loop.ts** — Added `env: opts.env` to `runAgent()` call inside `runLoop()`, forwarding `LoopRunOptions.env` to body node agent invocations (fixed dead-field issue from QA iter 1)
 - **agent.ts** — Added `env?: Record<string, string>` field to `AgentRunOptions`; updated `runAgent()` to destructure `env` and pass merged `{ ...(node.env ?? {}), ...(env ?? {}) }` to `buildSpawnEnv()`, enabling callers to inject extra env vars below the engine-enforced `DISABLE_AUTOUPDATER=1`
 
+#### Iteration 3 (QA fix)
+
+- **.flowai-workflow/runs/20260425T222337/plan/specification/01-spec.md** — Restored missing upstream artifact from orphan PM commit (`8e629e7`). PM agent wrote and committed the file in detached HEAD state; commit was not reachable from the feature branch. File recovered via `git checkout 8e629e7 -- <path>`.
+
 ### Tests Added or Modified
 
 #### Iteration 1
@@ -26,6 +30,10 @@
 
 - **loop_test.ts** — Added 2 tests: "LoopRunOptions — env field accepted and forwarded", "LoopRunOptions — env is optional"
 - **agent_test.ts** — Added 1 test: "buildSpawnEnv — merges node.env and caller env, engine wins"
+
+#### Iteration 3 (QA fix)
+
+- No new tests (artifact restoration only).
 
 ### deno task check result
 

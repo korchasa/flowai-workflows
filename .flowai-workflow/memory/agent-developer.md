@@ -40,6 +40,7 @@ type: feedback
   during a workflow run — the engine may still need them for later nodes in the current run
 - **Check JSR cached version for library fields**: sibling repo may be ahead; verify v0.5.4 cache directly
   via `deno info jsr:@korchasa/ai-ide-cli@0.5.4/runtime/types` → get local cache path → grep for field
+- **Recover orphan PM commits via reflog**: `git reflog --all | grep pm\|spec` → find commit hash → `git show <hash> --name-only` → `git checkout <hash> -- <path>` to restore missing artifacts
 
 ## Environment Quirks
 
@@ -57,6 +58,8 @@ type: feedback
   been read yet" errors — happens when file was Read in a previous parallel batch
 - **JSR library env field**: `RuntimeInvokeOptions.env?: Record<string,string>` present in v0.5.4 — confirmed
   via deno info + grep of cached file at path from `deno info jsr:@korchasa/ai-ide-cli@0.5.4/runtime/types`
+- **PM detached HEAD commits**: PM agent may run in detached HEAD and commit spec artifacts to an orphan.
+  These commits appear in `git reflog --all` but not in branch log. Use `git checkout <hash> -- <path>` to recover.
 
 ## Scope-Check Module Pattern (FR-E37)
 
@@ -113,6 +116,7 @@ type: feedback
 - Version capture placed after first `saveState()` in `runWithLock()`; second `saveState()` only when version is captured (undefined skips re-save).
 - Test strategy: type-level + JSON roundtrip tests for `claude_cli_version`; no subprocess mock needed.
 - **QA iter 2 lesson**: `LoopRunOptions.env` "dead field" — always check that new options are actually forwarded in the call site, not just declared in the interface.
+- **QA iter 3 lesson**: PM detached HEAD artifact loss — `01-spec.md` committed to orphan; recovered via `git reflog --all | grep spec` + `git checkout <hash> -- <path>`.
 
 ## Baseline Metrics
 
@@ -122,4 +126,5 @@ type: feedback
 - Run 20260320T223114: ~12 turns, scope engine, issue #183 iter2 — PASS
 - Run 20260425T222337: ~10 turns, scope engine, issue #196 (FR-E49) — PASS (env field confirmed in v0.5.4; split Edit calls on agent_test.ts)
 - Run 20260425T222337 iter2: ~8 turns, scope engine, issue #196 iter2 — PASS (LoopRunOptions.env forwarding fix + AgentRunOptions.env field)
+- Run 20260425T222337 iter3: ~6 turns, scope engine, issue #196 iter3 — PASS (restore orphan 01-spec.md via reflog)
 - Target: ≤35 turns.
