@@ -2,45 +2,88 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## Unreleased
+## [0.4.0](https://github.com/korchasa/flowai-workflow/compare/v0.3.3...v0.4.0) (2026-04-26)
+
 
 ### ⚠ BREAKING CHANGES
 
-- **Workflow folder = `.flowai-workflow/<name>/`** (FR-S47). The flat
-  `.flowai-workflow/workflow.yaml` layout is no longer supported.
-  Workflow assets — `workflow.yaml`, agent prompts, memory, scripts,
-  runs, worktrees — all live inside the workflow folder.
-- **CLI workflow selector is now a mandatory positional argument**
-  (FR-E53). `--config <path>` and the transitional `--workflow <dir>`
-  flag are both removed. Pass the workflow folder as the first
-  positional argument: `flowai-workflow run <workflow> [options]`.
-  No autodetection — the path must always be supplied explicitly.
-- **Runtime memory is gitignored.** `.flowai-workflow/*/memory/agent-*.md`
-  (per-agent reflection state and history) is now ignored by git;
-  `memory/reflection-protocol.md` remains tracked as the static
-  protocol document referenced by `workflow.yaml`.
+* **engine:** workflow folder is now a mandatory positional argument
+to the `run` subcommand: `flowai-workflow run <workflow> [options]`.
+Both `--config <path>` and the transitional `--workflow <dir>` flag
+are removed. Autodetect is dropped — the path must always be supplied
+explicitly. Migration: drop `--workflow ` from any existing invocation.
 
-#### End-user migration
+- cli.ts::parseArgs: first non-flag token becomes config_path; flags
+  may appear before or after; trailing slash normalized; second
+  positional rejected. Both `--config` and `--workflow` flags throw
+  pointing at the positional form.
+- cli.ts::runEngine: enforces presence of config_path with
+  "Missing workflow argument" error; drops listWorkflows/
+  resolveWorkflowConfigPath/DEFAULT_WORKFLOW_ROOT.
+- Help text + Examples updated.
+- Callsites: deno.json#tasks.run, scripts/self-runner.ts, init/mod.ts
+  success message all switched to positional form.
+- Docs: SRS (FR-E53 rewritten; FR-E5 + FR-E9 + FR-S46 + FR-E40 evidence
+  refreshed), SDS engine §3 CLI synopsis, README CLI Flags + examples,
+  AGENTS/CLAUDE drift caveat, CHANGELOG Unreleased entry merged.
 
-```sh
-# 1. Move workflow assets into a named folder.
-mkdir .flowai-workflow/default
-git mv .flowai-workflow/workflow.yaml .flowai-workflow/default/
-git mv .flowai-workflow/agents       .flowai-workflow/default/
-git mv .flowai-workflow/memory       .flowai-workflow/default/
-git mv .flowai-workflow/scripts      .flowai-workflow/default/
+`deno task check`: 784 passed | 0 failed.
 
-# 2. Rewrite path references inside workflow.yaml
-#    (.flowai-workflow/agents/  → .flowai-workflow/default/agents/, etc.)
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+* **engine+sdlc:** `.flowai-workflow/<name>/` is now the unit of consolidation;
+flat `.flowai-workflow/workflow.yaml` is no longer supported. CLI flag
+`--config <path>` is removed in favor of `--workflow <dir>` (autodetected
+when exactly one folder exists; friendly error on 0 or >1).
 
-# 3. If you have in-flight runs to resume, rewrite state.json paths:
-deno run -A scripts/migrate-state-paths.ts \
-    .flowai-workflow .flowai-workflow/default
+- Engine: thread `workflowDir` through `state.ts` (getRunDir/getNodeDir/
+  getStatePath/getLogsDir/buildTaskPaths/saveState/loadState) and
+  `engine.ts`/`node-dispatch.ts`/`post-workflow.ts`. Add
+  `deriveWorkflowDir(configPath)` (FR-E9 update; DoD-14).
+- CLI: replace `--config` with `--workflow <dir>`; add `listWorkflows()`
+  and `resolveWorkflowConfigPath()` autodetect (DoD-4).
+- Dogfood: migrate to three sibling workflow folders —
+  `github-inbox/`, `github-inbox-opencode/`, `github-inbox-opencode-test/` —
+  each self-contained (workflow.yaml + agents/ + memory/ + scripts/).
+  Remove obsolete `.flowai-workflow/scripts/lib*.sh` and
+  `reset-to-main*.sh` (DoD-2, DoD-3).
+- Init template: add `WORKFLOW_NAME` answer (default `default`); template
+  destinations support `__WORKFLOW_NAME__` placeholder substitution (DoD-7).
+- Checks: `assertWorkflowFolderShape()` validates each folder; `agents/`
+  required only when `workflow.yaml` references it. `noClaudeAgentsRefs()`
+  scans `.ts/.yaml/.yml/.json` outside `documents/` (DoD-1, DoD-6).
+- New tests: `dogfood_layout_test.ts`, expanded `state_test.ts`/`cli_test.ts`/
+  `scripts/check_test.ts`, `init/integration_test.ts` WORKFLOW_NAME case.
+- One-shot migration: `scripts/migrate-state-paths.ts` (idempotent;
+  DoD-13).
+- Docs: update SRS (FR-S47, FR-E53, FR-E5/E9, FR-S46; mark FR-S17 and
+  FR-S26 superseded), README (workflow folder section + project tree),
+  AGENTS.md/CLAUDE.md (three-folder dogfood + drift caveat),
+  CHANGELOG (BREAKING + migration cookbook).
+- Gitignore: ignore `.flowai-workflow/*/memory/agent-*.md` (runtime
+  reflection state); `memory/reflection-protocol.md` remains tracked.
+  Untrack legacy `.flowai-workflow/runs/` artifacts.
 
-# 4. Replace any `--config <path>` or `--workflow <dir>` calls with the
-#    positional form:
-flowai-workflow run .flowai-workflow/default
-```
+`deno task check`: 789 passed | 0 failed.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+### Features
+
+* **engine+sdlc:** workflow folder contract + --workflow flag (FR-S47, FR-E53) ([13533c1](https://github.com/korchasa/flowai-workflow/commit/13533c182792bfc7ab36062117a972539b8c87b5))
+* **engine:** add {{flow_file()}} template function (FR-E55) ([c2b09ec](https://github.com/korchasa/flowai-workflow/commit/c2b09ec2e6981a9fddb220215a385aae51541c04))
+* **engine:** per-workflow run lock (FR-E54) ([9ae1ca6](https://github.com/korchasa/flowai-workflow/commit/9ae1ca6b473d09e035f186f18a9ac401bcdaa11a))
+* **engine:** positional <workflow> argument (FR-E53) ([597374a](https://github.com/korchasa/flowai-workflow/commit/597374ab90716bb4d07ad9766e3eb8a569b3b091))
+* **sdlc:** add autonomous-sdlc local-only workflow variant ([6d7cbd9](https://github.com/korchasa/flowai-workflow/commit/6d7cbd9c0d457667f4c9ba6c72669aeaa6c35ef9))
+
+
+### Tests
+
+* **engine+sdlc:** worktree-isolation e2e suite, close FR-E50/E51/E52/S28 acceptance ([b54632d](https://github.com/korchasa/flowai-workflow/commit/b54632dcd1ccc207c8153686cbdc767fb6f2ec44))
+
+
+### Documentation
+
+* **agents:** note CLAUDE.md→AGENTS.md symlink + workflow invocation gotchas ([219a40e](https://github.com/korchasa/flowai-workflow/commit/219a40e45b60c4b1be7bcab80c49ee93493fed94))
 
 ### [0.3.3](https://github.com/korchasa/flowai-workflow/compare/v0.3.2...v0.3.3) (2026-04-26)
 
