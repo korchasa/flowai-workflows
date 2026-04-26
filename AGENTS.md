@@ -74,8 +74,9 @@ example of engine usage.
   - `github-inbox-opencode/` (OpenCode + GLM-5)
   - `github-inbox-opencode-test/` (smoke-test variant)
   Each is self-contained: `workflow.yaml`, `agents/agent-*.md`, `memory/`,
-  `scripts/`, `runs/`, `worktrees/`. Pick one with `--workflow <dir>` or
-  rely on autodetect when only one folder exists. **Drift caveat:** agent
+  `scripts/`, `runs/`, `worktrees/`. Select one by passing it as the
+  mandatory positional argument: `flowai-workflow run <workflow>`.
+  **Drift caveat:** agent
   prompts under `.flowai-workflow/<name>/agents/` are intentionally
   duplicated between workflow folders — when editing a shared agent,
   apply the same change to every copy or document the divergence here.

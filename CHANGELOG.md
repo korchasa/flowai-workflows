@@ -10,10 +10,11 @@ All notable changes to this project will be documented in this file. See [standa
   `.flowai-workflow/workflow.yaml` layout is no longer supported.
   Workflow assets — `workflow.yaml`, agent prompts, memory, scripts,
   runs, worktrees — all live inside the workflow folder.
-- **CLI flag `--config` is removed** (FR-E53). Use `--workflow <dir>`
-  instead, where `<dir>` contains `workflow.yaml`. Without the flag,
-  the CLI autodetects from `.flowai-workflow/`: exactly-one folder
-  is used silently; zero or multiple yield a friendly error.
+- **CLI workflow selector is now a mandatory positional argument**
+  (FR-E53). `--config <path>` and the transitional `--workflow <dir>`
+  flag are both removed. Pass the workflow folder as the first
+  positional argument: `flowai-workflow run <workflow> [options]`.
+  No autodetection — the path must always be supplied explicitly.
 - **Runtime memory is gitignored.** `.flowai-workflow/*/memory/agent-*.md`
   (per-agent reflection state and history) is now ignored by git;
   `memory/reflection-protocol.md` remains tracked as the static
@@ -36,8 +37,9 @@ git mv .flowai-workflow/scripts      .flowai-workflow/default/
 deno run -A scripts/migrate-state-paths.ts \
     .flowai-workflow .flowai-workflow/default
 
-# 4. Replace any `--config <path>` calls with `--workflow <dir>`:
-flowai-workflow run --workflow .flowai-workflow/default
+# 4. Replace any `--config <path>` or `--workflow <dir>` calls with the
+#    positional form:
+flowai-workflow run .flowai-workflow/default
 ```
 
 ### [0.3.2](https://github.com/korchasa/flowai-workflow/compare/v0.3.1...v0.3.2) (2026-04-26)

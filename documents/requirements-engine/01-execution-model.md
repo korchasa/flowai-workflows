@@ -51,10 +51,11 @@
 - **Acceptance criteria:**
   - [x] Engine source code lives under a standard `src/` or dedicated top-level directory (not `.flowai-workflow/engine/`). Evidence: `engine/` (top-level directory, 30 files moved via `git mv .flowai-workflow/engine/ engine/`)
   - ~~`[ ] Agent prompts in a top-level agents/ directory`~~ — superseded by FR-S17/FR-S13: canonical location is `.flowai-workflow/agents/agent-<name>/`.
-  - [x] Workflow config path resolved from `--workflow <dir>` (FR-E53;
-    `<dir>/workflow.yaml`). With FR-S47 the workflow folder is
-    `.flowai-workflow/<name>/`. Engine remains path-agnostic — `loadConfig`
-    accepts any path. Evidence: `cli.ts::resolveWorkflowConfigPath`,
+  - [x] Workflow config path resolved from positional `<workflow>`
+    argument (FR-E53; `<workflow>/workflow.yaml`). With FR-S47 the
+    workflow folder is `.flowai-workflow/<name>/`. Engine remains
+    path-agnostic — `loadConfig` accepts any path. Evidence:
+    `cli.ts::parseArgs` (positional handling),
     `engine.ts::deriveWorkflowDir`, `config.ts::loadConfig`.
   - [x] Run artifacts live in gitignored `<workflow-dir>/runs/` (per
     FR-E9 update + FR-S47). Evidence: `.gitignore`
@@ -71,7 +72,8 @@
 
 - **Description:** Run artifacts live under
   `<workflow-dir>/runs/<run-id>/` — where `<workflow-dir>` is the
-  workflow folder selected by `--workflow` (FR-E53; FR-S47 mandates
+  workflow folder selected by the positional `<workflow>` argument
+  (FR-E53; FR-S47 mandates
   `.flowai-workflow/<name>/`). Within a run, node output directories
   are grouped by workflow phase, separating agent output artifacts
   from runtime metadata (logs, state).

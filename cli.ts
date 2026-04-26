@@ -5,12 +5,16 @@
  * Parses arguments and delegates to the appropriate subcommand:
  *
  * - `flowai-workflow` (no args) → interactive REPL with bundled management skills
- * - `flowai-workflow run [options]` → DAG workflow engine
+ * - `flowai-workflow run <workflow> [options]` → DAG workflow engine
  *
- * Run options (FR-E53):
- *   --workflow <dir>      Workflow folder containing workflow.yaml.
- *                         When omitted, autodetected from `.flowai-workflow/`:
- *                         exactly-one candidate ⇒ used; zero/multiple ⇒ error.
+ * Run usage (FR-E53):
+ *   flowai-workflow run <workflow> [options]
+ *
+ * Positional:
+ *   <workflow>            Path to workflow folder containing workflow.yaml.
+ *                         Mandatory; no autodetection.
+ *
+ * Options:
  *   --prompt <text>       Additional context for PM agent (sets args.prompt)
  *   --resume <run-id>     Resume a previous run from its state
  *   --dry-run             Print execution plan without running
@@ -67,94 +71,17 @@ export function getVersionString(): string {
   return `flowai-workflow v${VERSION}`;
 }
 
-/** Default workflow root dir scanned when `--workflow` is absent. */
-export const DEFAULT_WORKFLOW_ROOT = ".flowai-workflow";
-
-/**
- * List candidate workflow folders inside a root directory.
- * A candidate is a subdirectory containing `workflow.yaml`.
- * Returns relative paths sorted lexicographically. Missing root → `[]`
- * (allows fresh end-user projects without `.flowai-workflow/` to surface
- * a friendlier "run init" message via {@link resolveWorkflowConfigPath}).
- */
-export async function listWorkflows(root: string): Promise<string[]> {
-  const out: string[] = [];
-  try {
-    for await (const entry of Deno.readDir(root)) {
-      if (!entry.isDirectory) continue;
-      const candidate = `${root}/${entry.name}`;
-      try {
-        const stat = await Deno.stat(`${candidate}/workflow.yaml`);
-        if (stat.isFile) out.push(candidate);
-      } catch {
-        // No workflow.yaml in this dir — skip
-      }
-    }
-  } catch (err) {
-    if (err instanceof Deno.errors.NotFound) return [];
-    throw err;
-  }
-  return out.sort();
-}
-
-/**
- * FR-E53 workflow-folder resolution.
- * Returns the absolute path to a chosen `workflow.yaml`. Throws on ambiguity
- * or absence with a user-facing message.
- *
- * @param explicit — value passed via `--workflow <dir>`. When set, validates
- *   that `<dir>/workflow.yaml` exists.
- * @param root — root scanned for autodetect (defaults to `.flowai-workflow`).
- */
-export async function resolveWorkflowConfigPath(
-  explicit: string | undefined,
-  root: string = DEFAULT_WORKFLOW_ROOT,
-): Promise<string> {
-  if (explicit !== undefined) {
-    const trimmed = explicit.replace(/\/+$/, "");
-    const yaml = `${trimmed}/workflow.yaml`;
-    try {
-      const stat = await Deno.stat(yaml);
-      if (!stat.isFile) {
-        throw new Error(`No workflow.yaml at ${trimmed}`);
-      }
-    } catch (err) {
-      if (err instanceof Deno.errors.NotFound) {
-        throw new Error(`No workflow.yaml at ${trimmed}`);
-      }
-      throw err;
-    }
-    return yaml;
-  }
-
-  const candidates = await listWorkflows(root);
-  if (candidates.length === 0) {
-    throw new Error(
-      `No workflow found in ${root}/. ` +
-        `Run 'flowai-workflow init' to scaffold one.`,
-    );
-  }
-  if (candidates.length > 1) {
-    const names = candidates.map((c) => c.split("/").pop()).join(", ");
-    throw new Error(
-      `Multiple workflows: ${names}. Pass --workflow ${root}/<name>.`,
-    );
-  }
-  return `${candidates[0]}/workflow.yaml`;
-}
-
 /**
  * Parse CLI arguments into EngineOptions.
- * Known flags (--workflow, --resume, --dry-run, verbosity, --env, --skip, --only)
- * set dedicated fields. Generic `--key value` pairs populate `args`.
  *
- * `config_path` is left empty by default — the caller (runEngine) resolves it
- * via {@link resolveWorkflowConfigPath} so the same `parseArgs` is usable in
- * unit tests without filesystem state.
+ * The first non-flag positional argument is the workflow folder path
+ * (FR-E53; mandatory at runtime). Flags may appear before or after the
+ * positional. `config_path` is left empty when no positional is supplied
+ * — {@link runEngine} enforces presence at the run boundary so unit tests
+ * can call `parseArgs([])` to inspect defaults.
  */
 export function parseArgs(args: string[]): EngineOptions {
   let configPath = "";
-  let workflowDir: string | undefined;
   let runId: string | undefined;
   let resume = false;
   let dryRun = false;
@@ -172,15 +99,15 @@ export function parseArgs(args: string[]): EngineOptions {
       case "--config":
         throw new Error(
           "Unknown flag: --config (removed in FR-E53). " +
-            "Use --workflow <dir> instead, where <dir> contains workflow.yaml.",
+            "Pass the workflow folder as a positional argument: " +
+            "`flowai-workflow run <workflow> [options]`.",
         );
       case "--workflow":
-        workflowDir = args[++i];
-        if (workflowDir === undefined) {
-          throw new Error("--workflow requires a directory argument");
-        }
-        configPath = `${workflowDir.replace(/\/+$/, "")}/workflow.yaml`;
-        break;
+        throw new Error(
+          "Unknown flag: --workflow (removed in FR-E53). " +
+            "Pass the workflow folder as a positional argument: " +
+            "`flowai-workflow run <workflow> [options]`.",
+        );
       case "--prompt":
         cliArgs.prompt = args[++i];
         break;
@@ -240,11 +167,17 @@ export function parseArgs(args: string[]): EngineOptions {
         break;
       default:
         if (arg.startsWith("--")) {
-          // Treat as a generic arg: --key value
+          // Generic --key value passthrough.
           const key = arg.substring(2);
           cliArgs[key] = args[++i] ?? "";
+        } else if (configPath === "") {
+          // First positional → workflow folder path.
+          configPath = `${arg.replace(/\/+$/, "")}/workflow.yaml`;
         } else {
-          throw new Error(`Unknown argument: ${arg}`);
+          throw new Error(
+            `Unexpected positional argument: ${arg}. ` +
+              `Only one workflow folder is accepted.`,
+          );
         }
     }
   }
@@ -273,19 +206,18 @@ function printUsage(): void {
 Workflow Engine — Configurable multi-agent workflow runner
 
 Usage:
-  flowai-workflow                Launch interactive REPL with bundled management skills
-  flowai-workflow run [options]  Execute DAG workflow
+  flowai-workflow                          Launch interactive REPL with bundled management skills
+  flowai-workflow run <workflow> [options] Execute DAG workflow
 
 Subcommands:
   (default)             Interactive AI-assisted REPL (asks runtime on first use)
   run                   Execute DAG workflow engine
   init                  Scaffold .flowai-workflow/ directory (run init --help for details)
 
+Run positional:
+  <workflow>            Path to workflow folder containing workflow.yaml (mandatory).
+
 Run options:
-  --workflow <dir>      Workflow folder containing workflow.yaml.
-                        When omitted, autodetected from .flowai-workflow/:
-                        exactly one candidate ⇒ used silently;
-                        zero/multiple candidates ⇒ error.
   --prompt <text>       Additional context for PM agent (optional)
   --resume <run-id>     Resume a previous run
   --dry-run             Print execution plan without running
@@ -304,10 +236,10 @@ Global options:
 
 Examples:
   flowai-workflow
-  flowai-workflow run --prompt "Focus on the login bug"
-  flowai-workflow run --workflow .flowai-workflow/github-inbox -v
-  flowai-workflow run --resume 20260308T143022
-  flowai-workflow run --dry-run
+  flowai-workflow run .flowai-workflow/github-inbox
+  flowai-workflow run .flowai-workflow/github-inbox --prompt "Focus on the login bug"
+  flowai-workflow run .flowai-workflow/github-inbox --resume 20260308T143022 -v
+  flowai-workflow run .flowai-workflow/github-inbox --dry-run
 `);
 }
 
@@ -324,9 +256,12 @@ async function runEngine(args: string[]): Promise<never> {
     const { skipUpdateCheck, remaining } = extractCliFlags(args);
     const options = parseArgs(remaining);
 
-    // FR-E53: when --workflow was not passed, autodetect from .flowai-workflow/
+    // FR-E53: workflow path is mandatory and positional.
     if (!options.config_path) {
-      options.config_path = await resolveWorkflowConfigPath(undefined);
+      throw new Error(
+        "Missing workflow argument. " +
+          "Usage: flowai-workflow run <workflow> [options]",
+      );
     }
 
     // Notify the user if a newer version is on JSR. Fail-open: any network
@@ -412,7 +347,7 @@ if (import.meta.main) {
   if (subcommand && subcommand.startsWith("--")) {
     console.error(
       "[DEPRECATED] Running engine with bare flags is deprecated. " +
-        "Use `flowai-workflow run [options]` instead.\n",
+        "Use `flowai-workflow run <workflow> [options]` instead.\n",
     );
     await runEngine(Deno.args);
   }

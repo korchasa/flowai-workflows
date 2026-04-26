@@ -73,10 +73,7 @@ function loadEnvFile(envOverrides: Record<string, string>): void {
 async function runWorkflow(): Promise<boolean> {
   console.log("> Engine.run()");
   try {
-    const options = parseArgs([
-      "--workflow",
-      ".flowai-workflow/github-inbox",
-    ]);
+    const options = parseArgs([".flowai-workflow/github-inbox"]);
     loadEnvFile(options.env_overrides);
     const engine = new Engine(options);
     const state = await engine.run();

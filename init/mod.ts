@@ -271,7 +271,7 @@ export async function runInit(
     `\n✓ Initialized ${workflowDir} for project "${answers.PROJECT_NAME}"\n` +
       `Next steps:\n` +
       `  1. Review ${workflowDir}/agents/agent-*.md and edit for your project conventions (optional).\n` +
-      `  2. Run: flowai-workflow run --workflow ${workflowDir}\n`,
+      `  2. Run: flowai-workflow run ${workflowDir}\n`,
   );
   return 0;
 }

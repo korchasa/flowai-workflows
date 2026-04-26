@@ -180,12 +180,13 @@
   Follows `cli.ts` format. Exported `printUsage()`/`checkArgs()` for
   unit testing
 - **Interfaces:**
-  - CLI: `flowai-workflow` (REPL), `flowai-workflow run [--prompt <text>]
-    [--config <path>] [--resume <run-id>] [--dry-run] [-v|-s|-q]
+  - CLI: `flowai-workflow` (REPL), `flowai-workflow run <workflow>
+    [--prompt <text>] [--resume <run-id>] [--dry-run] [-v|-s|-q]
     [--env KEY=VAL] [--skip nodes] [--only nodes] [--budget <USD>]`,
-    `--version|-V`, `--help`
-  - Config: `.flowai-workflow/workflow.yaml` (YAML, version "1")
-  - State: `.flowai-workflow/runs/<run-id>/state.json` (JSON)
+    `--version|-V`, `--help`. `<workflow>` is a mandatory positional
+    pointing at the workflow folder (FR-E53; FR-S47).
+  - Config: `<workflow>/workflow.yaml` (YAML, version "1")
+  - State: `<workflow>/runs/<run-id>/state.json` (JSON)
 - **Node types:** `agent`, `merge`, `loop` (with inline `nodes` sub-object
     for body node definitions), `human`
 - **Node flags:**

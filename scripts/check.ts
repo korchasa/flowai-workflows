@@ -105,8 +105,8 @@ async function* walkDir(
 }
 
 /** FR-S47/FR-E53: list workflow folders directly under `root` that contain
- * `workflow.yaml`. Mirrors {@link listWorkflows} in `cli.ts` but kept local
- * to keep the check script free of cross-module dependencies. */
+ * `workflow.yaml`. Used by the workflow-integrity check; intentionally
+ * decoupled from the CLI parser. */
 async function listWorkflowFolders(root: string): Promise<string[]> {
   const out: string[] = [];
   try {

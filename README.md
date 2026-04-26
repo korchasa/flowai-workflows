@@ -87,11 +87,11 @@ Tech Lead → Developer/QA loop → Tech Lead Review) is written into
 `.flowai-workflow/<workflow-name>/`, ready for:
 
 ```bash
-flowai-workflow run --workflow .flowai-workflow/<workflow-name>
+flowai-workflow run .flowai-workflow/<workflow-name>
 ```
 
-When a project hosts only one workflow folder, `--workflow` may be
-omitted — the CLI autodetects it.
+The workflow folder path is a mandatory positional argument; there is
+no autodetect.
 
 ### Workflow folder
 
@@ -170,16 +170,16 @@ deno task run --dry-run
 ## CLI Flags
 
 ```
-deno task run [OPTIONS]
+flowai-workflow run <workflow> [OPTIONS]
+
+Positional:
+  <workflow>          Path to workflow folder containing workflow.yaml
+                      (mandatory; no autodetect).
 
 Options:
   --prompt <text>     Additional context passed to first agent
   --resume <run-id>   Resume a previous run (skip completed nodes)
   --dry-run           Validate config and show DAG without executing
-  --workflow <dir>    Workflow folder (e.g. .flowai-workflow/default).
-                      When omitted: autodetected from .flowai-workflow/.
-                      Errors with listing if multiple candidates exist;
-                      errors with "run flowai-workflow init" if none.
   --skip <nodes>      Comma-separated node IDs to skip
   --only <nodes>      Run only specified nodes
   --env KEY=VAL       Set environment variable for the run
@@ -308,7 +308,7 @@ chmod +x flowai-workflow-darwin-arm64 && mv flowai-workflow-darwin-arm64 flowai-
 ./flowai-workflow --version
 
 # Run a workflow
-./flowai-workflow run --workflow .flowai-workflow/<workflow-name>
+./flowai-workflow run .flowai-workflow/<workflow-name>
 ```
 
 Alternatively, run directly with Deno (see Prerequisites below).

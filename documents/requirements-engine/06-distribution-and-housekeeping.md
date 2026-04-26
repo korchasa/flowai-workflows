@@ -58,8 +58,9 @@
   runner, and publishes them as GitHub Release assets. The `VERSION` env var is embedded at
   compile time; leading `v` prefix is stripped before embedding (e.g., tag `v1.2.3` embeds
   as `1.2.3`).
-- **Motivation:** Lowers adoption barrier — users run `flowai-workflow --config <path>` without
-  installing Deno, eliminating runtime dependency friction.
+- **Motivation:** Lowers adoption barrier — users run
+  `flowai-workflow run <workflow>` without installing Deno,
+  eliminating runtime dependency friction.
 - **Acceptance criteria:**
   - [x] AC1: Standalone binary produced by `deno compile --allow-all engine/cli.ts` with
     all deps bundled. Evidence: `scripts/compile.ts`.
@@ -73,8 +74,10 @@
     `scripts/compile_test.ts` (naming convention test).
   - [x] AC5: README installation docs with binary download instructions.
     Evidence: `README.md` §Installation.
-  - [x] AC6: Config-only CLI entry: `flowai-workflow --config <path>`. No Deno runtime required.
-    Evidence: `engine/cli.ts:parseArgs` (`--config` flag); `deno compile` bundles all deps.
+  - [x] AC6: Standalone CLI entry: `flowai-workflow run <workflow>`
+    (positional workflow path; FR-E53). No Deno runtime required.
+    Evidence: `cli.ts::parseArgs` (positional handling);
+    `deno compile` bundles all deps.
   - [x] AC7: VERSION embedded at compile time; `v` prefix stripped to avoid double-v output.
     Evidence: `scripts/compile.ts:stripVersionPrefix`; `engine/cli.ts:getVersionString`.
   - [x] `deno task check` green: 587 tests, 0 failures. Evidence: run `20260320T223114` iter 2.

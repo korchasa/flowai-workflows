@@ -326,41 +326,43 @@
 
 
 
-### 3.53 FR-E53: `--workflow` Flag (Sole CLI Workflow Selector)
+### 3.53 FR-E53: Mandatory Positional Workflow Argument
 
-- **Description:** The `run` subcommand accepts a single workflow-
-  selection flag, `--workflow <dir>`. The flag points at a workflow
-  folder; the engine loads `<dir>/workflow.yaml`. The legacy
-  `--config <path>` flag is removed (BREAKING; FR-S47).
-- **Auto-detection:** When `--workflow` is omitted, the CLI scans
-  `.flowai-workflow/` for direct subdirectories that contain a
-  `workflow.yaml`:
-  - **0 candidates** → error `No workflow found in
-    .flowai-workflow/. Run 'flowai-workflow init' to scaffold one.`
-    (also covers fresh end-user projects with no
-    `.flowai-workflow/` directory at all).
-  - **1 candidate** → silently selected.
-  - **>1 candidates** → error `Multiple workflows: <list>. Pass
-    --workflow .flowai-workflow/<name>.`
+- **Description:** `run` subcommand requires the workflow folder as
+  a positional argument: `flowai-workflow run <workflow> [options]`.
+  The engine loads `<workflow>/workflow.yaml`. Legacy `--config <path>`
+  and the transitional `--workflow <dir>` flag are both removed
+  (BREAKING; FR-S47). No autodetection — caller must always pass
+  the path explicitly.
 - **Rules:**
-  - `--config <path>` MUST be rejected with a help message pointing
-    to `--workflow` (no deprecation period; immediate BREAKING).
-  - `parseArgs` is FS-free — `config_path` stays empty until
-    `runEngine` calls `resolveWorkflowConfigPath` so unit tests
-    don't require fixtures.
+  - First non-flag token after `run` is `<workflow>`. Position is
+    flexible — flags may appear before or after the positional.
+  - Trailing slash on `<workflow>` is normalized.
+  - A second positional argument is rejected.
+  - `--config <path>` and `--workflow <dir>` MUST be rejected with
+    a help message pointing to the positional form (no deprecation
+    period; immediate BREAKING).
+  - `parseArgs` is FS-free: `config_path` stays empty when no
+    positional was supplied so unit tests can call `parseArgs([])`.
+    `runEngine` enforces presence and emits `Missing workflow
+    argument. Usage: flowai-workflow run <workflow> [options]`.
   - Engine derives `workflowDir = path.dirname(config_path)` once
     at construction and threads it to every state-path call (FR-E9
     update / DoD-14).
 - **Acceptance:**
-  - [x] `cli.ts::parseArgs` accepts `--workflow <dir>` and rejects
-    `--config <path>` with a `Use --workflow` hint. Evidence:
-    `cli_test.ts::parseArgs — --config flag rejected`,
-    `cli_test.ts::parseArgs — --workflow sets config_path`.
-  - [x] `cli.ts::resolveWorkflowConfigPath` implements the 0/1/>1
-    autodetect path. Evidence: 5 test cases under
-    `cli_test.ts` (`listWorkflows — discovers …`, `… missing root`,
-    `resolveWorkflowConfigPath — explicit`, `resolveWorkflowConfigPath
-     — autodetect with single`, `… multiple`, `… empty root`).
-  - [x] `deno.json#tasks.run` uses
-    `--workflow .flowai-workflow/github-inbox`. Evidence: `deno.json`.
+  - [x] `cli.ts::parseArgs` accepts `<workflow>` as a positional
+    and rejects both `--config` and `--workflow` flags with a hint
+    pointing at the positional form. Evidence:
+    `cli_test.ts::parseArgs — positional workflow sets config_path…`,
+    `cli_test.ts::parseArgs — --config flag rejected with positional hint`,
+    `cli_test.ts::parseArgs — --workflow flag rejected with positional hint`.
+  - [x] Positional accepted before or after flags; trailing slash
+    normalized; second positional rejected. Evidence:
+    `cli_test.ts::parseArgs — positional accepted after flags`,
+    `cli_test.ts::parseArgs — trailing slash on positional is normalized`,
+    `cli_test.ts::parseArgs — second positional rejects`.
+  - [x] `runEngine` emits `Missing workflow argument` when
+    `config_path` is empty. Evidence: `cli.ts::runEngine`.
+  - [x] `deno.json#tasks.run` uses positional form
+    `cli.ts run .flowai-workflow/github-inbox`. Evidence: `deno.json`.
   - [x] `deno task check` is green after the migration (DoD-11).

@@ -66,9 +66,10 @@
 - **Acceptance criteria:**
   - [x] README.md reflects DAG-based engine architecture (not shell script
     orchestration).
-  - [x] Usage section documents `deno task run` with current flags
-    (`--prompt`, `--resume`, `--dry-run`, `-v`, `-q`, `--config`, `--skip`,
-    `--only`, `--env`).
+  - [x] Usage section documents `flowai-workflow run <workflow>` with
+    current flags (`--prompt`, `--resume`, `--dry-run`, `-v`, `-q`,
+    `--skip`, `--only`, `--env`). Workflow path is positional and
+    mandatory (FR-E53).
   - [x] Prerequisites list: Deno, Docker/devcontainer, Claude Code CLI, `gh`
     CLI, Git.
   - [x] Available `deno task` commands documented (run, check, test).
