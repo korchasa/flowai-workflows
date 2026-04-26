@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0](https://github.com/korchasa/flowai-workflow/compare/v0.4.0...v0.5.0) (2026-04-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **engine:** relocate worktree under <workflowDir>/runs/<run-id>/worktree (FR-E57) (#213)
+
+### Features
+
+* **engine:** relocate worktree under <workflowDir>/runs/<run-id>/worktree (FR-E57) ([#213](https://github.com/korchasa/flowai-workflow/issues/213)) ([051dabf](https://github.com/korchasa/flowai-workflow/commit/051dabfec6fa0a02140bff13d1e65b2250fd5cd6))
+
 ## [0.4.0](https://github.com/korchasa/flowai-workflow/compare/v0.3.3...v0.4.0) (2026-04-26)
 
 
