@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.3](https://github.com/korchasa/flowai-workflow/compare/v0.3.2...v0.3.3) (2026-04-26)
+
+
+### Features
+
+* **engine+sdlc:** per-node effort level (FR-E42) ([097cec3](https://github.com/korchasa/flowai-workflow/commit/097cec348c6ebd83f76160170bc7c377d5fd90e9))
+
+
+### Bug Fixes
+
+* **engine:** align ai-ide-cli pin to published 0.5.6 (FR-E42) ([1420a29](https://github.com/korchasa/flowai-workflow/commit/1420a2976db5d78335bdd12516dd6f02b84fe74c))
+* **settings:** remove unused PostToolUse hooks from configuration ([b40b60a](https://github.com/korchasa/flowai-workflow/commit/b40b60addfec3551590f5ef710cfa1adf26c008a))
+
 ### [0.3.2](https://github.com/korchasa/flowai-workflow/compare/v0.3.1...v0.3.2) (2026-04-26)
 
 
