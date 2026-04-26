@@ -65,6 +65,7 @@ import {
   copyToOriginalRepo,
   createWorktree,
   getWorktreePath,
+  pinDetachedHead,
   removeWorktree,
   worktreeExists,
 } from "./worktree.ts";
@@ -300,6 +301,24 @@ export class Engine {
         );
       }
       if (workflowSuccess) {
+        // FR-E51: pin detached HEAD as rescue branch BEFORE removal so any
+        // commits made during the run survive worktree teardown.
+        try {
+          const rescue = await pinDetachedHead(
+            this.workDir,
+            this.state.run_id,
+          );
+          if (rescue !== undefined) {
+            this.output.status(
+              "engine",
+              `Detached HEAD pinned: branch=${rescue} worktree=${this.workDir}`,
+            );
+          }
+        } catch (err) {
+          this.output.warn(
+            `Failed to pin detached HEAD: ${(err as Error).message}`,
+          );
+        }
         try {
           await removeWorktree(this.workDir);
           this.output.status("engine", "Worktree removed (success)");

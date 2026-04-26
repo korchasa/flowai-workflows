@@ -3,6 +3,7 @@ import {
   copyToOriginalRepo,
   createWorktree,
   getWorktreePath,
+  pinDetachedHead,
   removeWorktree,
   worktreeExists,
 } from "./worktree.ts";
@@ -177,6 +178,126 @@ Deno.test("copyToOriginalRepo — copies file from workDir to CWD-relative path"
   } finally {
     Deno.chdir(origCwd);
     await Deno.remove(tmpDir, { recursive: true });
+  }
+});
+
+// --- pinDetachedHead (FR-E51) ---
+
+/** Set up a temp git repo with one initial commit on `main`. */
+async function setupMiniRepo(): Promise<string> {
+  const tmp = await Deno.makeTempDir();
+  await runGitCmd(["init", "--initial-branch=main"], tmp);
+  await runGitCmd(["config", "user.email", "test@test.com"], tmp);
+  await runGitCmd(["config", "user.name", "Test"], tmp);
+  await Deno.writeTextFile(`${tmp}/README.md`, "init\n");
+  await runGitCmd(["add", "."], tmp);
+  await runGitCmd(["commit", "-m", "init"], tmp);
+  return tmp;
+}
+
+Deno.test("pinDetachedHead — creates rescue branch on detached HEAD", async () => {
+  const repo = await setupMiniRepo();
+  try {
+    // Detach HEAD (without -b) — leaves main ref alone, HEAD = same commit.
+    await runGitCmd(["checkout", "--detach", "HEAD"], repo);
+
+    const name = await pinDetachedHead(repo, "20260426T120000");
+    assertEquals(name, "flowai/run-20260426T120000-orphan-rescue");
+
+    // Branch ref exists.
+    const verify = await new Deno.Command("git", {
+      args: [
+        "-C",
+        repo,
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        `refs/heads/${name}`,
+      ],
+      stdout: "null",
+      stderr: "null",
+    }).output();
+    assertEquals(verify.success, true);
+  } finally {
+    await Deno.remove(repo, { recursive: true });
+  }
+});
+
+Deno.test("pinDetachedHead — returns undefined when HEAD on named branch", async () => {
+  const repo = await setupMiniRepo();
+  try {
+    // HEAD is on `main` after init — already named.
+    const name = await pinDetachedHead(repo, "20260426T120000");
+    assertEquals(name, undefined);
+
+    // No rescue branch was created.
+    const verify = await new Deno.Command("git", {
+      args: [
+        "-C",
+        repo,
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "refs/heads/flowai/run-20260426T120000-orphan-rescue",
+      ],
+      stdout: "null",
+      stderr: "null",
+    }).output();
+    assertEquals(verify.success, false);
+  } finally {
+    await Deno.remove(repo, { recursive: true });
+  }
+});
+
+Deno.test("pinDetachedHead — appends counter when branch name already exists", async () => {
+  const repo = await setupMiniRepo();
+  try {
+    await runGitCmd(["checkout", "--detach", "HEAD"], repo);
+
+    const first = await pinDetachedHead(repo, "20260426T120000");
+    assertEquals(first, "flowai/run-20260426T120000-orphan-rescue");
+
+    // Re-detach (still at same commit) and re-invoke.
+    await runGitCmd(["checkout", "--detach", "HEAD"], repo);
+    const second = await pinDetachedHead(repo, "20260426T120000");
+    assertEquals(second, "flowai/run-20260426T120000-orphan-rescue-2");
+
+    await runGitCmd(["checkout", "--detach", "HEAD"], repo);
+    const third = await pinDetachedHead(repo, "20260426T120000");
+    assertEquals(third, "flowai/run-20260426T120000-orphan-rescue-3");
+  } finally {
+    await Deno.remove(repo, { recursive: true });
+  }
+});
+
+Deno.test("pinDetachedHead — rescue branch points at detached HEAD commit", async () => {
+  const repo = await setupMiniRepo();
+  try {
+    // Make an extra commit so HEAD is past `main`.
+    await runGitCmd(["checkout", "--detach", "HEAD"], repo);
+    await Deno.writeTextFile(`${repo}/extra.md`, "orphan\n");
+    await runGitCmd(["add", "extra.md"], repo);
+    await runGitCmd(["commit", "-m", "orphan-commit"], repo);
+
+    // Capture HEAD sha
+    const headSha = (await new Deno.Command("git", {
+      args: ["-C", repo, "rev-parse", "HEAD"],
+      stdout: "piped",
+      stderr: "null",
+    }).output().then((o) => new TextDecoder().decode(o.stdout))).trim();
+
+    const name = await pinDetachedHead(repo, "RUN");
+    assertEquals(name, "flowai/run-RUN-orphan-rescue");
+
+    const branchSha = (await new Deno.Command("git", {
+      args: ["-C", repo, "rev-parse", `refs/heads/${name}`],
+      stdout: "piped",
+      stderr: "null",
+    }).output().then((o) => new TextDecoder().decode(o.stdout))).trim();
+
+    assertEquals(branchSha, headSha);
+  } finally {
+    await Deno.remove(repo, { recursive: true });
   }
 });
 

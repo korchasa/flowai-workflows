@@ -285,3 +285,47 @@
   - [ ] E2E test: `e2e_worktree_isolation_test.ts` runs a fake agent that
     writes outside workDir; main is restored, node fails.
   - [ ] `deno task check` passes.
+
+### 3.51 FR-E51: Post-Run Branch-Pin for Detached-HEAD Worktree
+
+- **Description:** Before `removeWorktree`, the engine checks whether the
+  worktree's HEAD is detached. If yes, it creates a rescue branch
+  `flowai/run-<runId>-orphan-rescue` pointing at the current HEAD so the
+  commits made in the worktree remain reachable after the worktree is
+  removed. If a branch with that name already exists (resume of the same
+  run-id, repeat invocation), the engine appends a counter suffix
+  (`-2`, `-3`, …) until it finds a free name. No-op when HEAD is already
+  on a named branch.
+- **Motivation:** Worktrees are created with `--detach` (FR-E24) so they
+  don't pollute the main repo's branch namespace. If a workflow makes
+  commits in the worktree but never explicitly checks out a branch, those
+  commits are reachable only via the worktree's `HEAD` ref. Once the
+  worktree is removed, the commits become unreachable and are eligible for
+  garbage collection — the `kazar-fairy-taler` incident lost three commits
+  this way (`be9bb6a → 12e6e93 → f6f6b94`) before manual rescue.
+- **Constraints:**
+  - No-op when `workDir === "."` (engine never invokes worktree teardown).
+  - No-op when HEAD is on a named branch — the typical path through a
+    `decision`-like agent that explicitly checks out a branch is
+    untouched.
+  - Branch creation uses `git branch <name> HEAD` — non-destructive,
+    cannot overwrite existing branches.
+  - Failure to pin is reported via `output.warn` but does NOT block
+    worktree removal — the rescue is best-effort. (Rationale: a mid-run
+    crash or corrupted ref shouldn't prevent cleanup.)
+  - User notification at default verbosity: `engine` status line
+    `Detached HEAD pinned: branch=<name> worktree=<path>`.
+- **Acceptance criteria:**
+  - [ ] Engine calls `pinDetachedHead(workDir, runId)` immediately before
+    every `removeWorktree(workDir)` invocation.
+  - [ ] On detached HEAD: branch `flowai/run-<runId>-orphan-rescue` is
+    created at HEAD; the branch name is returned.
+  - [ ] On HEAD already on a named branch: no branch is created; function
+    returns `undefined`.
+  - [ ] On existing rescue-branch name: function appends `-2`, `-3`, … and
+    creates the first free name; returns that name.
+  - [ ] `workDir === "."` mode: function is not invoked (engine guards).
+  - [ ] Rescue branch creation logged via `output.status("engine", …)` at
+    default verbosity, including branch name and worktree path.
+  - [ ] Unit tests cover detached / on-branch / counter-conflict paths.
+  - [ ] `deno task check` passes.
