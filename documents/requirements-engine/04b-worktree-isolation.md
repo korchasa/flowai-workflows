@@ -330,3 +330,57 @@ template path contract (FR-E52), and the per-workflow run lock (FR-E54).
     `e2e_worktree_isolation_test.ts::e2e — distinct workflow dirs hold
     independent worktrees (FR-E57)`.
   - [x] `deno task check` passes (798 tests, 0 failures).
+
+
+
+### 3.58 FR-E58: Copy Gitignored Files into Run Worktree
+
+- **Description:** After `createWorktree()` and before any node executes,
+  the engine mirrors gitignored entries from the original repo into the
+  worktree at the same relative paths. Source list:
+  `git ls-files --others --ignored --exclude-standard --directory -z` in
+  the original repo. Copy is unconditional (no allowlist, no size limit),
+  uses Deno FS APIs only (cross-platform; no shell `cp`, no
+  reflink/clonefile). Symlinks preserved as symlinks (target verbatim,
+  broken symlinks reproduced). Tracked files untouched (already present
+  from `origin/main` checkout). Untracked-not-ignored NOT copied —
+  committing/stashing them remains operator's job (FR-E50 safety check).
+  Special files (socket/FIFO/device) skipped with a warning.
+- **Motivation:** Workflows often need files outside git — `.env`,
+  `node_modules`, `.venv`, local caches. A fresh `git worktree add`
+  ref-checkout has none of them, so agents fail with «missing
+  dependency» errors that look like workflow bugs. Unconditional copy
+  makes the worktree a faithful working-state clone outside git's
+  tracking universe.
+- **Constraints:** No-op when `worktree_disabled: true`; no-op on resume
+  reuse (re-copy would clobber the previous run's persisted state under
+  ignored paths). Errors on regular files/dirs/symlinks are fail-fast —
+  existing teardown cleans the worktree. Physical byte duplication is a
+  deliberate cost of the cross-platform Deno-only constraint; revisit if
+  a real workflow hits the limit.
+- **Acceptance criteria:**
+  - [x] `worktree.ts` exports `copyIgnoredIntoWorktree(workDir, output,
+    origRepo?): Promise<{files: number; bytes: number}>`. Evidence:
+    `worktree.ts`.
+  - [x] Function classifies each entry via `Deno.lstat` and dispatches:
+    symlink → `readLink`+`symlink`, file → `copyFile`, directory →
+    `mkdir`+recurse via `readDir`. Parent dirs auto-created. Evidence:
+    `worktree.ts` (`classifyAndCopy`).
+  - [x] Special files emit `output.warn` and are skipped. Evidence:
+    `worktree.ts` (`classifyAndCopy` final branch).
+  - [x] Progress: leading `Copying ignored files...`, per-top-level
+    `Copied <path>: <N> files, <S>` (B/KB/MB/GB formatter), trailing
+    `Ignored files copied: <N_total> files, <S_total>` — all via
+    `output.status("engine", …)`. Evidence: `worktree.ts`
+    (`copyIgnoredIntoWorktree`), `worktree_copy_ignored_test.ts`
+    (progress-lines test).
+  - [x] Engine calls it after `createWorktree`; skipped on
+    `worktree_disabled` and resume-reuse paths. Evidence: `engine.ts`
+    (new-run branch in worktree setup).
+  - [x] Untracked-not-ignored paths NOT copied (unit test verifies).
+    Evidence: `worktree_copy_ignored_test.ts` (untracked-not-ignored test).
+  - [x] Unit tests cover: file, directory recursion, live symlink,
+    broken symlink, untracked-vs-ignored filter, counters, tracked-file
+    non-overwrite, empty-repo zero-result. Evidence:
+    `worktree_copy_ignored_test.ts` (8 tests).
+  - [ ] `deno task check` passes.

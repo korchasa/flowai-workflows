@@ -12,6 +12,9 @@
  * and `resolveExistingWorktreePath`; new worktrees are never created at it.
  */
 
+import { dirname, join } from "@std/path";
+import type { OutputManager } from "./output.ts";
+
 /**
  * Pre-FR-E57 repo-global worktree base. Retained ONLY as a legacy-resume
  * fallback inside `worktreeExists` / `resolveExistingWorktreePath` so that
@@ -223,6 +226,155 @@ async function branchExists(workDir: string, name: string): Promise<boolean> {
     stderr: "null",
   }).output();
   return out.success;
+}
+
+/**
+ * Copy gitignored files from `origRepo` into a freshly-created `workDir`
+ * (FR-E58). Enumerates paths via
+ * `git ls-files --others --ignored --exclude-standard --directory -z` and
+ * mirrors each entry preserving the relative layout, file mode (where the
+ * platform supports it), and symlinks (as symlinks, not their targets).
+ *
+ * - Untracked-but-not-ignored files are NOT copied — committing/stashing
+ *   them is the operator's responsibility (FR-E50 safety check).
+ * - Tracked files are NOT copied — they already exist in the worktree
+ *   from the underlying ref checkout.
+ * - Special files (sockets, FIFOs, devices) are skipped with a warning.
+ * - Cross-platform: only Deno FS APIs, no shell `cp`. No filesystem-level
+ *   cloning (reflink/clonefile) — every byte is physically duplicated.
+ *
+ * Progress is logged via `output.status("engine", …)` per top-level entry
+ * plus a leading "Copying ignored files..." line and a trailing summary.
+ *
+ * @param workDir   Destination worktree directory.
+ * @param output    OutputManager for status/warn lines.
+ * @param origRepo  Source repo root. Defaults to `.` (engine CWD).
+ * @returns         Aggregate counters: total files copied, total bytes.
+ */
+export async function copyIgnoredIntoWorktree(
+  workDir: string,
+  output: OutputManager,
+  origRepo: string = ".",
+): Promise<{ files: number; bytes: number }> {
+  output.status("engine", "Copying ignored files...");
+
+  const paths = await listIgnoredPaths(origRepo);
+  let totalFiles = 0;
+  let totalBytes = 0;
+
+  for (const rawPath of paths) {
+    const relPath = rawPath.replace(/\/+$/, "");
+    if (relPath === "") continue;
+    const src = join(origRepo, relPath);
+    const dst = join(workDir, relPath);
+    const result = await classifyAndCopy(src, dst, output);
+    totalFiles += result.files;
+    totalBytes += result.bytes;
+    output.status(
+      "engine",
+      `Copied ${relPath}: ${result.files} files, ${formatSize(result.bytes)}`,
+    );
+  }
+
+  output.status(
+    "engine",
+    `Ignored files copied: ${totalFiles} files, ${formatSize(totalBytes)}`,
+  );
+
+  return { files: totalFiles, bytes: totalBytes };
+}
+
+/**
+ * Enumerate gitignored entries in `origRepo`. Uses `-z` so paths with
+ * embedded newlines or quotes survive intact. Trailing `/` on entries
+ * indicates a wholly-ignored directory (`--directory` collapse).
+ */
+async function listIgnoredPaths(origRepo: string): Promise<string[]> {
+  const result = await new Deno.Command("git", {
+    args: [
+      "-C",
+      origRepo,
+      "ls-files",
+      "--others",
+      "--ignored",
+      "--exclude-standard",
+      "--directory",
+      "-z",
+    ],
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  if (!result.success) {
+    const stderr = new TextDecoder().decode(result.stderr).trim();
+    throw new Error(
+      `git ls-files (ignored) failed${stderr ? `: ${stderr}` : ""}`,
+    );
+  }
+  const out = new TextDecoder().decode(result.stdout);
+  return out.split("\0").filter((s) => s !== "");
+}
+
+/**
+ * Classify `src` via `lstat` and copy it to `dst`, recursing into
+ * directories. Returns counters for the entry (and its descendants).
+ */
+async function classifyAndCopy(
+  src: string,
+  dst: string,
+  output: OutputManager,
+): Promise<{ files: number; bytes: number }> {
+  let stat: Deno.FileInfo;
+  try {
+    stat = await Deno.lstat(src);
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) {
+      output.warn(`Ignored path missing on disk, skipping: ${src}`);
+      return { files: 0, bytes: 0 };
+    }
+    throw err;
+  }
+
+  if (stat.isSymlink) {
+    const target = await Deno.readLink(src);
+    await Deno.mkdir(dirname(dst), { recursive: true });
+    await Deno.symlink(target, dst);
+    return { files: 1, bytes: 0 };
+  }
+
+  if (stat.isFile) {
+    await Deno.mkdir(dirname(dst), { recursive: true });
+    await Deno.copyFile(src, dst);
+    return { files: 1, bytes: stat.size };
+  }
+
+  if (stat.isDirectory) {
+    await Deno.mkdir(dst, { recursive: true });
+    let files = 0;
+    let bytes = 0;
+    for await (const entry of Deno.readDir(src)) {
+      const r = await classifyAndCopy(
+        join(src, entry.name),
+        join(dst, entry.name),
+        output,
+      );
+      files += r.files;
+      bytes += r.bytes;
+    }
+    return { files, bytes };
+  }
+
+  output.warn(`Skipping special file (not regular/dir/symlink): ${src}`);
+  return { files: 0, bytes: 0 };
+}
+
+/** Human-readable size formatter for progress messages (B/KB/MB/GB). */
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  return `${(mb / 1024).toFixed(1)} GB`;
 }
 
 /** Run a git command, throw with context on failure. */

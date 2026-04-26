@@ -113,6 +113,18 @@
     Two-phase config loading (FR-E24): `run()` reads raw YAML →
     `extractPreRun()` → `runPreRunScript()` if present → `loadConfig()`
     re-reads (potentially updated) config.
+    **Ignored-files mirror (FR-E58):** Immediately after `createWorktree`
+    on a fresh run (not resume, not `worktree_disabled`), `run()` calls
+    `copyIgnoredIntoWorktree(workDir, output)` which enumerates ignored
+    paths via `git ls-files --others --ignored --exclude-standard
+    --directory -z` in the original repo and mirrors each entry into
+    the worktree. Symlinks are preserved as symlinks; tracked files
+    are not touched (already present from `origin/main` checkout);
+    untracked-but-not-ignored files are not copied. Cross-platform via
+    Deno FS APIs only — no shell `cp`, no filesystem-level cloning.
+    Progress is logged through `output.status("engine", …)` per
+    top-level entry plus a leading "Copying ignored files..." line and a
+    trailing "Ignored files copied: <N> files, <S>" summary.
     **Pipeline Prepare Command (FR-E30):** `runPrepareCommand(cmd, runDir,
     runId, env, args, output): Promise<void>` — exported free function.
     Builds workflow-level `TemplateContext` (`node_dir: ""`, `input: {}`,
