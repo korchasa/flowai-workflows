@@ -77,6 +77,7 @@
 
 
 
+
 ### 3.31 FR-E31: Stale Path Reference Cleanup in Engine Artifacts
 
 - **Description:** Engine documentation and test fixtures must be free of deprecated `.flowai-workflow/` path references and hardcoded `.flowai-workflow/agents/agent-*` paths. Physical migration to `.flowai-workflow/` completed in #111; ~30 stale `.flowai-workflow/` refs remain in `requirements-engine.md` evidence fields, ~12 in `design-engine.md`, and engine test fixtures reference `.flowai-workflow/agents/agent-*` paths.
@@ -242,3 +243,5 @@
   - [x] `validateFileReferences` + `validateTemplateVars` accept `flow_file()`.
     Evidence: `config.ts`, `template.ts`, `config_test.ts`, `template_test.ts`.
   - [x] `deno task check` passes.
+
+### 3.58 FR-E58: Copy Gitignored Files into Run Worktree — see [04b-worktree-isolation.md](04b-worktree-isolation.md).

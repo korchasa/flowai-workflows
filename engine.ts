@@ -62,6 +62,7 @@ import {
   executeMergeNode,
 } from "./node-dispatch.ts";
 import {
+  copyIgnoredIntoWorktree,
   copyToOriginalRepo,
   createWorktree,
   pinDetachedHead,
@@ -169,10 +170,11 @@ export class Engine {
         this.workDir = ".";
       }
     } else if (!worktreeDisabled) {
-      // New run: create worktree
+      // New run: create worktree, then mirror gitignored files (FR-E58)
       this.output.status("engine", "Creating worktree...");
       this.workDir = await createWorktree(runId, this.workflowDir);
       this.output.status("engine", `Worktree: ${this.workDir}`);
+      await copyIgnoredIntoWorktree(this.workDir, this.output);
     } else {
       this.workDir = ".";
     }

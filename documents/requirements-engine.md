@@ -24,7 +24,8 @@ FR-IDs are stable — never renumber them on move.
 - [04b-worktree-isolation.md](requirements-engine/04b-worktree-isolation.md)
   — Worktree isolation (FR-E24), main-tree leak guardrail (FR-E50),
   detached-HEAD rescue branch (FR-E51), cwd-relative template path
-  contract (FR-E52), per-workflow run lock (FR-E54).
+  contract (FR-E52), per-workflow run lock (FR-E54), per-run worktree
+  co-location (FR-E57), gitignored-file mirror into worktree (FR-E58).
 - [05-cli-and-observability.md](requirements-engine/05-cli-and-observability.md)
   — Verbose/semi-verbose/final-summary output, cost aggregation, stream-log
   timestamps, repeated-read warning, node result summary, CLI help.
@@ -90,3 +91,4 @@ FR-IDs are stable — never renumber them on move.
 - FR-E54 (Per-Workflow Run Lock)        → 04b-worktree-isolation
 - FR-E55 (`{{flow_file()}}` Template)   → 04-runtime-and-hooks
 - FR-E57 (Per-Run Worktree Co-Location) → 04b-worktree-isolation
+- FR-E58 (Copy Ignored Into Worktree)  → 04b-worktree-isolation
