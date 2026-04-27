@@ -23,7 +23,7 @@
 - `deno task loop` - Autonomous loop: check issues → run workflow via Engine → repeat
 
 > Direct `deno fmt`, `deno lint`, and `deno test` invocations are blocked by
-> [`.claude/hooks/guard-deno-direct.sh`](../.claude/hooks/guard-deno-direct.sh) —
+> [`.claude/hooks/guard-deno-direct.ts`](../.claude/hooks/guard-deno-direct.ts) —
 > always go through the `deno task` wrappers above.
 
 ## Command Scripts

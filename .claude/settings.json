@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/guard-deno-direct.sh"
+            "command": ".claude/hooks/guard-deno-direct.ts"
           }
         ]
       }
